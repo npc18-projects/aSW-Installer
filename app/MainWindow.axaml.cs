@@ -120,7 +120,13 @@ public partial class MainWindow : Window
             string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail"];
             for (var i = 0; i < names.Length; i++)
             {
-                if (i == 8) { _addonDetailCard = new AddonCard("sample", "Sample Add-On", "Author", "r1", false, ""); TxtAddDetName.Text = "Sample Add-On"; }
+                if (i == 6) { StartAddonGrab(); for (var tries = 0; tries < 60 && _liveAddons is null; tries++) await Task.Delay(500); await Task.Delay(1500); }
+                if (i == 8)
+                {
+                    var c0 = _liveAddons?.FirstOrDefault(c => c.Slug == "vq4q7d") ?? _liveAddons?.FirstOrDefault();
+                    if (c0 is not null) ShowAddonDetail(new AddonCard(c0.Slug, c0.Name, c0.Author, $"r{c0.LatestRevision}", false, c0.HeaderImageUrl, null));
+                    await Task.Delay(1500);
+                }
                 if (i == 3) { TxtPhase.Text = "Downloading mod 42 of 911"; TxtItem.Text = "Sample Mod"; TxtSpeed.Text = "12.4 MB/s"; TxtCounts.Text = "41/911"; PbOverall.Value = 4.5; OnLogLine("sample log line"); FlushLog(); }
                 if (i == 5) OnOpenDetail(null, new RoutedEventArgs());
                 ShowPage(i);
@@ -250,7 +256,7 @@ public partial class MainWindow : Window
         Avalonia.Controls.Primitives.ToggleButton[] steps = [Wiz0, Wiz1, Wiz2, Wiz3];
         var step = page switch { 0 => 0, 1 => 1, 2 or 3 => 2, 4 => 3, _ => -1 };
         for (var i = 0; i < steps.Length; i++) steps[i].IsChecked = i == step;
-        if (page == 6) { RefreshAddons(); StartAddonGrab(); }
+        if (page == 6) { StartAddonGrab(); RefreshAddons(); }
     }
 
     /// <summary>Auto-discovers add-on collections (GraphQL listing only, no archive downloads).</summary>
@@ -363,13 +369,15 @@ public partial class MainWindow : Window
         List<AddonCard> cards;
         if (_liveAddons is { } live)
         {
-            var baseRev = new CollectionSync(SyncCacheDir).LoadState()?.Revision;
+            // what this instance has installed (AddonRegistry) decides "Installed" and "Update available"
+            var dir = InstallState.GetInstallDir();
+            var have = dir is null ? [] : AddonRegistry.Load(dir).Addons.ToDictionary(a => a.Id, a => a.Revision, StringComparer.OrdinalIgnoreCase);
             cards = live.Select(c =>
             {
-                var mf = AddonStore.Get(c.Slug);
-                var pinned = mf?.Requires.RevisionNumber;
-                var update = pinned is int p && baseRev is int b && p < b;
-                return            new AddonCard(c.Slug, c.Name, c.Author, $"r{c.LatestRevision}", update, string.IsNullOrWhiteSpace(c.HeaderImageUrl) ? c.TileImageUrl : c.HeaderImageUrl);
+                have.TryGetValue(c.Slug, out var haveRev);
+                var update = haveRev is { Length: > 0 } && int.TryParse(haveRev.TrimStart('r'), out var hr) && hr < c.LatestRevision;
+                return new AddonCard(c.Slug, c.Name, c.Author, $"r{c.LatestRevision}", update, string.IsNullOrWhiteSpace(c.HeaderImageUrl) ? c.TileImageUrl : c.HeaderImageUrl,
+                    have.ContainsKey(c.Slug) ? (haveRev is { Length: > 0 } ? haveRev : "installed") : null);
             }).ToList();
         }
         else
@@ -401,7 +409,7 @@ public partial class MainWindow : Window
         foreach (var a in rows) GridAddons.Children.Add(BuildAddonCard(a, installed));
     }
 
-    private sealed record AddonCard(string Slug, string Name, string Author, string Version, bool UpdateAvailable, string HeaderImageUrl);
+    private sealed record AddonCard(string Slug, string Name, string Author, string Version, bool UpdateAvailable, string HeaderImageUrl, string? InstalledRev = null);
 
     private void OnAddonsAuthorChanged(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -415,11 +423,34 @@ public partial class MainWindow : Window
         TxtAddDetName.Text = c.Name;
         TxtAddDetBy.Text = $"By {c.Author} - Revision {c.Version}";
         TxtAddDetSummary.Text = _liveSummary.GetValueOrDefault(c.Slug, "");
-        TxtAddDetStatus.Text = "";
-        BtnAddDetDownload.IsEnabled = _apiKey != null;
-        BtnAddDetInstall.IsEnabled = false;
+        _addonJsonPath = null;           // belongs to whichever add-on was last fetched
+        PnlAddDetManual.IsVisible = false;
+        var baseInstalled = InstallState.GetInstallDir() is not null;
+        TxtAddDetStatus.Text = !baseInstalled ? "Install the base list first; add-ons are placed on top of it."
+            : c.UpdateAvailable ? $"Installed ({c.InstalledRev}). A newer revision is available."
+            : c.InstalledRev is not null ? $"Installed ({c.InstalledRev}). Installing again re-applies it." : "";
+        BtnAddDetInstall.Content = c.UpdateAvailable ? "Update" : c.InstalledRev is not null ? "Reinstall" : "Install";
+        BtnAddDetInstall.IsEnabled = baseInstalled && _apiKey != null && _collectionPath != null;
         _ = LoadImageAsync(ImgAddDet, c.HeaderImageUrl, "addon-" + c.Slug);
         ShowPage(8);
+    }
+
+    /// <summary>collection.json from what the user picked: the .json itself, or the .7z Nexus gives for a manual collection download.</summary>
+    private async Task<string?> CollectionPathFromPickedAsync(string picked)
+    {
+        if (picked.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) return picked;
+        try
+        {
+            var outDir = Path.Combine(SyncCacheDir, "manual", Path.GetFileNameWithoutExtension(picked));
+            Directory.CreateDirectory(outDir);
+            await Task.Run(() => SevenZip.ExtractSingleFile(picked, "collection.json", outDir));
+            return Path.Combine(outDir, "collection.json");
+        }
+        catch (Exception ex)
+        {
+            InstallLog.Error("ui", $"couldn't open collection archive {picked}: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>Display name without the "aSW <Addon> - " install-folder prefix.</summary>
@@ -431,44 +462,73 @@ public partial class MainWindow : Window
         return i > 0 ? s[(i + 3)..] : s;
     }
 
-    private void OnAddDetDownload(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private string? _addonJsonSlug;
+
+    /// <summary>One button: fetch the add-on's collection (Premium) if needed, then install it on top of the base list.</summary>
+    private async void OnAddDetInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (_apiKey is null || _addonDetailCard is null) return;
-        BtnAddDetDownload.IsEnabled = false;
-        TxtAddDetStatus.Text = "Downloading archive…";
-        _ = Task.Run(async () =>
+        if (_addonDetailCard is not { } card || _collectionPath is null || _apiKey is null) return;
+        if (InstallState.GetInstallDir() is null) { TxtAddDetStatus.Text = "Install the base list first."; return; }
+        BtnAddDetInstall.IsEnabled = false;
+        PnlAddDetManual.IsVisible = false;
+        if (_addonJsonPath is null || _addonJsonSlug != card.Slug)
         {
+            TxtAddDetStatus.Text = "Fetching the add-on list…";
             try
             {
                 var sync = new CollectionSync(SyncCacheDir);
-                var addon = await sync.EnsureAddonJsonAsync(_apiKey!, _addonDetailCard.Slug, _addonDetailCard.Name);
+                var addon = await Task.Run(() => sync.EnsureAddonJsonAsync(_apiKey!, card.Slug, card.Name));
                 _addonJsonPath = addon.CollectionJsonPath;
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    TxtAddDetStatus.Text = "Archive downloaded. Install when ready.";
-                    BtnAddDetInstall.IsEnabled = _collectionPath != null && InstallState.GetInstallDir() is not null;
-                });
+                _addonJsonSlug = card.Slug;
             }
             catch (Exception ex)
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    TxtAddDetStatus.Text = "Download failed. The details are in the logs.";
-                    BtnAddDetDownload.IsEnabled = true;
-                    InstallLog.Info("addons", $"download {_addonDetailCard.Slug}: {ex.Message}");
-                });
+                InstallLog.Info("addons", $"fetch {card.Slug}: {ex.Message}");
+                var premium = ex.Message.Contains("premium", StringComparison.OrdinalIgnoreCase);
+                TxtAddDetStatus.Text = premium
+                    ? "The installer can't fetch this add-on's list automatically with a free account. Open the collection page, download the collection (Manual download), then choose the file you got."
+                    : "Couldn't fetch the add-on list. Check your connection and try again; the details are in the logs.";
+                PnlAddDetManual.IsVisible = premium;
+                BtnAddDetInstall.IsEnabled = true;
+                return;
             }
-        });
+        }
+        StartAddonInstall();
     }
 
-    private void OnAddDetInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void StartAddonInstall()
     {
-        if (_addonJsonPath is null || _collectionPath is null) return;
+        TxtAddDetStatus.Text = "";
+        BtnAddDetInstall.IsEnabled = true;
         _addonInstall = true;
         TxtInstallDir.Text = InstallState.GetLastDir() ?? TxtInstallDir.Text;
         ClearInstallPage();
         ShowPage(3);
         _ = StartInstallAsync();
+    }
+
+    private void OnAddDetOpenPage(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_addonDetailCard is { } c)
+            Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/games/fallout4/collections/{c.Slug}") { UseShellExecute = true });
+    }
+
+    private async void OnAddDetPick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_addonDetailCard is not { } card) return;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose the collection you downloaded",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Collection") { Patterns = ["*.7z", "*.json"] }]
+        });
+        if (files.Count == 0) return;
+        var path = await CollectionPathFromPickedAsync(files[0].Path.LocalPath);
+        if (path is null) { TxtAddDetStatus.Text = "Couldn't read that file. Choose the collection archive (.7z) you downloaded from Nexus."; return; }
+        _addonJsonPath = path;
+        _addonJsonSlug = card.Slug;
+        PnlAddDetManual.IsVisible = false;
+        StartAddonInstall();
     }
 
     private void OnAddDetBack(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => ShowPage(6);
@@ -542,7 +602,10 @@ public partial class MainWindow : Window
         { Text = $"By {c.Author} - Revision {c.Version}", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#D9CBA8")), TextWrapping = TextWrapping.Wrap });
         if (c.UpdateAvailable)
             text.Children.Add(new TextBlock
-            { Text = "Update available", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F2C48D")) });
+            { Text = $"Installed ({c.InstalledRev}) · update available", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F2C48D")) });
+        else if (c.InstalledRev is not null)
+            text.Children.Add(new TextBlock
+            { Text = c.InstalledRev == "installed" ? "Installed" : $"Installed ({c.InstalledRev})", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#9FE0A8")) });
         if (!installed)
             text.Children.Add(new TextBlock
             { Text = "Install the base list first", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
@@ -550,7 +613,7 @@ public partial class MainWindow : Window
         var card = new Border
         {
             Classes = { "card" },
-            Width = 420,
+            Width = 380,
             Padding = new Avalonia.Thickness(0),
             Tag = c.Slug,
             Child = new Panel { Children = { banner, text } }
@@ -1061,6 +1124,7 @@ public partial class MainWindow : Window
         var dir = TxtInstallDir.Text!;
         var jsonPath = resuming ? _resumeJsonPath! : _addonInstall ? _addonJsonPath! : _collectionPath!;
         var installId = resuming ? _resumeAddonId! : _addonInstall ? _addonDetailCard!.Slug : AddonId;
+        var baseForAddon = !resuming && _addonInstall ? _collectionPath : null;   // add-on runs anchor on the installed base list
         _addonInstall = false;
         ResetRunState();
         TxtPhase.Text = "Starting…";
@@ -1109,7 +1173,7 @@ public partial class MainWindow : Window
                 gamePath ?? "", progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
                 downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups,
-                manualWatchDir: watchDir));
+                manualWatchDir: watchDir, baseCollectionJsonPath: baseForAddon));
             _resume = null;
             ApplyResumeGroups();
             _installedDir = dir;

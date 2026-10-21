@@ -54,7 +54,7 @@ public sealed class InstallRunner
         CancellationToken ct = default, bool stockGame = false, string? reuseDir = null,
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
         int downloadThreads = 0, int extractThreads = 0, IReadOnlyCollection<string>? optionalGroups = null,
-        string? manualWatchDir = null)
+        string? manualWatchDir = null, string? baseCollectionJsonPath = null)
     {
         InstallLog.Init(instanceDir);
         InstallLog.Info("auth", "validating Nexus account...");
@@ -66,7 +66,8 @@ public sealed class InstallRunner
         var optGroups = OptionalGroups.Load(addonId);
         var selectedGroups = (optionalGroups ?? OptionalGroups.Defaults(optGroups)).ToList();
         resume ??= new InstallState.ResumeInfo(collectionJsonPath, addonId, instanceDir, gamePath,
-            stockGame, reuseDir, downloadsDir, [], [], false, OptionalGroups: selectedGroups);
+            stockGame, reuseDir, downloadsDir, [], [], false, OptionalGroups: selectedGroups, BaseJsonPath: baseCollectionJsonPath);
+        baseCollectionJsonPath ??= resume.BaseJsonPath;   // a resumed add-on run keeps its base list
         selectedGroups = resume.OptionalGroups ?? selectedGroups;   // a resumed run keeps the choice it started with
         InstallState.SetResume(resume);
         if (resume.DoneDownloads.Count > 0 || resume.DoneInstalls.Count > 0 || resume.GameCopied)
@@ -111,6 +112,17 @@ public sealed class InstallRunner
 
         progress?.Report(new(0, 1, "plan", "reading collection manifest"));
         var manifest = VortexCollectionMapper.Map(collectionJsonPath, addonId);
+        var isAddon = baseCollectionJsonPath is not null;
+        if (isAddon)
+        {
+            // An add-on repeats the base mods it needs rules against. Those are anchors: already installed, never fetched
+            // again, but their rules place the add-on's own mods (AddonPlacement).
+            var baseMods = VortexCollectionMapper.Map(baseCollectionJsonPath!, "a-storywealth").Mods;
+            var anchors = AddonPlacement.MarkAnchors(manifest, baseMods, AddonRegistry.Load(instanceDir), instanceDir);
+            var rev = System.Text.RegularExpressions.Regex.Match(collectionJsonPath, @"[\\/]r(\d+)[\\/][^\\/]*$");
+            if (rev.Success) manifest.Version = "r" + rev.Groups[1].Value;
+            InstallLog.Info("plan", $"add-on \"{manifest.Name}\" {manifest.Version}: {manifest.Mods.Count} mods, {anchors} already installed (anchors), {manifest.Mods.Count - anchors} to install");
+        }
         var plan = new ManifestResolver().Resolve([manifest]);
         foreach (var i in plan.Issues)
         {
@@ -169,8 +181,9 @@ public sealed class InstallRunner
 
         // ---- Phase 1: download and verify EVERY archive first (no extraction).
         // Downgrader first so the downgrade can run while the rest downloads.
-        var excludedMods = OptionalGroups.Excluded(manifest.Mods, optGroups, selectedGroups);
-        var coreMods = manifest.Mods.Where(m => !excludedMods.Contains(m.InstallAs)).ToList();
+        var installable = manifest.Mods.Where(m => !m.IsAnchor).ToList();   // anchors are already on disk
+        var excludedMods = OptionalGroups.Excluded(installable, optGroups, selectedGroups);
+        var coreMods = installable.Where(m => !excludedMods.Contains(m.InstallAs)).ToList();
         InstallLog.Info("config", $"optional groups: installing [{string.Join(", ", selectedGroups)}]; leaving out {excludedMods.Count} mod(s) ({excludedMods.Sum(n => manifest.Mods.First(m => m.InstallAs == n).Nexus?.FileSize ?? 0) / 1_000_000_000.0:F1} GB)");
         var ordered = needsDowngrade && downgrader is not null
             ? coreMods.OrderByDescending(m => m.Nexus is { } nx && nx.ModId == downgraderModId).ToList()
@@ -572,7 +585,7 @@ if (numbered >= 1) dumpSignature = true;
         var optionalNames = new HashSet<string>(excludedMods, StringComparer.OrdinalIgnoreCase);
         optionalNames.UnionWith(rootMods);
         optionalNames.UnionWith(Mo2InstanceWriter.InstalledTools(instanceDir));   // live in <instance>/Tools, not the mod list
-        Mo2InstanceWriter.WriteLoadFiles(instanceDir, plan, optionalNames, effectiveGamePath);
+        Mo2InstanceWriter.WriteLoadFiles(instanceDir, plan, optionalNames, effectiveGamePath, isAddon);
         // Tools are registered last: their executables live in mod folders and the game root (F4SE), which exist only now.
         Mo2InstanceWriter.WriteCustomExecutables(instanceDir, effectiveGamePath, manifest.Tools);
         Mo2InstanceWriter.PointF4seAtRootMod(instanceDir, effectiveGamePath);

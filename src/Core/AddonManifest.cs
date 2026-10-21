@@ -124,6 +124,11 @@ public sealed class ModEntry
     /// expected CRC32 of installed plugins. Verified post-install (warn).</summary>
     [JsonPropertyName("patchesJson")] public string? PatchesJson { get; set; }
 
+    /// <summary>Add-on runs only: this entry is a mod that is already installed (by the base list or another add-on).
+    /// Its InstallAs has been pointed at the existing folder; it is not downloaded or extracted again, but its
+    /// before/after rules still anchor the add-on's own mods (see AddonPlacement).</summary>
+    [JsonIgnore] public bool IsAnchor { get; set; }
+
     /// <summary>InstallAs names used by older builds — for skipping mods
     /// already materialized under a previous folder naming scheme.</summary>
     [JsonIgnore] public List<string> LegacyInstallAs { get; } = new();

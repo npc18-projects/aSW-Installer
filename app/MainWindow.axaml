@@ -225,9 +225,12 @@
                     <TextBlock x:Name="TxtAddDetSummary" Classes="sub" TextWrapping="Wrap" FontSize="13"/>
                     <TextBlock x:Name="TxtAddDetStatus" Classes="sub" FontSize="12" Foreground="#B8BEC9"/>
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button x:Name="BtnAddDetDownload" Classes="primary" Click="OnAddDetDownload">Download archive</Button>
-                        <Button x:Name="BtnAddDetInstall" Classes="primary" Click="OnAddDetInstall" IsEnabled="False">Install</Button>
+                        <Button x:Name="BtnAddDetInstall" Classes="primary" Click="OnAddDetInstall">Install</Button>
                         <Button Click="OnAddDetBack">Back</Button>
+                    </StackPanel>
+                    <StackPanel x:Name="PnlAddDetManual" Orientation="Horizontal" Spacing="12" IsVisible="False">
+                        <Button Click="OnAddDetOpenPage">Open the collection page</Button>
+                        <Button Click="OnAddDetPick">Choose the downloaded collection…</Button>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

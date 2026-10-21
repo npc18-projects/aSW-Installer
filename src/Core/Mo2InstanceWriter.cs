@@ -97,7 +97,7 @@ public static partial class Mo2InstanceWriter
     /// <param name="skip">installAs values that are not mod folders (game-root mods, optionals).</param>
     /// <param name="gameDir">Game root, used to read vanilla plugin headers.</param>
     public static void WriteLoadFiles(string instanceDir, ManifestResolver.ResolvedPlan plan,
-        HashSet<string>? skip = null, string? gameDir = null)
+        HashSet<string>? skip = null, string? gameDir = null, bool isAddon = false)
     {
         var profileDir = Path.Combine(instanceDir, "profiles", "A StoryWealth");
         Directory.CreateDirectory(profileDir);
@@ -108,14 +108,19 @@ public static partial class Mo2InstanceWriter
         var existing = ReadModlist(mlPath)                          // ascending priority; a hand-edited duplicate keeps its last entry
             .GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase).Select(g => g.Last()).ToList();
         // The structured order (if one ships for this collection) owns its separators: drop stale copies.
-        var shipped = addons.Count == 1 ? PriorityOrder.LoadShipped(addons[0].AddonId) : null;
+        var shipped = addons.Count == 1 && !isAddon ? PriorityOrder.LoadShipped(addons[0].AddonId) : null;
         var ownSeparators = new HashSet<string>(
             (shipped?.Separators ?? []).Select(s => s.Name + SeparatorSuffix), StringComparer.OrdinalIgnoreCase);
+        // what earlier add-on runs put in this instance: their separators and mod folders must survive a base re-run
+        var registry = AddonRegistry.Load(instanceDir);
+        var addonSeparators = new HashSet<string>(
+            registry.Addons.Where(a => a.Separator.Length > 0).Select(a => a.Separator + SeparatorSuffix), StringComparer.OrdinalIgnoreCase);
+        var addonMods = new HashSet<string>(registry.Addons.SelectMany(a => a.Mods.Select(m => m.Name)), StringComparer.OrdinalIgnoreCase);
         if (shipped is not null)
         {
             // separators an earlier version of the order created that the current one no longer has
             var stale = existing.Where(e => e.Name.EndsWith(SeparatorSuffix, StringComparison.Ordinal)
-                && !ownSeparators.Contains(e.Name) && IsInstallerSeparator(instanceDir, e.Name)).Select(e => e.Name).ToList();
+                && !ownSeparators.Contains(e.Name) && !addonSeparators.Contains(e.Name) && IsInstallerSeparator(instanceDir, e.Name)).Select(e => e.Name).ToList();
             if (stale.Count > 0)
             {
                 InstallLog.Info("mo2", $"removing {stale.Count} outdated installer separator(s): {string.Join(", ", stale.Select(s => s[..^SeparatorSuffix.Length]))}");
@@ -132,13 +137,40 @@ public static partial class Mo2InstanceWriter
         existing = existing.Where(e => !ownSeparators.Contains(e.Name)).ToList();
         var state =existing.ToDictionary(e => e.Name, e => e.Prefix, StringComparer.OrdinalIgnoreCase);
 
-        var (ordered, rep) = DeployOrder.Compute(existing.Select(e => e.Name).ToList(), addons);
+        List<string> ordered;
+        DeployOrder.Report rep;
+        string addonSep = "";
+        AddonPlacement.Result? placed = null;
+        if (isAddon && addons.Count == 1)
+        {
+            // Add-on run: its own block under its own separator on top of the base list (below "Added mods"),
+            // except mods that must deploy before a base mod, which are hoisted in beside it.
+            var addon = addons[0];
+            var label = AddonPlacement.Label(addon);
+            addonSep = label + SeparatorSuffix;
+            var planNew = new HashSet<string>(addon.Mods.Where(m => !m.IsAnchor).Select(m => m.InstallAs), StringComparer.OrdinalIgnoreCase);
+            var all = existing.Select(e => e.Name).ToList();
+            var addedIdx = all.FindIndex(n => n.Equals(PriorityOrder.AddedModsSeparator + SeparatorSuffix, StringComparison.OrdinalIgnoreCase));
+            var tail = addedIdx >= 0 ? all.Skip(addedIdx).ToList() : [];
+            var head = (addedIdx >= 0 ? all.Take(addedIdx) : all).Where(n => !n.Equals(addonSep, StringComparison.OrdinalIgnoreCase) && !planNew.Contains(n)).ToList();
+            placed = AddonPlacement.Place(head, addon, instanceDir, label);
+            ordered = [.. placed.Head, .. (placed.Block.Count > 0 ? new[] { addonSep } : []), .. placed.Block, .. tail];
+            rep = new DeployOrder.Report(addon.ModRules?.Count ?? 0, 0, 0, 0, [], []);
+            InstallLog.Info("mo2", $"add-on \"{label}\": {placed.Block.Count} mod(s) in its own block, {placed.Hoisted.Count} placed inside the base list "
+                + $"(must deploy before a base mod), {addon.Mods.Count(m => m.IsAnchor)} already-installed mod(s) used as anchors");
+            foreach (var h in placed.Hoisted.Take(10)) InstallLog.Info("mo2", $"  hoisted: {h}");
+        }
+        else
+            (ordered, rep) = DeployOrder.Compute(existing.Select(e => e.Name).ToList(), addons);
         ordered = ordered.Where(n => skip is null || !skip.Contains(n)).ToList();
         // Mods this run installs are (re-)enabled: a stale profile must not leave part of the collection
         // switched off. Mods from other runs (addons, the user's own) keep their enabled state.
-        var fromPlan = new HashSet<string>(addons.SelectMany(a => a.Mods).Select(m => m.InstallAs), StringComparer.OrdinalIgnoreCase);
+        var fromPlan = new HashSet<string>(addons.SelectMany(a => a.Mods).Where(m => !m.IsAnchor).Select(m => m.InstallAs), StringComparer.OrdinalIgnoreCase);
         var merged = ordered.Select(n => (Name: n,
-            Prefix: fromPlan.Contains(n) ? '+' : state.TryGetValue(n, out var p) ? p : '+')).ToList();
+            Prefix: addonSep.Length > 0 && n.Equals(addonSep, StringComparison.OrdinalIgnoreCase) ? '-'
+                : fromPlan.Contains(n) ? '+' : state.TryGetValue(n, out var p) ? p : '+')).ToList();
+        if (placed is { Block.Count: > 0 }) WriteSeparatorFolders(instanceDir, [addonSep]);
+        else if (addonSep.Length > 0) RemoveStaleSeparators(instanceDir, [addonSep]);
 
         if (shipped is not null)
         {
@@ -157,6 +189,9 @@ public static partial class Mo2InstanceWriter
             var present = new HashSet<string>(merged.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
             var userSet = new HashSet<string>(userTail.Where(n => !planNames.Contains(n) && present.Contains(n)), StringComparer.OrdinalIgnoreCase);
             var others = merged.Where(m => !planNames.Contains(m.Name) && !userSet.Contains(m.Name)).ToList();   // foreign/other-run mods stay at the bottom
+            // add-ons installed earlier (their separators and mods) stay above the base list; re-run the add-on to re-place hoisted mods
+            var addonOwned = others.Where(m => addonMods.Contains(m.Name) || addonSeparators.Contains(m.Name)).ToList();
+            if (addonOwned.Count > 0) others = others.Where(m => !addonOwned.Contains(m)).ToList();
             var mine = userTail.Where(userSet.Contains)
                 .Select(n => merged.First(m => m.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).ToList();
             WriteSeparatorFolders(instanceDir, entries.Where(e => e.IsSeparator).Select(e => e.Name + SeparatorSuffix));
@@ -164,9 +199,13 @@ public static partial class Mo2InstanceWriter
             // must not linger as folders, or MO2 would add them back to the list
             var emitted = new HashSet<string>(entries.Where(e => e.IsSeparator).Select(e => e.Name + SeparatorSuffix), StringComparer.OrdinalIgnoreCase);
             RemoveStaleSeparators(instanceDir, ownSeparators.Where(n => !emitted.Contains(n)));
-            merged = [.. others, .. entries.Select(e => e.IsSeparator
+            var entryList = entries.Select(e => e.IsSeparator
                 ? (Name: e.Name + SeparatorSuffix, Prefix: '-')
-                : (Name: e.Name, Prefix: '+')), .. mine];
+                : (Name: e.Name, Prefix: '+')).ToList();
+            // add-ons sit on top of the base list but still under "Added mods"
+            var addedAt2 = entryList.FindIndex(e => e.Name.Equals(PriorityOrder.AddedModsSeparator + SeparatorSuffix, StringComparison.OrdinalIgnoreCase));
+            if (addedAt2 >= 0) entryList.InsertRange(addedAt2, addonOwned); else entryList.AddRange(addonOwned);
+            merged = [.. others, .. entryList, .. mine];
             if (mine.Count > 0) InstallLog.Info("mo2", $"kept {mine.Count} user-added mod(s) under \"{PriorityOrder.AddedModsSeparator}\"");
             InstallLog.Info("mo2",
                 $"structured priority order: {entries.Count(e => e.IsSeparator)} separators, {report.Mods} mods "
@@ -252,6 +291,25 @@ public static partial class Mo2InstanceWriter
         File.WriteAllText(loPath, lo.ToString(), new UTF8Encoding(false));
         InstallLog.Info("mo2",
             $"wrote modlist.txt ({merged.Count} mods), plugins.txt/loadorder.txt ({loadOrder.Count} plugins, {loadOrder.Count(n => enabled[n])} enabled)");
+
+        if (isAddon && addons.Count == 1 && placed is not null)
+        {
+            var addon = addons[0];
+            var sharedMd5 = registry.Addons.Where(a => !a.Id.Equals(addon.AddonId, StringComparison.OrdinalIgnoreCase))
+                .SelectMany(a => a.Mods.Select(m => m.Md5)).Where(h => h.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            AddonRegistry.Upsert(instanceDir, new InstalledAddon
+            {
+                Id = addon.AddonId,
+                Name = addon.Name,
+                Revision = addon.Version,
+                Separator = placed.Block.Count > 0 ? AddonPlacement.Label(addon) : "",
+                Mods = addon.Mods.Where(m => (skip is null || !skip.Contains(m.InstallAs)) && (!m.IsAnchor || sharedMd5.Contains(m.Nexus?.Md5 ?? "")))
+                    .GroupBy(m => m.InstallAs, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => new InstalledAddonMod { Name = g.Key, Md5 = g.First().Nexus?.Md5 ?? "" }).ToList(),
+                Hoisted = placed.Hoisted.ToList(),
+                InstalledUtc = DateTime.UtcNow,
+            });
+        }
 
         // Read-back guard: MO2 saving stale state over these files is the #1
         // profile-clobber cause — verify the write landed, including order.
