@@ -116,7 +116,8 @@
           "Name": "A Storywealth - xSE PluginPreloader F4 0.2.5.1",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Performance \u0026 Engine",
@@ -179,7 +180,8 @@
           "Name": "A Storywealth - Weapon Debris Crash Fix",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Bug Fixes",
@@ -388,13 +390,15 @@
           "Name": "A Storywealth - X-Cell 2.1-b182",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Tweaks \u0026 Immersion",
       "Categories": [
         "Immersion",
-        "Miscellaneous"
+        "Miscellaneous",
+        "Cheats and God items"
       ],
       "NamePatterns": [],
       "Mods": [
@@ -427,6 +431,16 @@
           "Md5": "8c6988bdbdfff0401d22d354fda6f524",
           "Name": "A Storywealth - Automatically Lowered Weapons",
           "Parent": null
+        },
+        {
+          "Md5": "3df25b2d82b46b89a7d9bc1d7a14c8a0",
+          "Name": "A Storywealth - Cheat Terminal",
+          "Parent": null
+        },
+        {
+          "Md5": "89acda98200fe91e405be73f9a0e7e9e",
+          "Name": "A Storywealth - A StoryWealth - Cheat Terminal",
+          "Parent": "A Storywealth - Cheat Terminal"
         },
         {
           "Md5": "1c01a136c6a264e05d76e6ff5ca97c2d",
@@ -533,26 +547,8 @@
           "Name": "A Storywealth - Wildergrowth - Grasses and Groundcovers - Wildergrowth",
           "Parent": null
         }
-      ]
-    },
-    {
-      "Name": "Cheats \u0026 Debug",
-      "Categories": [
-        "Cheats and God items"
       ],
-      "NamePatterns": [],
-      "Mods": [
-        {
-          "Md5": "3df25b2d82b46b89a7d9bc1d7a14c8a0",
-          "Name": "A Storywealth - Cheat Terminal",
-          "Parent": null
-        },
-        {
-          "Md5": "89acda98200fe91e405be73f9a0e7e9e",
-          "Name": "A Storywealth - A StoryWealth - Cheat Terminal",
-          "Parent": "A Storywealth - Cheat Terminal"
-        }
-      ]
+      "AlwaysShow": false
     },
     {
       "Name": "HUD \u0026 Interface",
@@ -618,7 +614,8 @@
           "Name": "A Storywealth - A StoryWealth - Baka Fullscreen Pip-Boy Settings",
           "Parent": "A Storywealth - A StoryWealth - X-Cell Settings"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Menus \u0026 UI Frameworks",
@@ -747,7 +744,8 @@
           "Name": "A Storywealth - True Storms - MCM Settings Menu",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Core Gameplay",
@@ -866,11 +864,6 @@
         {
           "Md5": "5b1199890b302d525eb808bca95dc473",
           "Name": "A Storywealth - Follower AI Approach Reaction Fix - F4SE",
-          "Parent": null
-        },
-        {
-          "Md5": "042a00c337fbadad9e0b6987e732a1a4",
-          "Name": "A Storywealth - Fusion Core Capacity",
           "Parent": null
         },
         {
@@ -1003,7 +996,8 @@
           "Name": "A Storywealth - A StoryWealth - F4SE Settings - Daytripper 4",
           "Parent": "A Storywealth - A StoryWealth - X-Cell Settings"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Crafting \u0026 Workshop",
@@ -1265,7 +1259,8 @@
           "Name": "A Storywealth - SUP F4SE Plugin",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Settlement Tools",
@@ -1429,7 +1424,8 @@
           "Name": "A Storywealth - Workshop Framework - Old-Gen Replacers",
           "Parent": "A Storywealth - Workshop Framework"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Sim Settlements 2",
@@ -1618,7 +1614,8 @@
           "Name": "A Storywealth - Wasteland Reconstruction Kit",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Settlement Blueprints",
@@ -1652,36 +1649,8 @@
           "Name": "A Storywealth - Gun For Hire - eXoPatch - Office Auto-Furnish Patch",
           "Parent": "A Storywealth - Transfer Settlements v2.22.2 Old-Gen"
         }
-      ]
-    },
-    {
-      "Name": "Player Homes",
-      "Categories": [
-        "Player Homes"
       ],
-      "NamePatterns": [],
-      "Mods": [
-        {
-          "Md5": "66132cef673b36bc519c0ebd149eb968",
-          "Name": "A Storywealth - Basement Living - Bunker and Basement Player Homes (with standalone Workshops) - Basement Living v1.3 LOOSE",
-          "Parent": null
-        },
-        {
-          "Md5": "42f78b62378ee812c3c6f87890e981a3",
-          "Name": "A Storywealth - Croup Manor Basement - An SRD Player Home",
-          "Parent": null
-        },
-        {
-          "Md5": "6a87a18d04b823a07516b501f5716cbb",
-          "Name": "A Storywealth - Survivalist\u0027s Bus",
-          "Parent": null
-        },
-        {
-          "Md5": "c2ac2bd6d10726f043d0369e1e4e923f",
-          "Name": "A Storywealth - Survivalist\u0027s Bus Vertibird Refueling Station Bus Stop",
-          "Parent": null
-        }
-      ]
+      "AlwaysShow": false
     },
     {
       "Name": "Companions",
@@ -1765,7 +1734,8 @@
           "Name": "A Storywealth - Valentine Jaw Sync",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Factions",
@@ -1824,7 +1794,8 @@
           "Name": "A Storywealth - You And What Army 2 - Loose Files",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "NPCs",
@@ -1918,7 +1889,8 @@
           "Name": "A Storywealth - We Have Names (and More) - Settlement Edition",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Vanilla Location Overhauls",
@@ -2097,13 +2069,15 @@
           "Name": "A Storywealth - Swan\u0027s Pond After Swan",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "New Locations \u0026 Lands",
       "Categories": [
         "Locations - New",
-        "New Lands"
+        "New Lands",
+        "Player Homes"
       ],
       "NamePatterns": [],
       "Mods": [
@@ -2115,6 +2089,11 @@
         {
           "Md5": "c2674d3a422e0987e4f5c0fd9462bf23",
           "Name": "A Storywealth - Ashland Station - Quest-Dungeon-Settlement",
+          "Parent": null
+        },
+        {
+          "Md5": "66132cef673b36bc519c0ebd149eb968",
+          "Name": "A Storywealth - Basement Living - Bunker and Basement Player Homes (with standalone Workshops) - Basement Living v1.3 LOOSE",
           "Parent": null
         },
         {
@@ -2136,6 +2115,11 @@
           "Md5": "a813336025d7ab680b0c9645d997f2fd",
           "Name": "A Storywealth - A StoryWealth - Caves Of The Commonwealth",
           "Parent": "A Storywealth - Caves Of The Commonwealth"
+        },
+        {
+          "Md5": "42f78b62378ee812c3c6f87890e981a3",
+          "Name": "A Storywealth - Croup Manor Basement - An SRD Player Home",
+          "Parent": null
         },
         {
           "Md5": "e890b42756064181f9605a5de743ad12",
@@ -2196,8 +2180,19 @@
           "Md5": "cdfe1993a3a94fd53db0c9ec8ce6923e",
           "Name": "A Storywealth - South of the Sea - Atoms Storm",
           "Parent": null
+        },
+        {
+          "Md5": "6a87a18d04b823a07516b501f5716cbb",
+          "Name": "A Storywealth - Survivalist\u0027s Bus",
+          "Parent": null
+        },
+        {
+          "Md5": "c2ac2bd6d10726f043d0369e1e4e923f",
+          "Name": "A Storywealth - Survivalist\u0027s Bus Vertibird Refueling Station Bus Stop",
+          "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Quests \u0026 Adventures",
@@ -2651,7 +2646,8 @@
           "Name": "A Storywealth - Maxwell\u0027s World - eXoXDIPatch",
           "Parent": "A Storywealth - Maxwell\u0027s World - Extended Dialogue Interface Patch"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Collectibles \u0026 Puzzles",
@@ -2755,7 +2751,8 @@
           "Name": "A Storywealth - A StoryWealth - Magazine Balance Patch",
           "Parent": "A Storywealth - West-Tek Power Armor Manual - New Magazines (Handbook - T-45 - T-51 - T-60 - X-01)"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Creatures",
@@ -2844,7 +2841,8 @@
           "Name": "A Storywealth - Starved Concord Deathclaw",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "World Visuals",
@@ -3029,7 +3027,8 @@
           "Name": "A Storywealth - Classy Glass",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Weather \u0026 Lighting",
@@ -3089,7 +3088,8 @@
           "Name": "A Storywealth - Wicked Rad Lightning Loose Files",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Characters",
@@ -3240,15 +3240,17 @@
           "Name": "A Storywealth - WX Hair Colors - Looksmenu Compendium Update",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
-      "Name": "Audio",
+      "Name": "Audio \u0026 Radio",
       "Categories": [
         "Audio - SFX",
         "Audio - Misc",
         "Audio - Voice",
-        "Audio - Music"
+        "Audio - Music",
+        "Radio"
       ],
       "NamePatterns": [],
       "Mods": [
@@ -3268,6 +3270,11 @@
           "Parent": null
         },
         {
+          "Md5": "d8af0dae9d7d6ec91c23fdca60cabca8",
+          "Name": "A Storywealth - Old World Radio - Boston v6.02",
+          "Parent": null
+        },
+        {
           "Md5": "643e5d513be8876e5c1a8097b7727a46",
           "Name": "A Storywealth - Power Bozar (DeadPool)",
           "Parent": null
@@ -3275,6 +3282,11 @@
         {
           "Md5": "047c2d95de1fb13203365d03eabf3707",
           "Name": "A Storywealth - Quieter Settlements v0.31",
+          "Parent": null
+        },
+        {
+          "Md5": "13101956175bb2147166d7fce9bb28b4",
+          "Name": "A Storywealth - Radio Reboot Menu",
           "Parent": null
         },
         {
@@ -3287,26 +3299,8 @@
           "Name": "A Storywealth - South Boston Military Checkpoint Radio Toggle",
           "Parent": null
         }
-      ]
-    },
-    {
-      "Name": "Radio",
-      "Categories": [
-        "Radio"
       ],
-      "NamePatterns": [],
-      "Mods": [
-        {
-          "Md5": "d8af0dae9d7d6ec91c23fdca60cabca8",
-          "Name": "A Storywealth - Old World Radio - Boston v6.02",
-          "Parent": null
-        },
-        {
-          "Md5": "13101956175bb2147166d7fce9bb28b4",
-          "Name": "A Storywealth - Radio Reboot Menu",
-          "Parent": null
-        }
-      ]
+      "AlwaysShow": false
     },
     {
       "Name": "Animations",
@@ -3360,7 +3354,8 @@
           "Name": "A Storywealth - Radium Rifle Reload",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Clothing",
@@ -3539,7 +3534,8 @@
           "Name": "A Storywealth - True Reporter - Piper Outfit Redone - CBBE - Vanilla - Bodyslide - True Reporter 2.1",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Armour",
@@ -3973,7 +3969,8 @@
           "Name": "A Storywealth - NewerMind43 Outfits - ESLified with Fixes - Post Nuclear Outfit Fixified",
           "Parent": "A Storywealth - NewerMind43 Outfits - ESLified with Fixes - DEFY Fixified"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Power Armour",
@@ -4142,7 +4139,8 @@
           "Name": "A Storywealth - T60 Power Armored Minutemen",
           "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Backpacks",
@@ -4182,19 +4180,103 @@
           "Name": "A Storywealth - A StoryWealth - Armors Patch - eXtra",
           "Parent": "A Storywealth - K-9 Harness -- Tactical Body Armor and Backpack for Dogmeat - ESL plus LOOSE FILES"
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
-      "Name": "Weapon Attachments \u0026 Ammo",
+      "Name": "Weapons",
       "Categories": [
         "Weapons",
         "Weapons and Armour",
         "Ammo"
       ],
-      "NamePatterns": [
-        "attachment|\\bscope\\b|optics?|\\bscopes\\b|magazine|suppressor|silencer|muzzle|\\bammo\\b|\\bsights?\\b|bayonet|holster|mod ?kit|mod table"
-      ],
+      "NamePatterns": [],
       "Mods": [
+        {
+          "Md5": "02aaa6df66223d861278851beb5953b7",
+          "Name": "A Storywealth - A StoryWealth Weapons - AnimTextData",
+          "Parent": null
+        },
+        {
+          "Md5": "af05f8c8bf50ee1d4b970f83b763d2c3",
+          "Name": "A Storywealth - America Rising 2 - Armaments - Enclave Marine Armor",
+          "Parent": null
+        },
+        {
+          "Md5": "011f46c480a4bff6dd8dcbfb3b55661c",
+          "Name": "A Storywealth - America Rising 2 - Armaments - Enclave X02 Power Armor",
+          "Parent": null
+        },
+        {
+          "Md5": "1b3ffc143f95f0d94945b18eb28fc692",
+          "Name": "A Storywealth - America Rising 2 - Armaments - The StoryWealth Enclave",
+          "Parent": null
+        },
+        {
+          "Md5": "e99be7fb9b822bc5194cd30ab07a5af3",
+          "Name": "A Storywealth - Bengal - long lasting Flare",
+          "Parent": null
+        },
+        {
+          "Md5": "9d1e8f0a28996956529269547201213e",
+          "Name": "A Storywealth - Blades Of The Wastes - A Scrappy Handmade Knife Pack",
+          "Parent": null
+        },
+        {
+          "Md5": "61e42c46cd60e2b72ba09d854fd30b27",
+          "Name": "A Storywealth - Bozar",
+          "Parent": null
+        },
+        {
+          "Md5": "cd84be9a7de18d95991a5e88d0cd51a2",
+          "Name": "A Storywealth - Bullpup Bozar - Relightened",
+          "Parent": null
+        },
+        {
+          "Md5": "a37f22176155fc75441cd09ad36e9aff",
+          "Name": "A Storywealth - The Charger Pistol",
+          "Parent": null
+        },
+        {
+          "Md5": "3d5bfa51643e74501d973ff14ac585da",
+          "Name": "A Storywealth - ClassicSuperSledgeESL",
+          "Parent": null
+        },
+        {
+          "Md5": "baa1c7d56ced5b0209143efb5300df1c",
+          "Name": "A Storywealth - Craftable Sticky Grenades - ESL Full Loose Files -",
+          "Parent": null
+        },
+        {
+          "Md5": "7cb0adb38fdac4234c5142be0293ce8c",
+          "Name": "A Storywealth - CROSS_Blades_v091a",
+          "Parent": null
+        },
+        {
+          "Md5": "8cdff8c5272535bf0cd2899ad82a97ed",
+          "Name": "A Storywealth - Dak\u0027s Assault Rifle Replacer REDUX - Machine Gun Remesh (Remesh Only)",
+          "Parent": null
+        },
+        {
+          "Md5": "ffea210bfcf5142211f2d494fcc41dd2",
+          "Name": "A Storywealth - DKS-501 Sniper Rifle 1.5",
+          "Parent": null
+        },
+        {
+          "Md5": "042a00c337fbadad9e0b6987e732a1a4",
+          "Name": "A Storywealth - Fusion Core Capacity",
+          "Parent": null
+        },
+        {
+          "Md5": "e373a03e3b5a26163e5ccca4aad60aeb",
+          "Name": "A Storywealth - Gatling Gun - Rat Runners Arsenal",
+          "Parent": null
+        },
+        {
+          "Md5": "5eb577f7a343084e3d03a550e2ced626",
+          "Name": "A Storywealth - Gatling Gun - The Declaration",
+          "Parent": null
+        },
         {
           "Md5": "143c536a3ffdc524f9aaec44750c4064",
           "Name": "A Storywealth - Gatling Laser Ammo Fix",
@@ -4206,9 +4288,104 @@
           "Parent": "A Storywealth - Gatling Laser Ammo Fix"
         },
         {
+          "Md5": "8dfe98428a5bc7ec76e1f7bb8f61a194",
+          "Name": "A Storywealth - Glowing Children of Atom Banners (0.6 Materials)",
+          "Parent": null
+        },
+        {
+          "Md5": "5559c3f7223a0ec1392518e270d548ee",
+          "Name": "A Storywealth - LAER (Laser Assisted Electrical Rifle) - LAER 1.24 hotfix 1 plus High Quality Textures",
+          "Parent": null
+        },
+        {
+          "Md5": "05883bf55b5d689cb1dd89e3bfb962cf",
+          "Name": "A Storywealth - LAER (Laser Assisted Electrical Rifle) - LAER Automatron support version 3",
+          "Parent": "A Storywealth - LAER (Laser Assisted Electrical Rifle) - LAER 1.24 hotfix 1 plus High Quality Textures"
+        },
+        {
+          "Md5": "17a37384e20a4811be04ab18e75ed196",
+          "Name": "A Storywealth - Livewire by Shiagur - Livewire Main 1.4.2 Loose Files ESL Tagged ESP",
+          "Parent": null
+        },
+        {
+          "Md5": "84fcc1481cffdab417c77a9331db38e7",
+          "Name": "A Storywealth - Livewire by Shiagur - Livewire 2K Textures Loose Files",
+          "Parent": "A Storywealth - Livewire by Shiagur - Livewire Main 1.4.2 Loose Files ESL Tagged ESP"
+        },
+        {
+          "Md5": "24d22ae0bbbfdd1bedb6c2acf80a8f8d",
+          "Name": "A Storywealth - Livewire - eXoPatch",
+          "Parent": "A Storywealth - Livewire by Shiagur - Livewire Main 1.4.2 Loose Files ESL Tagged ESP"
+        },
+        {
+          "Md5": "1d7ca03dd5c76ee306c010decab7d616",
+          "Name": "A Storywealth - The M2019 PKD Detective Special - That Gun",
+          "Parent": null
+        },
+        {
+          "Md5": "0221be1f743354af3375217ab335e377",
+          "Name": "A Storywealth - That Gun - Relightened - See Through Scopes Patch",
+          "Parent": "A Storywealth - The M2019 PKD Detective Special - That Gun"
+        },
+        {
+          "Md5": "88c535552659a03163123a177dad2b73",
+          "Name": "A Storywealth - Machineguns Rebirth v1.1c ESL version",
+          "Parent": null
+        },
+        {
+          "Md5": "7e87101c2a0c8376a769b97a31e2b8ec",
+          "Name": "A Storywealth - Minigun - Spun Up",
+          "Parent": null
+        },
+        {
+          "Md5": "215b688003a489715818d317b1d039a2",
+          "Name": "A Storywealth - Mk 41 Gyrojet HMG 1.04  - The sticker redux update",
+          "Parent": null
+        },
+        {
+          "Md5": "49a221dc22c148c9d0bd29d8f35b2ff8",
+          "Name": "A Storywealth - Mk 41 Gyrojet Heavy Machine Gun - A StoryWealth Patch",
+          "Parent": "A Storywealth - Mk 41 Gyrojet HMG 1.04  - The sticker redux update"
+        },
+        {
+          "Md5": "f1b3cf76a262dd02a73c010fc80d1e8d",
+          "Name": "A Storywealth - MTs-255 Revolver Shotgun - 2K Textures",
+          "Parent": null
+        },
+        {
+          "Md5": "7902fe1f380cf9eba8079ef4d381d0ca",
+          "Name": "A Storywealth - Mustard\u0027s Party Favors - The Chuck-It Missile - Chuck-It Missile - MPF - RobCo Patcher Version",
+          "Parent": null
+        },
+        {
+          "Md5": "84e15fcf048fa1e45d9cb95835ffb535",
+          "Name": "A Storywealth - Pig\u0027s Wasteland Weaponry ESL",
+          "Parent": null
+        },
+        {
+          "Md5": "7befa8205d91ca065817975640bdc0e4",
+          "Name": "A Storywealth - Rat Runners Arsenal - eXospanded (No Munitions) - Anti-Materiel Rifle",
+          "Parent": null
+        },
+        {
+          "Md5": "75b6bc663e007e7b4d20608ca5c57eef",
+          "Name": "A Storywealth - Remington New Army Revolver and Carabine ESL Version",
+          "Parent": null
+        },
+        {
+          "Md5": "272bd288604e8cc54089eaf8286be78a",
+          "Name": "A Storywealth - Remington New Army Revolver and Carbine - Glowing Midwana",
+          "Parent": null
+        },
+        {
           "Md5": "e0c89f0b068f1d33319cc6db4a8f67f3",
           "Name": "A Storywealth - See Through Scopes 2.6.3",
           "Parent": null
+        },
+        {
+          "Md5": "78ff6f85ff6cfd338993dc6f8d38c116",
+          "Name": "A Storywealth - A StoryWealth - See Through Scope Patches",
+          "Parent": "A Storywealth - See Through Scopes 2.6.3"
         },
         {
           "Md5": "a41f69268b92a414ce1573d0d99267bd",
@@ -4241,219 +4418,23 @@
           "Parent": "A Storywealth - See Through Scopes - Night Vision"
         },
         {
+          "Md5": "ac9f89f2ad1d52febd15770f75086964",
+          "Name": "A Storywealth - See Through Scopes - Night Vision Patches",
+          "Parent": "A Storywealth - See Through Scopes - Night Vision"
+        },
+        {
+          "Md5": "dacc0dc1d071d44bdf5a4febef3cdcbd",
+          "Name": "A Storywealth - See Through Scopes - Night Vision - Service Rifle (ECO) Patch",
+          "Parent": "A Storywealth - See Through Scopes - Night Vision"
+        },
+        {
           "Md5": "14094d5b54e173cd1f5f7524948a82e9",
           "Name": "A Storywealth - See Through Scopes - Night Vision - Select Pack",
           "Parent": null
         },
         {
-          "Md5": "62bec521ee9f993ce6c5160bfde031f1",
-          "Name": "A Storywealth - Wasteland Weaponry - Raider\u0027s Armaments - See Through Scopes",
-          "Parent": null
-        },
-        {
-          "Md5": "52f131589366c7862f35b799e6896daa",
-          "Name": "A Storywealth - The Widow Shotgun - Widow Shotgun - Fixed Barrel attachments",
-          "Parent": null
-        },
-        {
-          "Md5": "819ec04b5ba85ca5bbda06e7b42db38a",
-          "Name": "A Storywealth - Black Widow Armor and Pipboy (Pip-boy) - Widow Shotgun black re-texture",
-          "Parent": null
-        }
-      ]
-    },
-    {
-      "Name": "Heavy Weapons",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "minigun|gyrojet|bozar|machine ?guns?|rocket|launcher|flamer|flamethrower|gatling|heavy|fat man|missile|grenade|mini.?nuke|\\bnuke\\b|\\brpg\\b|bazooka|cryolator|\\blmg\\b|machine gun|\\bmg ?42\\b|\\bbar\\b"
-      ],
-      "Mods": [
-        {
-          "Md5": "61e42c46cd60e2b72ba09d854fd30b27",
-          "Name": "A Storywealth - Bozar",
-          "Parent": null
-        },
-        {
-          "Md5": "cd84be9a7de18d95991a5e88d0cd51a2",
-          "Name": "A Storywealth - Bullpup Bozar - Relightened",
-          "Parent": null
-        },
-        {
-          "Md5": "baa1c7d56ced5b0209143efb5300df1c",
-          "Name": "A Storywealth - Craftable Sticky Grenades - ESL Full Loose Files -",
-          "Parent": null
-        },
-        {
-          "Md5": "8cdff8c5272535bf0cd2899ad82a97ed",
-          "Name": "A Storywealth - Dak\u0027s Assault Rifle Replacer REDUX - Machine Gun Remesh (Remesh Only)",
-          "Parent": null
-        },
-        {
-          "Md5": "e373a03e3b5a26163e5ccca4aad60aeb",
-          "Name": "A Storywealth - Gatling Gun - Rat Runners Arsenal",
-          "Parent": null
-        },
-        {
-          "Md5": "5eb577f7a343084e3d03a550e2ced626",
-          "Name": "A Storywealth - Gatling Gun - The Declaration",
-          "Parent": null
-        },
-        {
-          "Md5": "88c535552659a03163123a177dad2b73",
-          "Name": "A Storywealth - Machineguns Rebirth v1.1c ESL version",
-          "Parent": null
-        },
-        {
-          "Md5": "7e87101c2a0c8376a769b97a31e2b8ec",
-          "Name": "A Storywealth - Minigun - Spun Up",
-          "Parent": null
-        },
-        {
-          "Md5": "215b688003a489715818d317b1d039a2",
-          "Name": "A Storywealth - Mk 41 Gyrojet HMG 1.04  - The sticker redux update",
-          "Parent": null
-        },
-        {
-          "Md5": "49a221dc22c148c9d0bd29d8f35b2ff8",
-          "Name": "A Storywealth - Mk 41 Gyrojet Heavy Machine Gun - A StoryWealth Patch",
-          "Parent": "A Storywealth - Mk 41 Gyrojet HMG 1.04  - The sticker redux update"
-        },
-        {
-          "Md5": "7902fe1f380cf9eba8079ef4d381d0ca",
-          "Name": "A Storywealth - Mustard\u0027s Party Favors - The Chuck-It Missile - Chuck-It Missile - MPF - RobCo Patcher Version",
-          "Parent": null
-        },
-        {
-          "Md5": "75a45cd1697533cc3c060893ee06c578",
-          "Name": "A Storywealth - Tumbajamba\u0027s Raider Power Armor - The A... flamer",
-          "Parent": null
-        }
-      ]
-    },
-    {
-      "Name": "Energy Weapons",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "laser|plasma|gauss|energy|tesla|\\bion\\b|\\bbeam\\b|\\bpulse\\b|photon|\\brcw\\b|\\baer\\d*\\b|alien|blaster|disintegrat|\\barc\\b"
-      ],
-      "Mods": [
-        {
-          "Md5": "5559c3f7223a0ec1392518e270d548ee",
-          "Name": "A Storywealth - LAER (Laser Assisted Electrical Rifle) - LAER 1.24 hotfix 1 plus High Quality Textures",
-          "Parent": null
-        },
-        {
-          "Md5": "05883bf55b5d689cb1dd89e3bfb962cf",
-          "Name": "A Storywealth - LAER (Laser Assisted Electrical Rifle) - LAER Automatron support version 3",
-          "Parent": "A Storywealth - LAER (Laser Assisted Electrical Rifle) - LAER 1.24 hotfix 1 plus High Quality Textures"
-        }
-      ]
-    },
-    {
-      "Name": "Shotguns",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "shotgun|\\bsg\\b|double.barrel|\\bpump\\b|\\bspas\\b|saiga|blunderbuss"
-      ],
-      "Mods": [
-        {
-          "Md5": "f1b3cf76a262dd02a73c010fc80d1e8d",
-          "Name": "A Storywealth - MTs-255 Revolver Shotgun - 2K Textures",
-          "Parent": null
-        },
-        {
-          "Md5": "698dfb74d588e34af5866c092018a126",
-          "Name": "A Storywealth - The Widow Shotgun  - ESLified",
-          "Parent": null
-        },
-        {
-          "Md5": "64005595e94eca2ce08dcc035389c02c",
-          "Name": "A Storywealth - A StoryWealth Weapons Patches - Assault Rifle Reanimated - No Tactical Reload ESL",
-          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
-        },
-        {
-          "Md5": "f71946cf50ca18fe93292b28712bed07",
-          "Name": "A Storywealth - Laser Weapon Reanimated - ESL",
-          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
-        }
-      ]
-    },
-    {
-      "Name": "SMGs",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "\\bsmg\\b|submachine|machine pistol|\\buzi\\b|\\bmp5\\b|\\bmp7\\b|mac-?10|tommy|thompson|\\bvector\\b|kriss|ppsh|\\bsten\\b|grease gun|\\bpdw\\b|\\bmp40\\b"
-      ],
-      "Mods": []
-    },
-    {
-      "Name": "Pistols",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "pistol|revolver|handgun|\\b10 ?mm\\b|\\.44|\\bdeagle\\b|desert eagle|\\bglock\\b|\\bberetta\\b|\\bcolt\\b|1911|magnum|flare gun|derringer|\\bluger\\b|\\bmauser\\b|\\bppk\\b|\\btt ?33\\b|makarov|\\bm9\\b"
-      ],
-      "Mods": [
-        {
-          "Md5": "a37f22176155fc75441cd09ad36e9aff",
-          "Name": "A Storywealth - The Charger Pistol",
-          "Parent": null
-        },
-        {
-          "Md5": "75b6bc663e007e7b4d20608ca5c57eef",
-          "Name": "A Storywealth - Remington New Army Revolver and Carabine ESL Version",
-          "Parent": null
-        },
-        {
-          "Md5": "272bd288604e8cc54089eaf8286be78a",
-          "Name": "A Storywealth - Remington New Army Revolver and Carbine - Glowing Midwana",
-          "Parent": null
-        },
-        {
-          "Md5": "a40c17935e235fb4ad57d129634e0054",
-          "Name": "A Storywealth - A StoryWealth Weapons Patches - The Charger Pistol - ESLified",
-          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
-        }
-      ]
-    },
-    {
-      "Name": "Rifles",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "rifle|carbine|sniper|\\bak-?47\\b|\\bak\\b|m4a1|\\bm16\\b|\\bg3\\b|\\bfal\\b|garand|musket|\\bdks\\b|enfield|mosin|lever.?action|marksman|\\bdmr\\b|\\bsks\\b|\\bscar\\b|\\baug\\b|\\bp90\\b|\\bstg\\b|assault"
-      ],
-      "Mods": [
-        {
-          "Md5": "ffea210bfcf5142211f2d494fcc41dd2",
-          "Name": "A Storywealth - DKS-501 Sniper Rifle 1.5",
-          "Parent": null
-        },
-        {
-          "Md5": "78ff6f85ff6cfd338993dc6f8d38c116",
-          "Name": "A Storywealth - A StoryWealth - See Through Scope Patches",
-          "Parent": "A Storywealth - DKS-501 Sniper Rifle 1.5"
-        },
-        {
-          "Md5": "7befa8205d91ca065817975640bdc0e4",
-          "Name": "A Storywealth - Rat Runners Arsenal - eXospanded (No Munitions) - Anti-Materiel Rifle",
+          "Md5": "fef7e6704f10f399fb9a343fd72defad",
+          "Name": "A Storywealth - Select Throwing Knives - ESL Loose Files",
           "Parent": null
         },
         {
@@ -4462,126 +4443,9 @@
           "Parent": null
         },
         {
-          "Md5": "ac9f89f2ad1d52febd15770f75086964",
-          "Name": "A Storywealth - See Through Scopes - Night Vision Patches",
-          "Parent": "A Storywealth - Service Rifle"
-        },
-        {
-          "Md5": "dacc0dc1d071d44bdf5a4febef3cdcbd",
-          "Name": "A Storywealth - See Through Scopes - Night Vision - Service Rifle (ECO) Patch",
-          "Parent": "A Storywealth - Service Rifle"
-        },
-        {
           "Md5": "050795da26cb65bba7935a7f8804789c",
           "Name": "A Storywealth - Service Rifle - Unofficial Update (Lite)",
           "Parent": "A Storywealth - Service Rifle"
-        },
-        {
-          "Md5": "4e365f4795f895c81ff360aff8c0b2ff",
-          "Name": "A Storywealth - A StoryWealth Weapons Patches - DKS-501 Sniper Rifle - ESLified",
-          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
-        }
-      ]
-    },
-    {
-      "Name": "Melee Weapons",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [
-        "sword|kni(?:fe|ves)|\\baxe\\b|\\bbat\\b|hammer|katana|machete|sledge|blade|melee|\\bclub\\b|\\bmace\\b|spear|baton|\\bshiv\\b|cleaver|\\blance\\b|\\bpike\\b|\\bclaw\\b|saber|tomahawk|pickaxe|wrench|crowbar|\\bpipe\\b"
-      ],
-      "Mods": [
-        {
-          "Md5": "9d1e8f0a28996956529269547201213e",
-          "Name": "A Storywealth - Blades Of The Wastes - A Scrappy Handmade Knife Pack",
-          "Parent": null
-        },
-        {
-          "Md5": "3d5bfa51643e74501d973ff14ac585da",
-          "Name": "A Storywealth - ClassicSuperSledgeESL",
-          "Parent": null
-        },
-        {
-          "Md5": "7cb0adb38fdac4234c5142be0293ce8c",
-          "Name": "A Storywealth - CROSS_Blades_v091a",
-          "Parent": null
-        },
-        {
-          "Md5": "fef7e6704f10f399fb9a343fd72defad",
-          "Name": "A Storywealth - Select Throwing Knives - ESL Loose Files",
-          "Parent": null
-        }
-      ]
-    },
-    {
-      "Name": "Weapon Packs \u0026 Misc",
-      "Categories": [
-        "Weapons",
-        "Weapons and Armour"
-      ],
-      "NamePatterns": [],
-      "Mods": [
-        {
-          "Md5": "02aaa6df66223d861278851beb5953b7",
-          "Name": "A Storywealth - A StoryWealth Weapons - AnimTextData",
-          "Parent": null
-        },
-        {
-          "Md5": "af05f8c8bf50ee1d4b970f83b763d2c3",
-          "Name": "A Storywealth - America Rising 2 - Armaments - Enclave Marine Armor",
-          "Parent": null
-        },
-        {
-          "Md5": "011f46c480a4bff6dd8dcbfb3b55661c",
-          "Name": "A Storywealth - America Rising 2 - Armaments - Enclave X02 Power Armor",
-          "Parent": null
-        },
-        {
-          "Md5": "1b3ffc143f95f0d94945b18eb28fc692",
-          "Name": "A Storywealth - America Rising 2 - Armaments - The StoryWealth Enclave",
-          "Parent": null
-        },
-        {
-          "Md5": "e99be7fb9b822bc5194cd30ab07a5af3",
-          "Name": "A Storywealth - Bengal - long lasting Flare",
-          "Parent": null
-        },
-        {
-          "Md5": "8dfe98428a5bc7ec76e1f7bb8f61a194",
-          "Name": "A Storywealth - Glowing Children of Atom Banners (0.6 Materials)",
-          "Parent": null
-        },
-        {
-          "Md5": "17a37384e20a4811be04ab18e75ed196",
-          "Name": "A Storywealth - Livewire by Shiagur - Livewire Main 1.4.2 Loose Files ESL Tagged ESP",
-          "Parent": null
-        },
-        {
-          "Md5": "84fcc1481cffdab417c77a9331db38e7",
-          "Name": "A Storywealth - Livewire by Shiagur - Livewire 2K Textures Loose Files",
-          "Parent": "A Storywealth - Livewire by Shiagur - Livewire Main 1.4.2 Loose Files ESL Tagged ESP"
-        },
-        {
-          "Md5": "24d22ae0bbbfdd1bedb6c2acf80a8f8d",
-          "Name": "A Storywealth - Livewire - eXoPatch",
-          "Parent": "A Storywealth - Livewire by Shiagur - Livewire Main 1.4.2 Loose Files ESL Tagged ESP"
-        },
-        {
-          "Md5": "1d7ca03dd5c76ee306c010decab7d616",
-          "Name": "A Storywealth - The M2019 PKD Detective Special - That Gun",
-          "Parent": null
-        },
-        {
-          "Md5": "0221be1f743354af3375217ab335e377",
-          "Name": "A Storywealth - That Gun - Relightened - See Through Scopes Patch",
-          "Parent": "A Storywealth - The M2019 PKD Detective Special - That Gun"
-        },
-        {
-          "Md5": "84e15fcf048fa1e45d9cb95835ffb535",
-          "Name": "A Storywealth - Pig\u0027s Wasteland Weaponry ESL",
-          "Parent": null
         },
         {
           "Md5": "77ca81f64f768b0cd44c2c2611883cc0",
@@ -4604,13 +4468,33 @@
           "Parent": null
         },
         {
+          "Md5": "f2cf89b790f838596d9c5d19d4291a10",
+          "Name": "A Storywealth - Anti-Materiel Rifle - Rat Runners Arsenal",
+          "Parent": null
+        },
+        {
           "Md5": "5e372d26586a0f117a53c1d75a03b26e",
           "Name": "A Storywealth - M2019 PKD Detective Special - That Gun - Retexture",
           "Parent": "A Storywealth - The M2019 PKD Detective Special - That Gun"
         },
         {
+          "Md5": "5986de7c26075417522bf36b9c204d0f",
+          "Name": "A Storywealth - Pipe Carbine - Rat Runners Arsenal",
+          "Parent": null
+        },
+        {
+          "Md5": "f41948ff4d972ad982c7090b7c71690e",
+          "Name": "A Storywealth - Rat Runners Arsenal - eXospanded (No Munitions) - Pipe Carbine",
+          "Parent": null
+        },
+        {
           "Md5": "652e7a407835cc1d377a7c9da3620738",
           "Name": "A Storywealth - Throw Eggs at Npcs(or Light a Path)-Craft The Egg3",
+          "Parent": null
+        },
+        {
+          "Md5": "75a45cd1697533cc3c060893ee06c578",
+          "Name": "A Storywealth - Tumbajamba\u0027s Raider Power Armor - The A... flamer",
           "Parent": null
         },
         {
@@ -4621,6 +4505,11 @@
         {
           "Md5": "f0a142de0d045cc31ee488d862858a2a",
           "Name": "A Storywealth - Wasteland Weaponry - Raider\u0027s Armaments",
+          "Parent": null
+        },
+        {
+          "Md5": "62bec521ee9f993ce6c5160bfde031f1",
+          "Name": "A Storywealth - Wasteland Weaponry - Raider\u0027s Armaments - See Through Scopes",
           "Parent": null
         },
         {
@@ -4649,9 +4538,29 @@
           "Parent": "A Storywealth - Wattz - eXoPatch"
         },
         {
-          "Md5": "b546b3d04ffad2350517f170b772c6f1",
-          "Name": "A Storywealth - Zap Gun - ESL version",
+          "Md5": "52f131589366c7862f35b799e6896daa",
+          "Name": "A Storywealth - The Widow Shotgun - Widow Shotgun - Fixed Barrel attachments",
           "Parent": null
+        },
+        {
+          "Md5": "698dfb74d588e34af5866c092018a126",
+          "Name": "A Storywealth - The Widow Shotgun  - ESLified",
+          "Parent": null
+        },
+        {
+          "Md5": "64005595e94eca2ce08dcc035389c02c",
+          "Name": "A Storywealth - A StoryWealth Weapons Patches - Assault Rifle Reanimated - No Tactical Reload ESL",
+          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
+        },
+        {
+          "Md5": "4e365f4795f895c81ff360aff8c0b2ff",
+          "Name": "A Storywealth - A StoryWealth Weapons Patches - DKS-501 Sniper Rifle - ESLified",
+          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
+        },
+        {
+          "Md5": "a40c17935e235fb4ad57d129634e0054",
+          "Name": "A Storywealth - A StoryWealth Weapons Patches - The Charger Pistol - ESLified",
+          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
         },
         {
           "Md5": "202f87c86bf647ce3ecbe3ee8a528742",
@@ -4659,13 +4568,18 @@
           "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
         },
         {
-          "Md5": "f2cf89b790f838596d9c5d19d4291a10",
-          "Name": "A Storywealth - Anti-Materiel Rifle - Rat Runners Arsenal",
+          "Md5": "f71946cf50ca18fe93292b28712bed07",
+          "Name": "A Storywealth - Laser Weapon Reanimated - ESL",
+          "Parent": "A Storywealth - The Widow Shotgun  - ESLified"
+        },
+        {
+          "Md5": "b546b3d04ffad2350517f170b772c6f1",
+          "Name": "A Storywealth - Zap Gun - ESL version",
           "Parent": null
         },
         {
-          "Md5": "5986de7c26075417522bf36b9c204d0f",
-          "Name": "A Storywealth - Pipe Carbine - Rat Runners Arsenal",
+          "Md5": "819ec04b5ba85ca5bbda06e7b42db38a",
+          "Name": "A Storywealth - Black Widow Armor and Pipboy (Pip-boy) - Widow Shotgun black re-texture",
           "Parent": null
         },
         {
@@ -4772,13 +4686,9 @@
           "Md5": "9aa11e4df8a85da98267f7e7557bbf20",
           "Name": "A Storywealth - A StoryWealth - Assorted Patches - The Eyes Of Beauty - Legacy ESLified",
           "Parent": "A Storywealth - A StoryWealth - LIF Patch"
-        },
-        {
-          "Md5": "f41948ff4d972ad982c7090b7c71690e",
-          "Name": "A Storywealth - Rat Runners Arsenal - eXospanded (No Munitions) - Pipe Carbine",
-          "Parent": null
         }
-      ]
+      ],
+      "AlwaysShow": false
     },
     {
       "Name": "Patches",
@@ -4997,7 +4907,15 @@
           "Name": "A Storywealth - The Zap Gun - eXoPatch",
           "Parent": "A Storywealth - Zap Gun - ESL version"
         }
-      ]
+      ],
+      "AlwaysShow": false
+    },
+    {
+      "Name": "Added mods",
+      "Categories": [],
+      "NamePatterns": [],
+      "Mods": [],
+      "AlwaysShow": true
     }
   ]
 }

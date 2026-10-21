@@ -23,6 +23,8 @@ public sealed class SeparatorDef
     public List<string> NamePatterns { get; set; } = [];
     /// <summary>Mods in ascending deploy priority (last wins), keyed by archive md5 with the folder name as fallback.</summary>
     public List<OrderedMod> Mods { get; set; } = [];
+    /// <summary>Emit this separator even when it holds no mods (the "Added mods" section for users' own mods).</summary>
+    public bool AlwaysShow { get; set; }
 }
 
 public sealed class OrderedMod
@@ -57,6 +59,8 @@ public sealed class ModSignals
 public static class PriorityOrder
 {
     public const string DefaultSeparator = "Core Gameplay";
+    /// <summary>Last (highest-priority) separator, left empty for mods people add themselves.</summary>
+    public const string AddedModsSeparator = "Added mods";
     private const int FrameworkThreshold = 8;   // a mod this many others require is a framework, not a "parent"
 
     public readonly record struct Entry(string Name, bool IsSeparator);
@@ -65,14 +69,6 @@ public static class PriorityOrder
 
     // ---- scheme ----------------------------------------------------------------------------
 
-    private const string PistolRx = @"pistol|revolver|handgun|\b10 ?mm\b|\.44|\bdeagle\b|desert eagle|\bglock\b|\bberetta\b|\bcolt\b|1911|magnum|flare gun|derringer|\bluger\b|\bmauser\b|\bppk\b|\btt ?33\b|makarov|\bm9\b";
-    private const string RifleRx = @"rifle|carbine|sniper|\bak-?47\b|\bak\b|m4a1|\bm16\b|\bg3\b|\bfal\b|garand|musket|\bdks\b|enfield|mosin|lever.?action|marksman|\bdmr\b|\bsks\b|\bscar\b|\baug\b|\bp90\b|\bstg\b|assault";
-    private const string ShotgunRx = @"shotgun|\bsg\b|double.barrel|\bpump\b|\bspas\b|saiga|blunderbuss";
-    private const string SmgRx = @"\bsmg\b|submachine|machine pistol|\buzi\b|\bmp5\b|\bmp7\b|mac-?10|tommy|thompson|\bvector\b|kriss|ppsh|\bsten\b|grease gun|\bpdw\b|\bmp40\b";
-    private const string EnergyRx = @"laser|plasma|gauss|energy|tesla|\bion\b|\bbeam\b|\bpulse\b|photon|\brcw\b|\baer\d*\b|alien|blaster|disintegrat|\barc\b";
-    private const string HeavyRx = @"minigun|gyrojet|bozar|machine ?guns?|rocket|launcher|flamer|flamethrower|gatling|heavy|fat man|missile|grenade|mini.?nuke|\bnuke\b|\brpg\b|bazooka|cryolator|\blmg\b|machine gun|\bmg ?42\b|\bbar\b";
-    private const string MeleeRx = @"sword|kni(?:fe|ves)|\baxe\b|\bbat\b|hammer|katana|machete|sledge|blade|melee|\bclub\b|\bmace\b|spear|baton|\bshiv\b|cleaver|\blance\b|\bpike\b|\bclaw\b|saber|tomahawk|pickaxe|wrench|crowbar|\bpipe\b";
-    private const string AttachRx = @"attachment|\bscope\b|optics?|\bscopes\b|magazine|suppressor|silencer|muzzle|\bammo\b|\bsights?\b|bayonet|holster|mod ?kit|mod table";
     private const string BackpackRx = @"backpack|rucksack|satchel|knapsack|haversack";
 
     /// <summary>The separator scheme (order matters: first = lowest priority).</summary>
@@ -81,8 +77,7 @@ public static class PriorityOrder
         S("Core Frameworks", [], "Utilities", "Modders Resources and Tutorials"),
         S("Performance & Engine", ["crash|buffout|papyrus|memory|cache|\\bops\\b|engine|stutter|fps|optimi[sz]"], "Bug Fixes", "Performance", "Utilities"),
         S("Bug Fixes", [], "Bug Fixes"),
-        S("Tweaks & Immersion", [], "Immersion", "Miscellaneous"),
-        S("Cheats & Debug", [], "Cheats and God items"),
+        S("Tweaks & Immersion", [], "Immersion", "Miscellaneous", "Cheats and God items"),
         S("HUD & Interface", ["hud|icon|font|pip.?boy|compass|crosshair|reticle|map|scope|marker|widget|minimap"], "User Interface"),
         S("Menus & UI Frameworks", [], "User Interface"),
         S("Core Gameplay", [], "Gameplay", "Overhauls", "Vehicles"),
@@ -90,35 +85,26 @@ public static class PriorityOrder
         S("Settlement Tools", [], "Player Settlement"),
         S("Sim Settlements 2", [], "Sim Settlements 2"),
         S("Settlement Blueprints", [], "Transfer Settlement Blueprints"),
-        S("Player Homes", [], "Player Homes"),
         S("Companions", [], "Companions"),
         S("Factions", [], "Factions"),
         S("NPCs", [], "NPC"),
         S("Vanilla Location Overhauls", [], "Locations - Vanilla"),
-        S("New Locations & Lands", [], "Locations - New", "New Lands"),
+        S("New Locations & Lands", [], "Locations - New", "New Lands", "Player Homes"),
         S("Quests & Adventures", [], "Quests and Adventures"),
         S("Collectibles & Puzzles", [], "Collectibles, Treasure Hunts, and Puzzles"),
         S("Creatures", [], "Creatures"),
         S("World Visuals", [], "Models and Textures", "Visuals and Graphics"),
         S("Weather & Lighting", [], "Weather and Lighting", "Environment"),
         S("Characters", [], "Character Presets", "Body, Face, and Hair", "Tattoos"),
-        S("Audio", [], "Audio - SFX", "Audio - Misc", "Audio - Voice", "Audio - Music"),
-        S("Radio", [], "Radio"),
+        S("Audio & Radio", [], "Audio - SFX", "Audio - Misc", "Audio - Voice", "Audio - Music", "Radio"),
         S("Animations", [], "Animation"),
         S("Clothing", [], "Clothing"),
         S("Armour", [], "Armour"),
         S("Power Armour", [], "Power Armour"),
         S("Backpacks", [BackpackRx], "Armour", "Clothing", "Gameplay", "Crafting - Equipment", "Weapons and Armour"),
-        S("Weapon Attachments & Ammo", [AttachRx], "Weapons", "Weapons and Armour", "Ammo"),
-        S("Heavy Weapons", [HeavyRx], "Weapons", "Weapons and Armour"),
-        S("Energy Weapons", [EnergyRx], "Weapons", "Weapons and Armour"),
-        S("Shotguns", [ShotgunRx], "Weapons", "Weapons and Armour"),
-        S("SMGs", [SmgRx], "Weapons", "Weapons and Armour"),
-        S("Pistols", [PistolRx], "Weapons", "Weapons and Armour"),
-        S("Rifles", [RifleRx], "Weapons", "Weapons and Armour"),
-        S("Melee Weapons", [MeleeRx], "Weapons", "Weapons and Armour"),
-        S("Weapon Packs & Misc", [], "Weapons", "Weapons and Armour"),
+        S("Weapons", [], "Weapons", "Weapons and Armour", "Ammo"),
         S("Patches", [], "Patches"),
+        new SeparatorDef { Name = AddedModsSeparator, AlwaysShow = true },     // empty: where people put their own mods
     ];
 
     private static SeparatorDef S(string name, string[] patterns, params string[] categories) =>
@@ -290,7 +276,7 @@ public static class PriorityOrder
             Note = "Generated by OrderTool. Separators are ordered lowest priority first; inside a separator mods are in ascending "
                  + "deploy order (last wins). A patch, BodySlide set or add-on directly follows the mod it requires (see Parent); the rest "
                  + "is alphabetical. Edit freely: Apply() re-checks every rule and file conflict at install time.",
-            Separators = scheme.Select(s => new SeparatorDef { Name = s.Name, Categories = [.. s.Categories], NamePatterns = [.. s.NamePatterns] }).ToList(),
+            Separators = scheme.Select(s => new SeparatorDef { Name = s.Name, Categories = [.. s.Categories], NamePatterns = [.. s.NamePatterns], AlwaysShow = s.AlwaysShow }).ToList(),
         };
         var byName = mods.ToDictionary(m => m.InstallAs, StringComparer.OrdinalIgnoreCase);
         var members = baseline.Where(byName.ContainsKey).ToList();
@@ -384,6 +370,23 @@ public static class PriorityOrder
             });
         }
         return file;
+    }
+
+    /// <summary>The order a separator would have with no rule or conflict pinning anything: mods A–Z, each followed by
+    /// the patches / BodySlide sets / add-ons that require it. Used to audit the shipped order.</summary>
+    public static List<string> NaturalOrder(IReadOnlyList<OrderedMod> mods)
+    {
+        var names = new HashSet<string>(mods.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
+        var kids = mods.Where(m => m.Parent is not null && names.Contains(m.Parent))
+            .GroupBy(m => m.Parent!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.Name).OrderBy(SortKey, StringComparer.Ordinal).ThenBy(x => x, StringComparer.OrdinalIgnoreCase).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+        void Walk(string n) { result.Add(n); if (kids.TryGetValue(n, out var cs)) foreach (var c in cs) Walk(c); }
+        foreach (var r in mods.Where(m => m.Parent is null || !names.Contains(m.Parent)).Select(m => m.Name)
+                     .OrderBy(SortKey, StringComparer.Ordinal).ThenBy(x => x, StringComparer.OrdinalIgnoreCase))
+            Walk(r);
+        return result;
     }
 
     // ---- apply (install time) ----------------------------------------------------------------
@@ -511,6 +514,9 @@ public static class PriorityOrder
             }
             entries.Add(new Entry(n, false));
         }
+        // separators that are always present (e.g. the empty "Added mods" one at the top) even with no mods
+        for (var g = lastGroup + 1; g < separators.Count; g++)
+            if (separators[g].AlwaysShow) entries.Add(new Entry(separators[g].Name, true));
         return (entries, pushed, fixes);
     }
 }

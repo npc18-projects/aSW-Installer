@@ -123,8 +123,13 @@ public static partial class Mo2InstanceWriter
                 existing = existing.Where(e => !gone.Contains(e.Name)).ToList();
             }
         }
+        // Mods people put under the "Added mods" separator stay on top (highest priority) across reruns.
+        var userTail = new List<string>();
+        var addedAt = shipped is null ? -1 : existing.FindIndex(e => e.Name.Equals(PriorityOrder.AddedModsSeparator + SeparatorSuffix, StringComparison.OrdinalIgnoreCase));
+        if (addedAt >= 0)
+            userTail = existing.Skip(addedAt + 1).Where(e => e.Prefix != '*' && !ownSeparators.Contains(e.Name)).Select(e => e.Name).ToList();
         existing = existing.Where(e => !ownSeparators.Contains(e.Name)).ToList();
-        var state = existing.ToDictionary(e => e.Name, e => e.Prefix, StringComparer.OrdinalIgnoreCase);
+        var state =existing.ToDictionary(e => e.Name, e => e.Prefix, StringComparer.OrdinalIgnoreCase);
 
         var (ordered, rep) = DeployOrder.Compute(existing.Select(e => e.Name).ToList(), addons);
         ordered = ordered.Where(n => skip is null || !skip.Contains(n)).ToList();
@@ -147,11 +152,14 @@ public static partial class Mo2InstanceWriter
             var ruleEdges = DeployOrder.RuleEdges(addons.SelectMany(a => a.Mods).ToList(), addons.SelectMany(a => a.ModRules ?? []).ToList());
             var preds = PriorityOrder.Constraints(instanceDir, planMods, baseline, ruleEdges);
             var (entries, report) = PriorityOrder.Apply(shipped, planMods, baseline, preds);
-            var others = merged.Where(m => !planNames.Contains(m.Name)).ToList();     // foreign/other-run mods stay at the bottom
+            var userSet = new HashSet<string>(userTail.Where(n => !planNames.Contains(n)), StringComparer.OrdinalIgnoreCase);
+            var others = merged.Where(m => !planNames.Contains(m.Name) && !userSet.Contains(m.Name)).ToList();   // foreign/other-run mods stay at the bottom
+            var mine = userTail.Where(userSet.Contains).Select(n => merged.First(m => m.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).ToList();
             WriteSeparatorFolders(instanceDir, entries.Where(e => e.IsSeparator).Select(e => e.Name + SeparatorSuffix));
             merged = [.. others, .. entries.Select(e => e.IsSeparator
                 ? (Name: e.Name + SeparatorSuffix, Prefix: '-')
-                : (Name: e.Name, Prefix: '+'))];
+                : (Name: e.Name, Prefix: '+')), .. mine];
+            if (mine.Count > 0) InstallLog.Info("mo2", $"kept {mine.Count} user-added mod(s) under \"{PriorityOrder.AddedModsSeparator}\"");
             InstallLog.Info("mo2",
                 $"structured priority order: {entries.Count(e => e.IsSeparator)} separators, {report.Mods} mods "
                 + $"({report.Unplaced} placed by category, {report.PushedLater} moved to a later separator by rules/file conflicts, {report.OrderFixes} reordered)");

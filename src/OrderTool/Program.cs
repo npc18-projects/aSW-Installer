@@ -35,4 +35,28 @@ Console.WriteLine();
 Console.WriteLine($"{withParent} mods placed directly after the mod they require");
 foreach (var s in file.Separators.Where(s => s.Name == "Patches"))
     Console.WriteLine($"orphan patches left in Patches: {s.Mods.Count}");
+// audit: how many mods sit away from strict A-Z (+ children right after their parent)? A mod is "displaced" when it is
+// not part of the longest run already in natural order, i.e. it would have to move for the separator to be perfectly sorted.
+static int Displaced(List<int> seq)
+{
+    var tails = new List<int>();
+    foreach (var x in seq)
+    {
+        var i = tails.BinarySearch(x);
+        if (i < 0) i = ~i;
+        if (i == tails.Count) tails.Add(x); else tails[i] = x;
+    }
+    return seq.Count - tails.Count;
+}
+var off = 0; var total = 0;
+foreach (var s in file.Separators)
+{
+    var natural = PriorityOrder.NaturalOrder(s.Mods);
+    var rank = natural.Select((n, i) => (n, i)).ToDictionary(x => x.n, x => x.i, StringComparer.OrdinalIgnoreCase);
+    var seq = s.Mods.Select(m => rank[m.Name]).ToList();
+    var d = Displaced(seq);
+    total += seq.Count; off += d;
+    if (d > 0) Console.WriteLine($"  {s.Name}: {d} of {seq.Count} mods displaced from A-Z by a rule/file conflict");
+}
+Console.WriteLine($"alphabetical audit: {total - off}/{total} mods in strict A-Z + parent-first order; {off} displaced by a rule or file conflict");
 return 0;
