@@ -53,7 +53,7 @@ public sealed class InstallRunner
         string instanceDir, string gamePath, IProgress<ProgressInfo>? progress = null,
         CancellationToken ct = default, bool stockGame = false, string? reuseDir = null,
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
-        int downloadThreads = 0, int extractThreads = 0)
+        int downloadThreads = 0, int extractThreads = 0, bool includeOptional = false)
     {
         InstallLog.Init(instanceDir);
         InstallLog.Info("auth", "validating Nexus account...");
@@ -63,7 +63,8 @@ public sealed class InstallRunner
 
         // Resume checkpoint: written after every completed step, cleared on success.
         resume ??= new InstallState.ResumeInfo(collectionJsonPath, addonId, instanceDir, gamePath,
-            stockGame, reuseDir, downloadsDir, [], [], false);
+            stockGame, reuseDir, downloadsDir, [], [], false, IncludeOptional: includeOptional);
+        includeOptional = resume.IncludeOptional;   // a resumed run keeps the choice it started with
         InstallState.SetResume(resume);
         if (resume.DoneDownloads.Count > 0 || resume.DoneInstalls.Count > 0 || resume.GameCopied)
             InstallLog.Info("resume", $"resuming: {resume.DoneDownloads.Count} downloaded, {resume.DoneInstalls.Count} installed, game copy {(resume.GameCopied ? "done" : "pending")}");
@@ -162,7 +163,10 @@ public sealed class InstallRunner
         // ---- Phase 1: download and verify EVERY archive first (no extraction).
         // Downgrader first so the downgrade can run while the rest downloads.
         // Optional mods stay out of the run until the Optionals tab ships.
-        var coreMods = manifest.Mods.Where(m => !m.IsOptional).ToList();
+        var coreMods = manifest.Mods.Where(m => includeOptional || !m.IsOptional).ToList();
+        InstallLog.Info("config", includeOptional
+            ? $"optional mods: INCLUDED ({manifest.Mods.Count(m => m.IsOptional)} mods)"
+            : $"optional mods: skipped ({manifest.Mods.Count(m => m.IsOptional)} mods, e.g. the HD textures)");
         var ordered = needsDowngrade && downgrader is not null
             ? coreMods.OrderByDescending(m => m.Nexus is { } nx && nx.ModId == downgraderModId).ToList()
             : coreMods;
@@ -552,7 +556,7 @@ if (numbered >= 1) dumpSignature = true;
             InstallLog.Warn("mo2",
                 "Mod Organizer 2 is running and will overwrite modlist.txt/plugins.txt with its stale state. Close MO2 and re-run the install finalize (or restart the install) afterwards.");
         var optionalNames = plan.InstallOrder
-            .Where(t => t.Mod.IsOptional).Select(t => t.Mod.InstallAs)
+            .Where(t => t.Mod.IsOptional && !includeOptional).Select(t => t.Mod.InstallAs)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         optionalNames.UnionWith(rootMods);
         optionalNames.UnionWith(Mo2InstanceWriter.InstalledTools(instanceDir));   // live in <instance>/Tools, not the mod list

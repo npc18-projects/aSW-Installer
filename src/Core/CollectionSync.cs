@@ -343,7 +343,7 @@ public static class InstallState
     public sealed record ResumeInfo(
         string JsonPath, string AddonId, string InstallDir, string GamePath, bool StockGame,
         string? ReuseDir, string? DownloadsDir,
-        List<string> DoneDownloads, List<string> DoneInstalls, bool GameCopied, Dictionary<string,string>? DownloadedFiles = null);
+        List<string> DoneDownloads, List<string> DoneInstalls, bool GameCopied, Dictionary<string,string>? DownloadedFiles = null, bool IncludeOptional = false);
 
     public static ResumeInfo? GetResume() => ReadRecord()?.Resume;
 

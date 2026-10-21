@@ -387,6 +387,15 @@
                         </StackPanel>
                     </Border>
 
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Optional Content</TextBlock>
+                            <CheckBox x:Name="ChkOptional"
+                                      Content="Also install the optional HD textures (needs about 50 GB more disk space)"/>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Recommended with 6 GB+ of VRAM. Left off, the installer skips them and you can add them with a later run.</TextBlock>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
                 </ScrollViewer>
                 <Border Grid.Row="1" Background="#171A20" Padding="36,12">

@@ -732,10 +732,11 @@ public partial class MainWindow : Window
             // thread-affine and Task.Run below runs on a worker thread.
             var dlThreads = (int)NudDownloadThreads.Value;
             var exThreads = (int)NudExtractThreads.Value;
+            var includeOptional = ChkOptional.IsChecked == true;
             await Task.Run(() => runner.RunAsync(jsonPath, installId, _apiKey!, dir,
                 gamePath, progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
-                downloadThreads: dlThreads, extractThreads: exThreads));
+                downloadThreads: dlThreads, extractThreads: exThreads, includeOptional: includeOptional));
             _resume = null;
             _installedDir = dir;
             InstallState.SetInstallDir(dir);

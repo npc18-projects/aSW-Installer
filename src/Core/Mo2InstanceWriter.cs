@@ -109,7 +109,11 @@ public static partial class Mo2InstanceWriter
 
         var (ordered, rep) = DeployOrder.Compute(existing.Select(e => e.Name).ToList(), addons);
         ordered = ordered.Where(n => skip is null || !skip.Contains(n)).ToList();
-        var merged = ordered.Select(n => (Name: n, Prefix: state.TryGetValue(n, out var p) ? p : '+')).ToList();
+        // Mods this run installs are (re-)enabled: a stale profile must not leave part of the collection
+        // switched off. Mods from other runs (addons, the user's own) keep their enabled state.
+        var fromPlan = new HashSet<string>(addons.SelectMany(a => a.Mods).Select(m => m.InstallAs), StringComparer.OrdinalIgnoreCase);
+        var merged = ordered.Select(n => (Name: n,
+            Prefix: fromPlan.Contains(n) ? '+' : state.TryGetValue(n, out var p) ? p : '+')).ToList();
 
         InstallLog.Info("mo2",
             $"deploy order: {merged.Count} mods; {rep.Rules} before/after rules → {rep.EdgesApplied} edges applied, "
@@ -144,7 +148,16 @@ public static partial class Mo2InstanceWriter
             if (enabled.TryAdd(p.Plugin, p.Enabled)) desired.Add(p.Plugin);
 
         var paths = LocatePlugins(instanceDir, merged, gameDir);
-        var headers = new Dictionary<string, PluginOrder.Info?>(StringComparer.OrdinalIgnoreCase);
+
+        // A plugin whose file is nowhere (its mod is optional and not installed, or disabled) stays out of
+        // both lists — MO2 would only log "Plugin not found" for it.
+        var absent = desired.Where(n => !paths.ContainsKey(n)).ToList();
+        if (absent.Count > 0)
+        {
+            desired = desired.Where(paths.ContainsKey).ToList();
+            InstallLog.Info("mo2", $"left {absent.Count} plugin(s) out of the load order (no file on disk — optional/uninstalled mods): {string.Join(", ", absent.Take(8))}{(absent.Count > 8 ? ", …" : "")}");
+        }
+        var headers =new Dictionary<string, PluginOrder.Info?>(StringComparer.OrdinalIgnoreCase);
         PluginOrder.Info? Header(string name)
         {
             if (headers.TryGetValue(name, out var h)) return h;
