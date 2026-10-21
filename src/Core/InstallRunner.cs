@@ -53,7 +53,7 @@ public sealed class InstallRunner
         string instanceDir, string gamePath, IProgress<ProgressInfo>? progress = null,
         CancellationToken ct = default, bool stockGame = false, string? reuseDir = null,
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
-        int downloadThreads = 0, int extractThreads = 0, bool includeOptional = false)
+        int downloadThreads = 0, int extractThreads = 0, IReadOnlyCollection<string>? optionalGroups = null)
     {
         InstallLog.Init(instanceDir);
         InstallLog.Info("auth", "validating Nexus account...");
@@ -62,9 +62,11 @@ public sealed class InstallRunner
         InstallLog.Info("auth", $"user {user.Name}, premium={user.IsPremium}");
 
         // Resume checkpoint: written after every completed step, cleared on success.
+        var optGroups = OptionalGroups.Load(addonId);
+        var selectedGroups = (optionalGroups ?? OptionalGroups.Defaults(optGroups)).ToList();
         resume ??= new InstallState.ResumeInfo(collectionJsonPath, addonId, instanceDir, gamePath,
-            stockGame, reuseDir, downloadsDir, [], [], false, IncludeOptional: includeOptional);
-        includeOptional = resume.IncludeOptional;   // a resumed run keeps the choice it started with
+            stockGame, reuseDir, downloadsDir, [], [], false, OptionalGroups: selectedGroups);
+        selectedGroups = resume.OptionalGroups ?? selectedGroups;   // a resumed run keeps the choice it started with
         InstallState.SetResume(resume);
         if (resume.DoneDownloads.Count > 0 || resume.DoneInstalls.Count > 0 || resume.GameCopied)
             InstallLog.Info("resume", $"resuming: {resume.DoneDownloads.Count} downloaded, {resume.DoneInstalls.Count} installed, game copy {(resume.GameCopied ? "done" : "pending")}");
@@ -162,11 +164,9 @@ public sealed class InstallRunner
 
         // ---- Phase 1: download and verify EVERY archive first (no extraction).
         // Downgrader first so the downgrade can run while the rest downloads.
-        // Optional mods stay out of the run until the Optionals tab ships.
-        var coreMods = manifest.Mods.Where(m => includeOptional || !m.IsOptional).ToList();
-        InstallLog.Info("config", includeOptional
-            ? $"optional mods: INCLUDED ({manifest.Mods.Count(m => m.IsOptional)} mods)"
-            : $"optional mods: skipped ({manifest.Mods.Count(m => m.IsOptional)} mods, e.g. the HD textures)");
+        var excludedMods = OptionalGroups.Excluded(manifest.Mods, optGroups, selectedGroups);
+        var coreMods = manifest.Mods.Where(m => !excludedMods.Contains(m.InstallAs)).ToList();
+        InstallLog.Info("config", $"optional groups: installing [{string.Join(", ", selectedGroups)}]; leaving out {excludedMods.Count} mod(s) ({excludedMods.Sum(n => manifest.Mods.First(m => m.InstallAs == n).Nexus?.FileSize ?? 0) / 1_000_000_000.0:F1} GB)");
         var ordered = needsDowngrade && downgrader is not null
             ? coreMods.OrderByDescending(m => m.Nexus is { } nx && nx.ModId == downgraderModId).ToList()
             : coreMods;
@@ -555,9 +555,7 @@ if (numbered >= 1) dumpSignature = true;
         if (Process.GetProcesses().Any(p => p.ProcessName.StartsWith("ModOrganizer", StringComparison.OrdinalIgnoreCase)))
             InstallLog.Warn("mo2",
                 "Mod Organizer 2 is running and will overwrite modlist.txt/plugins.txt with its stale state. Close MO2 and re-run the install finalize (or restart the install) afterwards.");
-        var optionalNames = plan.InstallOrder
-            .Where(t => t.Mod.IsOptional && !includeOptional).Select(t => t.Mod.InstallAs)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var optionalNames = new HashSet<string>(excludedMods, StringComparer.OrdinalIgnoreCase);
         optionalNames.UnionWith(rootMods);
         optionalNames.UnionWith(Mo2InstanceWriter.InstalledTools(instanceDir));   // live in <instance>/Tools, not the mod list
         Mo2InstanceWriter.WriteLoadFiles(instanceDir, plan, optionalNames, effectiveGamePath);

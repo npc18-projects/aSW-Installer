@@ -1,0 +1,290 @@
+{
+  "Schema": 1,
+  "AddonId": "a-storywealth",
+  "Groups": [
+    {
+      "Id": "ss2",
+      "Name": "Sim Settlements 2",
+      "Description": "SS2, its chapters, add-on packs and compatibility patches (53 mods, about 9 GB). Untick to play without it.",
+      "DefaultOn": true,
+      "FromOptionalFlag": false,
+      "Source": "A StoryWealth - DeSimulated 2 filter collection (nexus 4rfeex) \u002B mods that need an SS2 plugin as a master",
+      "Mods": [
+        {
+          "Md5": "e1c817aed0ebd593e9fa227629e8de4d",
+          "Name": "A Storywealth - A StoryWealth - Assorted Patches - Recruitable Leaders - ESLified",
+          "Parent": null
+        },
+        {
+          "Md5": "7a6e313b9a6a7cf63d80c684c6f1a0b6",
+          "Name": "A Storywealth - A StoryWealth - Complex Sorter - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "15c43d602dc15180860a71017ea02d0e",
+          "Name": "A Storywealth - A StoryWealth - eXoterior Patch - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "7d862f384737587a4d7b7f6466fbe85d",
+          "Name": "A Storywealth - A StoryWealth - SS2 AddOns Delayed",
+          "Parent": null
+        },
+        {
+          "Md5": "a8515d011d2b2228ff321a595995e23c",
+          "Name": "A Storywealth - A StoryWealth - SS2 Workshops Patch",
+          "Parent": null
+        },
+        {
+          "Md5": "4e5b1864aeec9bc394c1b4d92586258b",
+          "Name": "A Storywealth - Bovine Intervention - Brahmin Overhaul - SS2 Patch",
+          "Parent": null
+        },
+        {
+          "Md5": "7b3e44e5080cb530f2b86006fb21265f",
+          "Name": "A Storywealth - Croup Manor Basement - CityPlan",
+          "Parent": null
+        },
+        {
+          "Md5": "cfdac471b6f6310425b4181cedc3b818",
+          "Name": "A Storywealth - Dundee\u0027s Storywealth City Plans Pack 1",
+          "Parent": null
+        },
+        {
+          "Md5": "1188d6dd98c181177b3e88f6d72938bd",
+          "Name": "A Storywealth - Dundee\u0027s Storywealth City Plans Pack 2",
+          "Parent": null
+        },
+        {
+          "Md5": "95daf80bfe4694a450e3d2ad742cf656",
+          "Name": "A Storywealth - Dundee\u0027s StoryWealth City PlansLeader Pack",
+          "Parent": null
+        },
+        {
+          "Md5": "bc522c8ca8c40f86bd44b858743009e8",
+          "Name": "A Storywealth - Dundee\u0027s StoryWealth Outpost Pack",
+          "Parent": null
+        },
+        {
+          "Md5": "472c35271c9a5998fd717ec332f1f7e9",
+          "Name": "A Storywealth - Gun For Hire - eXoPatch (Sim Settlements 2 Compat) - SS2 Leader",
+          "Parent": null
+        },
+        {
+          "Md5": "3361e908da2026cb894c3c3e0cf47685",
+          "Name": "A Storywealth - Jampads 2 - a Sim Settlements 2 Add-On",
+          "Parent": null
+        },
+        {
+          "Md5": "f11c7246c063b326848f0dd47e4506f5",
+          "Name": "A Storywealth - Leaders of the Commonwealth - SS2 Add-On for Settlers of the Commonwealth",
+          "Parent": null
+        },
+        {
+          "Md5": "a7946091c09744c3d2aa243ac355e2fc",
+          "Name": "A Storywealth - Makeshift Tuxedo - Dundee\u0027s Leader Pack Patch",
+          "Parent": null
+        },
+        {
+          "Md5": "de8ab7638ce1b0d7756af964b1ca67d3",
+          "Name": "A Storywealth - More Feral Ghouls eXopansion Patch - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "005891dcd8d9a80682de2fb1944e4711",
+          "Name": "A Storywealth - Mystic Rogue\u0027s Super Duper Quest and Add-On Pack",
+          "Parent": null
+        },
+        {
+          "Md5": "baa57f68f9d916954acea03184900d40",
+          "Name": "A Storywealth - Proto Vault Suit - Paintjobs - Superstructures Yellow",
+          "Parent": null
+        },
+        {
+          "Md5": "0febc6c73651d4fb74fe0f156910482c",
+          "Name": "A Storywealth - Publick Occurrences Expanded - An UFO4P Patch - Sim Settlements 2 Extension",
+          "Parent": null
+        },
+        {
+          "Md5": "66e17039855a6fc6ad3a328bc9fba672",
+          "Name": "A Storywealth - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "f15835a12aafd7392abf8493373924c7",
+          "Name": "A Storywealth - Sim Settlements 2 -  Chapter 2",
+          "Parent": null
+        },
+        {
+          "Md5": "c388d92713347a66644ce71b753c1d57",
+          "Name": "A Storywealth - Sim Settlements 2 -  Chapter 3",
+          "Parent": null
+        },
+        {
+          "Md5": "adb8d4fc08a78a5be37c93bd98cde4e2",
+          "Name": "A Storywealth - Sim Settlements 2 -  Extended",
+          "Parent": null
+        },
+        {
+          "Md5": "05a6fa122029ab29cd3e85147e37906e",
+          "Name": "A Storywealth - Sim Settlements 2 - eXoPatch",
+          "Parent": null
+        },
+        {
+          "Md5": "e41718d599860606a08a5058e00c8431",
+          "Name": "A Storywealth - Sim Settlements 2 - eXoPatch - Vanilla CBBE",
+          "Parent": null
+        },
+        {
+          "Md5": "3f3f2c65b9304d83365394903164ac09",
+          "Name": "A Storywealth - Sim Settlements 2 - Far Harbor Expansion - Loose Files Version",
+          "Parent": null
+        },
+        {
+          "Md5": "539e2d94aa8b5140f1c404dfd0d4a27c",
+          "Name": "A Storywealth - Sim Settlements 2 - Junk Town 2 Addon Pack - Junk Town 2",
+          "Parent": null
+        },
+        {
+          "Md5": "6138d72e6f0e418f2ee6cb4b5f00281e",
+          "Name": "A Storywealth - Sim Settlements 2 - Nuka World Expansion - Loose Files Version",
+          "Parent": null
+        },
+        {
+          "Md5": "1a0f49954ef3b7b9feab2d040205807b",
+          "Name": "A Storywealth - Sim Settlements 2 - Pra\u0027s Random Addon 2",
+          "Parent": null
+        },
+        {
+          "Md5": "441073ef662a44dbf78e209addc84bfc",
+          "Name": "A Storywealth - Sim Settlements 2 - Rags and Riches - Loose Files Version",
+          "Parent": null
+        },
+        {
+          "Md5": "e6ad8c22f6cd1d4f941f1367b68d70f0",
+          "Name": "A Storywealth - Sim Settlements 2 - Ruined Homes and Gardens 2",
+          "Parent": null
+        },
+        {
+          "Md5": "6ac8f7731d6e1ec444a17ff00074dc1a",
+          "Name": "A Storywealth - Sim Settlements 2 - Tech Settlements",
+          "Parent": null
+        },
+        {
+          "Md5": "f00005d0d94609018b7340c71ba23387",
+          "Name": "A Storywealth - Sim Settlements 2 - Tiny Living 3.1",
+          "Parent": null
+        },
+        {
+          "Md5": "3d613462f93821c71920037938261217",
+          "Name": "A Storywealth - Sim Settlements 2 Add-On Pack - Wasteland Venturers",
+          "Parent": null
+        },
+        {
+          "Md5": "ebed49941f61a5bf5920db02a36c851e",
+          "Name": "A Storywealth - Sim Settlements 2 Addon Pack - Vault-Tec Tools",
+          "Parent": null
+        },
+        {
+          "Md5": "e8bdeaf09153003017ae2334336ffcd2",
+          "Name": "A Storywealth - Sim Settlements 2 Automatron Mod",
+          "Parent": null
+        },
+        {
+          "Md5": "bf7ea5ff8ea79e4a062e756127fd8319",
+          "Name": "A Storywealth - Sim Settlements 2 Charity mod Add-ons - Shady Motives",
+          "Parent": null
+        },
+        {
+          "Md5": "1f5d956599875da80485ff1f88d0ac28",
+          "Name": "A Storywealth - Sim Settlements 2 Charity mod Add-ons - Transmission Zeta",
+          "Parent": null
+        },
+        {
+          "Md5": "5651a3d147c9c01ca8935a77d20fc4c2",
+          "Name": "A Storywealth - Sim Settlements 2 Scrappers",
+          "Parent": null
+        },
+        {
+          "Md5": "d2e8fa0aab1c2c5e0901074db5df6ba5",
+          "Name": "A Storywealth - SimSettlements2 AddOnPack Apocalyptic Additions SirLach",
+          "Parent": null
+        },
+        {
+          "Md5": "b36c7846d6c91d69f879725e68d4c852",
+          "Name": "A Storywealth - So I Made Plans",
+          "Parent": null
+        },
+        {
+          "Md5": "90aaadf38d9fc72e28f976380fcb86e1",
+          "Name": "A Storywealth - SS2 - Settlers at Play",
+          "Parent": null
+        },
+        {
+          "Md5": "87413519ee1eea4ed7c142c603fe9ef8",
+          "Name": "A Storywealth - SS2 - XDI Compatability Patch",
+          "Parent": null
+        },
+        {
+          "Md5": "5339dfc02c4b708d88c7965c16fa3442",
+          "Name": "A Storywealth - SS2 Addon Blood Moon Raiders 1.0 (Loose Files)",
+          "Parent": null
+        },
+        {
+          "Md5": "c27008c360c53ccfcc688fd239c7765c",
+          "Name": "A Storywealth - SS2 DLC Settler Patch",
+          "Parent": null
+        },
+        {
+          "Md5": "b9f1fdda9131e9fce88e9ac4e29a1ba9",
+          "Name": "A Storywealth - SS2 FallUI Icons a CIS plugin",
+          "Parent": null
+        },
+        {
+          "Md5": "1d5a03565082b5fa829a17bf9a22b5e6",
+          "Name": "A Storywealth - SS2 Superstructures",
+          "Parent": null
+        },
+        {
+          "Md5": "ab9f7ec17f3a4cf3fae47e7f9d7eb33e",
+          "Name": "A Storywealth - Super Duper Quest  mod  Olivia Station Door Patch",
+          "Parent": null
+        },
+        {
+          "Md5": "7aeeac1b587ff66b822b65148a103cf2",
+          "Name": "A Storywealth - The Crab Shack (Fourville - Tales - SS2) - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "97f32e552cfe28460c10b43b07f726e1",
+          "Name": "A Storywealth - The Fens Sheriff\u0027s Department - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "70bc1878fed8b17e3bdd06b60e004039",
+          "Name": "A Storywealth - The Fungal Forest - Radsoaked - Sim Settlements 2",
+          "Parent": null
+        },
+        {
+          "Md5": "c789fe38fece3aac0223491bc5dd5008",
+          "Name": "A Storywealth - Throw Money At SS2 - Loose",
+          "Parent": null
+        },
+        {
+          "Md5": "cbbbb6d2f84245a7cc86f6131d84ac21",
+          "Name": "A Storywealth - Wasteland Reconstruction Kit",
+          "Parent": null
+        }
+      ]
+    },
+    {
+      "Id": "hd-textures",
+      "Name": "Optional HD textures",
+      "Description": "21 high-resolution texture packs (about 51 GB). Recommended with 6 GB\u002B of VRAM.",
+      "DefaultOn": false,
+      "FromOptionalFlag": true,
+      "Source": "the collection\u0027s own optional mods",
+      "Mods": []
+    }
+  ]
+}

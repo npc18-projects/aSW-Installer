@@ -387,12 +387,11 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Classes="card">
+                    <Border x:Name="CardOptional" Classes="card">
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Optional Content</TextBlock>
-                            <CheckBox x:Name="ChkOptional"
-                                      Content="Also install the optional HD textures (needs about 50 GB more disk space)"/>
-                            <TextBlock Classes="info" TextWrapping="Wrap">Recommended with 6 GB+ of VRAM. Left off, the installer skips them and you can add them with a later run.</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Untick anything you don't want. Leaving a group out skips its downloads and install; you can add it with a later run.</TextBlock>
+                            <StackPanel x:Name="PanelOptional" Spacing="8"/>
                         </StackPanel>
                     </Border>
 

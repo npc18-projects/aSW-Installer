@@ -1,4 +1,58 @@
+using System.Text.Json;
 using AStoryWealth.Core;
+
+// Mode 2 — generate the optional install groups (Sim Settlements 2 + HD textures):
+//   OrderTool optional <base collection.json> <filter collection.json> <instanceDir> <addonId> <out.optional.json>
+// The SS2 group follows a "filter collection" that lists every mod to disable to play without SS2
+// (nexus 4rfeex, "A StoryWealth - DeSimulated 2"): exact file matches plus anything that shares a logical file name,
+// then everything whose plugins need an SS2-group plugin as a master (so no mod is left with a missing master).
+if (args.Length >= 1 && args[0] == "optional")
+{
+    if (args.Length < 6) { Console.Error.WriteLine("usage: OrderTool optional <base.json> <filter.json> <instanceDir> <addonId> <out>"); return 2; }
+    var man = VortexCollectionMapper.Map(args[1], args[4]);
+    var core = man.Mods.Where(m => !m.IsOptional).ToList();
+    var filter = JsonDocument.Parse(File.ReadAllText(args[2])).RootElement.GetProperty("mods").EnumerateArray().ToList();
+    var fMd5 = filter.Select(m => m.GetProperty("source").GetProperty("md5").GetString()!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var fNames = filter.Select(m => m.GetProperty("source").GetProperty("logicalFilename").GetString()!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var set = new HashSet<string>(core.Where(m => (m.Nexus?.Md5 is { } h && fMd5.Contains(h)) || (m.LogicalFileName is { } ln && fNames.Contains(ln)))
+        .Select(m => m.InstallAs), StringComparer.OrdinalIgnoreCase);
+    var seedCount = set.Count;
+    var sig = PriorityOrder.ScanSignals(args[3], core);
+    for (var changed = true; changed;)
+    {
+        changed = false;
+        var plugins = sig.Provider.Where(kv => set.Contains(kv.Value)).Select(kv => kv.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var m in core.Where(m => !set.Contains(m.InstallAs)))
+            if (sig.Masters.TryGetValue(m.InstallAs, out var ms) && ms.Any(plugins.Contains)) { set.Add(m.InstallAs); changed = true; }
+    }
+    var ss2 = core.Where(m => set.Contains(m.InstallAs)).OrderBy(m => m.InstallAs, StringComparer.OrdinalIgnoreCase).ToList();
+    var hd = man.Mods.Where(m => m.IsOptional).ToList();
+    double Gb(IEnumerable<ModEntry> ms) => ms.Sum(m => m.Nexus?.FileSize ?? 0) / 1e9;
+    var groupsFile = new OptionalGroupsFile
+    {
+        AddonId = args[4],
+        Groups =
+        [
+            new OptionalGroup
+            {
+                Id = "ss2", Name = "Sim Settlements 2", DefaultOn = true,
+                Description = $"SS2, its chapters, add-on packs and compatibility patches ({ss2.Count} mods, about {Gb(ss2):F0} GB). Untick to play without it.",
+                Source = "A StoryWealth - DeSimulated 2 filter collection (nexus 4rfeex) + mods that need an SS2 plugin as a master",
+                Mods = ss2.Select(m => new OrderedMod { Md5 = m.Nexus?.Md5 ?? "", Name = m.InstallAs }).ToList(),
+            },
+            new OptionalGroup
+            {
+                Id = "hd-textures", Name = "Optional HD textures", DefaultOn = false, FromOptionalFlag = true,
+                Description = $"{hd.Count} high-resolution texture packs (about {Gb(hd):F0} GB). Recommended with 6 GB+ of VRAM.",
+                Source = "the collection's own optional mods",
+            },
+        ],
+    };
+    OptionalGroups.Save(groupsFile, args[5]);
+    Console.WriteLine($"wrote {args[5]}: ss2 = {ss2.Count} mods ({seedCount} from the filter collection, {ss2.Count - seedCount} pulled in by plugin masters), {Gb(ss2):F1} GB; hd-textures = {hd.Count} mods, {Gb(hd):F1} GB");
+    return 0;
+}
+
 
 // Generates the shipped structured priority order for a collection.
 //   dotnet run --project src/OrderTool -- <collection.json> <instanceDir> <addonId> <out.priority.json>

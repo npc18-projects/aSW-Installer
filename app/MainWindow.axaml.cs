@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        BuildOptionalGroups();
         _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY");
         InstallRunner.UiLogLine += OnLogLine;
         Closed += (_, _) => { _cts?.Cancel(); InstallRunner.UiLogLine -= OnLogLine; };
@@ -86,6 +87,23 @@ public partial class MainWindow : Window
     }
 
     // ---------- shared ----------
+
+    /// <summary>One checkbox per optional install group the collection ships (Sim Settlements 2, HD textures, ...).</summary>
+    private void BuildOptionalGroups()
+    {
+        var groups = AStoryWealth.Core.OptionalGroups.Load(AddonId);
+        CardOptional.IsVisible = groups.Count > 0;
+        foreach (var g in groups)
+        {
+            var box = new CheckBox
+            {
+                Tag = g.Id,
+                IsChecked = g.DefaultOn,
+                Content = string.IsNullOrWhiteSpace(g.Description) ? g.Name : $"{g.Name} — {g.Description}",
+            };
+            PanelOptional.Children.Add(box);
+        }
+    }
 
     private void OnLogLine(string line)
     {
@@ -732,11 +750,11 @@ public partial class MainWindow : Window
             // thread-affine and Task.Run below runs on a worker thread.
             var dlThreads = (int)NudDownloadThreads.Value;
             var exThreads = (int)NudExtractThreads.Value;
-            var includeOptional = ChkOptional.IsChecked == true;
+            var optionalGroups = PanelOptional.Children.OfType<CheckBox>().Where(c => c.IsChecked == true).Select(c => (string)c.Tag!).ToList();
             await Task.Run(() => runner.RunAsync(jsonPath, installId, _apiKey!, dir,
                 gamePath, progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
-                downloadThreads: dlThreads, extractThreads: exThreads, includeOptional: includeOptional));
+                downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups));
             _resume = null;
             _installedDir = dir;
             InstallState.SetInstallDir(dir);

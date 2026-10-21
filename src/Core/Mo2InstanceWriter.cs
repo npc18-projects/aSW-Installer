@@ -105,7 +105,8 @@ public static partial class Mo2InstanceWriter
 
         // ---- deploy order (modlist.txt)
         var mlPath = Path.Combine(profileDir, "modlist.txt");
-        var existing = ReadModlist(mlPath);                         // ascending priority
+        var existing = ReadModlist(mlPath)                          // ascending priority; a hand-edited duplicate keeps its last entry
+            .GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase).Select(g => g.Last()).ToList();
         // The structured order (if one ships for this collection) owns its separators: drop stale copies.
         var shipped = addons.Count == 1 ? PriorityOrder.LoadShipped(addons[0].AddonId) : null;
         var ownSeparators = new HashSet<string>(
@@ -152,10 +153,17 @@ public static partial class Mo2InstanceWriter
             var ruleEdges = DeployOrder.RuleEdges(addons.SelectMany(a => a.Mods).ToList(), addons.SelectMany(a => a.ModRules ?? []).ToList());
             var preds = PriorityOrder.Constraints(instanceDir, planMods, baseline, ruleEdges);
             var (entries, report) = PriorityOrder.Apply(shipped, planMods, baseline, preds);
-            var userSet = new HashSet<string>(userTail.Where(n => !planNames.Contains(n)), StringComparer.OrdinalIgnoreCase);
+            // user-added = under the old "Added mods" separator, still in the list, and not something this run installs or skips
+            var present = new HashSet<string>(merged.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
+            var userSet = new HashSet<string>(userTail.Where(n => !planNames.Contains(n) && present.Contains(n)), StringComparer.OrdinalIgnoreCase);
             var others = merged.Where(m => !planNames.Contains(m.Name) && !userSet.Contains(m.Name)).ToList();   // foreign/other-run mods stay at the bottom
-            var mine = userTail.Where(userSet.Contains).Select(n => merged.First(m => m.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).ToList();
+            var mine = userTail.Where(userSet.Contains)
+                .Select(n => merged.First(m => m.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).ToList();
             WriteSeparatorFolders(instanceDir, entries.Where(e => e.IsSeparator).Select(e => e.Name + SeparatorSuffix));
+            // separators of this order that ended up with no mods (e.g. "Sim Settlements 2" when that group is left out)
+            // must not linger as folders, or MO2 would add them back to the list
+            var emitted = new HashSet<string>(entries.Where(e => e.IsSeparator).Select(e => e.Name + SeparatorSuffix), StringComparer.OrdinalIgnoreCase);
+            RemoveStaleSeparators(instanceDir, ownSeparators.Where(n => !emitted.Contains(n)));
             merged = [.. others, .. entries.Select(e => e.IsSeparator
                 ? (Name: e.Name + SeparatorSuffix, Prefix: '-')
                 : (Name: e.Name, Prefix: '+')), .. mine];
@@ -164,6 +172,14 @@ public static partial class Mo2InstanceWriter
                 $"structured priority order: {entries.Count(e => e.IsSeparator)} separators, {report.Mods} mods "
                 + $"({report.Unplaced} placed by category, {report.PushedLater} moved to a later separator by rules/file conflicts, {report.OrderFixes} reordered)");
         }
+
+        // Mods this run leaves out (an unticked group, optional mods) that are already extracted on disk: list them
+        // disabled at the bottom, so MO2 does not re-discover the folders and drop them at the top of the list.
+        if (skip is not null)
+            foreach (var n in skip.OrderByDescending(x => x, StringComparer.OrdinalIgnoreCase))
+                if (!merged.Any(m => m.Name.Equals(n, StringComparison.OrdinalIgnoreCase))
+                    && Directory.Exists(Path.Combine(instanceDir, "mods", SafeName(n, "installAs"))))
+                    merged.Insert(0, (Name: n, Prefix: (char)45));
 
         InstallLog.Info("mo2",
             $"deploy order: {merged.Count} mods; {rep.Rules} before/after rules → {rep.EdgesApplied} edges applied, "
