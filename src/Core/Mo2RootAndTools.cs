@@ -181,6 +181,29 @@ public static partial class Mo2InstanceWriter
         return true;
     }
 
+    // ---- separators --------------------------------------------------------------------
+
+    /// <summary>
+    /// MO2 separators are mod folders (mods/&lt;Name&gt;_separator/meta.ini), not just lines in modlist.txt:
+    /// a line without its folder is silently dropped the next time MO2 saves the profile.
+    /// </summary>
+    public static void WriteSeparatorFolders(string instanceDir, IEnumerable<string> separatorNames)
+    {
+        foreach (var name in separatorNames)
+        {
+            var dir = Path.Combine(instanceDir, "mods", SafeName(name, "separator"));
+            Directory.CreateDirectory(dir);
+            var meta = Path.Combine(dir, "meta.ini");
+            if (File.Exists(meta)) continue;
+            File.WriteAllText(meta,
+                "[General]\nmodid=0\nversion=\nnewestVersion=\ncategory=\"-1,\"\ninstallationFile=\nrepository=Nexus\n"
+                + "gameName=Fallout4\ncomments=\nnotes=\nnexusDescription=\nurl=\nhasCustomURL=true\nnexusFileStatus=1\n"
+                + "lastNexusQuery=\nlastNexusUpdate=\nnexusLastModified=2024-01-01T00:00:00Z\nnexusCategory=0\n"
+                + "converted=false\nvalidated=false\ntracked=0\n\n[installedFiles]\nsize=0\n",
+                new System.Text.UTF8Encoding(false));
+        }
+    }
+
     // ---- profile files + Root Builder executables --------------------------------------
 
     /// <summary>

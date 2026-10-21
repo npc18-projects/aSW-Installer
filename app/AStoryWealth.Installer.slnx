@@ -3,5 +3,6 @@
   <Project Path="../src/NexusApi/AStoryWealth.NexusApi.csproj" />
   <Project Path="../src/Spike/AStoryWealth.Spike.csproj" />
   <Project Path="../src/Tests/AStoryWealth.Tests.csproj" />
+  <Project Path="../src/OrderTool/AStoryWealth.OrderTool.csproj" />
   <Project Path="AStoryWealth.Installer.csproj" />
 </Solution>

@@ -146,6 +146,67 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- structured priority order
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        ModEntry CatMod(string name, string cat, string md5) { var m = Mod(name, 0, md5); m.Category = cat; return m; }
+        var scheme = new List<SeparatorDef>
+        {
+            new() { Name = "Fixes", Categories = ["Bug Fixes"] },
+            new() { Name = "Gameplay", Categories = ["Gameplay"] },
+            new() { Name = "Weapons", Categories = ["Weapons"] },
+        };
+        var fileScheme = new PriorityOrderFile { AddonId = "t", Separators = scheme };
+        // baseline (Vortex-derived) order is NOT grouped by category
+        var mods = new List<ModEntry> { CatMod("W1", "Weapons", "w1"), CatMod("F1", "Bug Fixes", "f1"), CatMod("G1", "Gameplay", "g1"), CatMod("F2", "Bug Fixes", "f2") };
+        var baseline = new List<string> { "W1", "F1", "G1", "F2" };
+        var noPreds = new Dictionary<string, HashSet<string>>();
+
+        var built = PriorityOrder.Build("t", mods, baseline, noPreds, scheme);
+        var (entries, rep) = PriorityOrder.Apply(built, mods, baseline, noPreds);
+        string Flat(IEnumerable<PriorityOrder.Entry> e) => J(e.Select(x => x.IsSeparator ? $"[{x.Name}]" : x.Name));
+        Check("structure: mods grouped under ordered separators", Flat(entries) == "[Fixes] | F1 | F2 | [Gameplay] | G1 | [Weapons] | W1", Flat(entries));
+        Check("structure: nothing moves without constraints", rep.PushedLater == 0 && rep.Unplaced == 0);
+
+        // F2 must deploy after W1 (file conflict / rule): it can only get there by joining the later separator
+        var preds = new Dictionary<string, HashSet<string>> { ["F2"] = ["W1"] };
+        var built2 = PriorityOrder.Build("t", mods, baseline, preds, scheme);
+        var (e2, r2) = PriorityOrder.Apply(built2, mods, baseline, preds);
+        var f = Flat(e2);
+        Check("structure: constraint pushes the later mod into a later separator, never flips the winner",
+            f.IndexOf("W1", StringComparison.Ordinal) < f.IndexOf("F2", StringComparison.Ordinal) && built2.Separators[2].Mods.Any(m => m.Name == "F2"), f);
+
+        // a mod the shipped file does not know goes to its category's separator
+        var withNew = new List<ModEntry>(mods) { CatMod("G2", "Gameplay", "g2") };
+        var (e3, r3) = PriorityOrder.Apply(built, withNew, [.. baseline, "G2"], noPreds);
+        Check("structure: unknown mod is placed by category", Flat(e3).Contains("[Gameplay] | G1 | G2") && r3.Unplaced == 1, Flat(e3));
+
+        // end to end through the profile writer (a shipped order for addon id 'ordtest' next to the app)
+        var orderDir = Path.Combine(AppContext.BaseDirectory, "order"); Directory.CreateDirectory(orderDir);
+        var shippedPath = Path.Combine(orderDir, "ordtest.priority.json");
+        try
+        {
+            var built3 = PriorityOrder.Build("ordtest", mods, baseline, noPreds, scheme);
+            PriorityOrder.Save(built3, shippedPath);
+            var addon = new AddonManifest { AddonId = "ordtest", Mods = mods };
+            var plan = new ManifestResolver().Resolve([addon]);
+            Mo2InstanceWriter.WriteLoadFiles(dir, plan);
+            var lines = File.ReadAllLines(Path.Combine(dir, "profiles", "A StoryWealth", "modlist.txt")).Where(l => !l.StartsWith('#')).ToArray();
+            Check("each separator has its MO2 mod folder + meta.ini (else MO2 drops it)",
+                new[] { "Fixes", "Gameplay", "Weapons" }.All(n => File.Exists(Path.Combine(dir, "mods", n + "_separator", "meta.ini"))));
+            Check("modlist.txt carries MO2 separators (highest priority first)",
+                J(lines) == "+W1 | -Weapons_separator | +G1 | -Gameplay_separator | +F2 | +F1 | -Fixes_separator", J(lines));
+            Mo2InstanceWriter.WriteLoadFiles(dir, plan);   // rerun must not duplicate separators
+            var again = File.ReadAllLines(Path.Combine(dir, "profiles", "A StoryWealth", "modlist.txt")).Where(l => !l.StartsWith('#')).ToArray();
+            Check("separators are not duplicated on rerun", J(again) == J(lines), J(again));
+        }
+        finally { try { File.Delete(shippedPath); } catch { } }
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- hash-guided layout repair
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

@@ -11,4 +11,9 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- shipped structured priority orders (see PriorityOrder.LoadShipped) -->
+    <EmbeddedResource Include="Data/*.priority.json" />
+  </ItemGroup>
+
 </Project>

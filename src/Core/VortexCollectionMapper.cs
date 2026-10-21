@@ -65,6 +65,9 @@ public static class VortexCollectionMapper
             entry.InstallAs = $"A Storywealth - {modName}";
             entry.LegacyInstallAs.Add($"aSW AStorywealth - {modName}");
             entry.LegacyInstallAs.Add($"aSW {Pascalize(addonId)} - {modName}");
+            if (m.TryGetProperty("details", out var det2) && det2.ValueKind == JsonValueKind.Object
+                && det2.TryGetProperty("category", out var cat) && cat.ValueKind == JsonValueKind.String)
+                entry.Category = cat.GetString();
             if (m.TryGetProperty("phase", out var ph) && ph.ValueKind == JsonValueKind.Number)
                 entry.Phase = ph.GetInt32();
             entry.LogicalFileName =

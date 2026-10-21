@@ -109,6 +109,9 @@ public sealed class ModEntry
     /// when no md5 is given.</summary>
     [JsonPropertyName("logicalFileName")] public string? LogicalFileName { get; set; }
 
+    /// <summary>Nexus category from the collection (details.category), e.g. "Armour"; used to place the mod in a priority-order separator.</summary>
+    [JsonPropertyName("category")] public string? Category { get; set; }
+
     /// <summary>Raw Vortex collection "choices" JSON for FOMOD mods (type "fomod");
     /// null for plain mods. Consumed by FomodResolver at materialization.</summary>
     [JsonPropertyName("choicesJson")] public string? ChoicesJson { get; set; }

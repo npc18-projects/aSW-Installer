@@ -52,6 +52,25 @@ public static class DeployOrder
         return Sort(nodes, known, rules);
     }
 
+    /// <summary>The before/after modRules as (earlier, later) install-folder pairs — "later" deploys
+    /// over "earlier". Rules whose endpoints are not in <paramref name="known"/> are dropped.</summary>
+    public static List<(string Earlier, string Later)> RuleEdges(IReadOnlyList<ModEntry> known, IReadOnlyList<ModRule> rules)
+    {
+        var resolver = new RefResolver(known);
+        var edges = new List<(string, string)>();
+        foreach (var r in rules)
+        {
+            if (r.Type is not ("before" or "after")) continue;
+            var src = resolver.Resolve(r.Source);
+            var rf = resolver.Resolve(r.Reference);
+            foreach (var s in src)
+                foreach (var t in rf)
+                    if (!s.Equals(t, StringComparison.OrdinalIgnoreCase))
+                        edges.Add(r.Type == "after" ? (t, s) : (s, t));
+        }
+        return edges;
+    }
+
     public static (List<string> Order, Report Report) Sort(
         IReadOnlyList<Node> nodes, IReadOnlyList<ModEntry> known, IReadOnlyList<ModRule> rules)
     {
