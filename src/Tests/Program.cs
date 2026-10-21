@@ -183,6 +183,41 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
         var (e3, r3) = PriorityOrder.Apply(built, withNew, [.. baseline, "G2"], noPreds);
         Check("structure: unknown mod is placed by category", Flat(e3).Contains("[Gameplay] | G1 | G2") && r3.Unplaced == 1, Flat(e3));
 
+        // dependency-aware placement: a patch / BodySlide set follows the mod it requires, inside that mod's separator
+        {
+            var m2 = new List<ModEntry>
+            {
+                CatMod("Zeta Rifle", "Weapons", "z1"),                      // parent (sorts last alphabetically)
+                CatMod("Alpha Pistol", "Weapons", "a1"),
+                CatMod("Zeta Rifle - Compat Patch", "Patches", "z2"),       // plugin master => Zeta Rifle
+                CatMod("Zeta Rifle BodySlide Files", "Armour", "z3"),       // BodySlide-only, name match => Zeta Rifle
+            };
+            var bl = new List<string> { "Zeta Rifle - Compat Patch", "Alpha Pistol", "Zeta Rifle BodySlide Files", "Zeta Rifle" };
+            var sig = new ModSignals();
+            sig.Provider["Zeta.esp"] = "Zeta Rifle"; sig.HasPlugin.Add("Zeta Rifle");
+            sig.Masters["Zeta Rifle - Compat Patch"] = new(StringComparer.OrdinalIgnoreCase) { "Zeta.esp" }; sig.HasPlugin.Add("Zeta Rifle - Compat Patch");
+            sig.BodySlide.Add("Zeta Rifle BodySlide Files");
+            var sch = new List<SeparatorDef>
+            {
+                new() { Name = "Armour", Categories = ["Armour"] },
+                new() { Name = "Weapons", Categories = ["Weapons"] },
+                new() { Name = "Patches", Categories = ["Patches"] },
+            };
+            var b = PriorityOrder.Build("t", m2, bl, new Dictionary<string, HashSet<string>>(), sch, sig);
+            var (en, _) = PriorityOrder.Apply(b, m2, bl, new Dictionary<string, HashSet<string>>());
+            Check("children follow their parent, in the parent's separator",
+                Flat(en) == "[Weapons] | Alpha Pistol | Zeta Rifle | Zeta Rifle BodySlide Files | Zeta Rifle - Compat Patch", Flat(en));
+            Check("child records its parent", b.Separators[1].Mods.Count(x => x.Parent == "Zeta Rifle") == 2);
+
+            // a real constraint (the patch must deploy BEFORE its parent) beats the parent-first preference
+            var pinned = new Dictionary<string, HashSet<string>> { ["Zeta Rifle"] = ["Zeta Rifle - Compat Patch"] };
+            var b2 = PriorityOrder.Build("t", m2, bl, pinned, sch, sig);
+            var (en2, _) = PriorityOrder.Apply(b2, m2, bl, pinned);
+            var f2 = Flat(en2);
+            Check("a conflict that needs the child first is honoured", f2.IndexOf("Compat Patch", StringComparison.Ordinal) < f2.IndexOf("Zeta Rifle |", StringComparison.Ordinal)
+                || f2.IndexOf("Compat Patch", StringComparison.Ordinal) < f2.LastIndexOf("Zeta Rifle", StringComparison.Ordinal), f2);
+        }
+
         // end to end through the profile writer (a shipped order for addon id 'ordtest' next to the app)
         var orderDir = Path.Combine(AppContext.BaseDirectory, "order"); Directory.CreateDirectory(orderDir);
         var shippedPath = Path.Combine(orderDir, "ordtest.priority.json");

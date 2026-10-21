@@ -187,6 +187,33 @@ public static partial class Mo2InstanceWriter
     /// MO2 separators are mod folders (mods/&lt;Name&gt;_separator/meta.ini), not just lines in modlist.txt:
     /// a line without its folder is silently dropped the next time MO2 saves the profile.
     /// </summary>
+    public const string SeparatorMarker = "aSW-installer-separator";
+
+    /// <summary>True for a separator folder this installer created (marker in meta.ini, or the fixed timestamp the
+    /// first version wrote), so a user's own separators are never touched.</summary>
+    public static bool IsInstallerSeparator(string instanceDir, string separatorName)
+    {
+        try
+        {
+            var meta = Path.Combine(instanceDir, "mods", SafeName(separatorName, "separator"), "meta.ini");
+            if (!File.Exists(meta)) return false;
+            var text = File.ReadAllText(meta);
+            return text.Contains(SeparatorMarker, StringComparison.Ordinal) || text.Contains("nexusLastModified=2024-01-01T00:00:00Z", StringComparison.Ordinal);
+        }
+        catch { return false; }
+    }
+
+    /// <summary>Deletes the folders of separators this installer made earlier that the current order no longer uses.</summary>
+    public static void RemoveStaleSeparators(string instanceDir, IEnumerable<string> staleNames)
+    {
+        foreach (var name in staleNames)
+        {
+            if (!IsInstallerSeparator(instanceDir, name)) continue;
+            try { InstallRunner.DeleteTree(Path.Combine(instanceDir, "mods", SafeName(name, "separator"))); }
+            catch (Exception ex) { InstallLog.Warn("mo2", $"could not remove stale separator '{name}': {ex.Message}"); }
+        }
+    }
+
     public static void WriteSeparatorFolders(string instanceDir, IEnumerable<string> separatorNames)
     {
         foreach (var name in separatorNames)
@@ -197,7 +224,7 @@ public static partial class Mo2InstanceWriter
             if (File.Exists(meta)) continue;
             File.WriteAllText(meta,
                 "[General]\nmodid=0\nversion=\nnewestVersion=\ncategory=\"-1,\"\ninstallationFile=\nrepository=Nexus\n"
-                + "gameName=Fallout4\ncomments=\nnotes=\nnexusDescription=\nurl=\nhasCustomURL=true\nnexusFileStatus=1\n"
+                + "gameName=Fallout4\ncomments=\nnotes=" + SeparatorMarker + "\nnexusDescription=\nurl=\nhasCustomURL=true\nnexusFileStatus=1\n"
                 + "lastNexusQuery=\nlastNexusUpdate=\nnexusLastModified=2024-01-01T00:00:00Z\nnexusCategory=0\n"
                 + "converted=false\nvalidated=false\ntracked=0\n\n[installedFiles]\nsize=0\n",
                 new System.Text.UTF8Encoding(false));

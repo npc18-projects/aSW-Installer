@@ -110,6 +110,19 @@ public static partial class Mo2InstanceWriter
         var shipped = addons.Count == 1 ? PriorityOrder.LoadShipped(addons[0].AddonId) : null;
         var ownSeparators = new HashSet<string>(
             (shipped?.Separators ?? []).Select(s => s.Name + SeparatorSuffix), StringComparer.OrdinalIgnoreCase);
+        if (shipped is not null)
+        {
+            // separators an earlier version of the order created that the current one no longer has
+            var stale = existing.Where(e => e.Name.EndsWith(SeparatorSuffix, StringComparison.Ordinal)
+                && !ownSeparators.Contains(e.Name) && IsInstallerSeparator(instanceDir, e.Name)).Select(e => e.Name).ToList();
+            if (stale.Count > 0)
+            {
+                InstallLog.Info("mo2", $"removing {stale.Count} outdated installer separator(s): {string.Join(", ", stale.Select(s => s[..^SeparatorSuffix.Length]))}");
+                RemoveStaleSeparators(instanceDir, stale);
+                var gone = new HashSet<string>(stale, StringComparer.OrdinalIgnoreCase);
+                existing = existing.Where(e => !gone.Contains(e.Name)).ToList();
+            }
+        }
         existing = existing.Where(e => !ownSeparators.Contains(e.Name)).ToList();
         var state = existing.ToDictionary(e => e.Name, e => e.Prefix, StringComparer.OrdinalIgnoreCase);
 
