@@ -15,6 +15,7 @@
     <!-- shipped structured priority orders (see PriorityOrder.LoadShipped) -->
     <EmbeddedResource Include="Data/*.priority.json" />
     <EmbeddedResource Include="Data/*.optional.json" />
+    <EmbeddedResource Include="Data/addon-options.json" />
   </ItemGroup>
 
 </Project>

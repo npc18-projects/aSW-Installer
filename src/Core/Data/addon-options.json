@@ -1,0 +1,15 @@
+{
+  "Schema": 1,
+  "Note": "Curated facts the collections cannot express: which other add-on (slug) or base group an optional mod needs. The Optional tab greys an option out until that is installed. Seeded only from instructions the collection authors wrote. Override with <app>/order/addon-options.json. Add-on slugs: yilurh = Thuggyverse, yisqmu = Arms & Armaments, 0shihl = Faction.",
+  "Names": { "yilurh": "Thuggyverse", "yisqmu": "Arms & Armaments", "0shihl": "Faction" },
+  "Entries": [
+    { "Addon": "wrbrop", "Name": "Project Valkyrie", "Md5": "a0791cb8b0b466346530de087c127d70", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "" },
+    { "Addon": "wrbrop", "Name": "Outcasts and Remnants - Quest Mod Plus", "Md5": "0e3aa1fbbfb4a674d3f9cc7a0527729e", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "" },
+    { "Addon": "wrbrop", "Name": "Depravity - A Harmless Bit of Fun", "Md5": "819c3aca7b05cb4ab30af851fcaceceb", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "" },
+    { "Addon": "wrbrop", "Name": "YAE Utiltiy Workbench Arms Armaments", "Md5": "63556e6eb80af26ea76879bf16373a61", "NeedsAddons": ["yisqmu"], "NeedsGroups": [], "Note": "" },
+    { "Addon": "wrbrop", "Name": "Sim Settlements 2", "Md5": "c56f05ab18eac14f5ec2a53046cdabcd", "NeedsAddons": [], "NeedsGroups": ["ss2"], "Note": "" },
+    { "Addon": "7ix5ur", "Name": "Automatron Overdrive Faction Patch", "Md5": "cfdda84b584245b106673a62bf2bb567", "NeedsAddons": ["0shihl"], "NeedsGroups": [], "Note": "" },
+    { "Addon": "m2sx7d", "Name": "SP OaR Quest Edits v1.01", "Md5": "3848d4326de893b5ffef7214183b2348", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "For the Outcasts and Remnants quest line (part of the Thuggyverse add-on)." },
+    { "Addon": "m2sx7d", "Name": "SP Depravity Quest Edits v1.00", "Md5": "56581d8e666bafd37cbe2526a9249449", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "For the Depravity quest line (part of the Thuggyverse add-on)." }
+  ]
+}

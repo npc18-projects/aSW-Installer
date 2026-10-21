@@ -63,6 +63,9 @@ public static class VortexCollectionMapper
             var modName = SanitizeFolder(m.TryGetProperty("logicalFilename", out var lf) && lf.ValueKind == JsonValueKind.String
                 ? lf.GetString()! : m.GetProperty("name").GetString()!);
             entry.InstallAs = $"A Storywealth - {modName}";
+            entry.DisplayName = m.TryGetProperty("name", out var dn) && dn.ValueKind == JsonValueKind.String ? dn.GetString()! : modName;
+            if (m.TryGetProperty("instructions", out var ins) && ins.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(ins.GetString()))
+                entry.Instructions = ins.GetString()!.Trim();
             entry.LegacyInstallAs.Add($"aSW AStorywealth - {modName}");
             entry.LegacyInstallAs.Add($"aSW {Pascalize(addonId)} - {modName}");
             if (m.TryGetProperty("details", out var det2) && det2.ValueKind == JsonValueKind.Object

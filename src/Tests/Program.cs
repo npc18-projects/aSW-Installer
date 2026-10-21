@@ -389,6 +389,54 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { File.Delete(shippedPath); } catch { } try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- optional tab: what is listed, greyed out, installed; and the runs it asks for
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        string Coll(string name, params (string Name, string Md5, bool Opt, string? Ins)[] mods) =>
+            $$"""{"info":{"name":"{{name}}"},"mods":[{{string.Join(",", mods.Select((m, i) =>
+                $$"""{"name":"{{m.Name}}","version":"1","optional":{{(m.Opt ? "true" : "false")}},"domainName":"fallout4","source":{"type":"nexus","modId":{{i + 1}},"fileId":{{i + 1}},"md5":"{{m.Md5}}","fileSize":1000000},"phase":0{{(m.Ins is null ? "" : $$""","instructions":"{{m.Ins}}" """)}} }"""))}}]}""";
+        var baseJson = Path.Combine(dir, "base.json");
+        File.WriteAllText(baseJson, Coll("Base", ("Base Mod", "b1", false, null), ("Base Extra", "b2", true, "Only if you want it")));
+        var yaeJson = Path.Combine(dir, "wrbrop.json");
+        File.WriteAllText(yaeJson, Coll("YAE", ("YAE Core", "y1", false, null),
+            ("Project Valkyrie", "a0791cb8b0b466346530de087c127d70", true, "Install if you have the thuggyverse addon"),
+            ("Some AMD Patch", "y3", true, "Use if you have an AMD Graphics Card"),
+            ("Done Already", "y4", true, null)));
+        Directory.CreateDirectory(Path.Combine(dir, "mods", "A Storywealth - Done Already"));
+        AddonRegistry.Save(dir, new AddonRegistryFile
+        {
+            Addons = [new InstalledAddon { Id = "wrbrop", Name = "aSW - YAE Deluxe", Revision = "r16", Separator = "aSW - YAE Deluxe" }],
+        });
+        var items = OptionalCatalog.Build(dir, baseJson, a => a.Id == "wrbrop" ? yaeJson : null);
+        OptionalItem Find(string n) => items.First(i => i.Name == n);
+        Check("only installed sources are listed (base + the one add-on)", items.Select(i => i.SourceId).Distinct().OrderBy(x => x).SequenceEqual(["base", "wrbrop"]), J(items.Select(i => i.SourceId + ":" + i.Name)));
+        Check("a base optional mod is offered with the author's note", Find("Base Extra").State == OptionState.Available && Find("Base Extra").Instruction.Contains("Only if you want it"));
+        var pv = Find("Project Valkyrie");
+        Check("an option that needs another add-on is greyed out with the reason", pv.State == OptionState.NotApplicable && pv.Reason == "Needs the Thuggyverse add-on", pv.Reason);
+        Check("a hardware note is shown and the option stays selectable (no GPU check)", Find("Some AMD Patch").State == OptionState.Available && Find("Some AMD Patch").Instruction.Contains("AMD"));
+        Check("an option already on disk is marked installed", Find("Done Already").State == OptionState.Installed);
+        // once the required add-on is installed the option applies
+        AddonRegistry.Save(dir, new AddonRegistryFile { Addons = [new InstalledAddon { Id = "wrbrop", Name = "YAE", Revision = "r16" }, new InstalledAddon { Id = "yilurh", Name = "Thuggyverse", Revision = "r9" }] });
+        Check("…and becomes available when that add-on is installed", OptionalCatalog.Build(dir, baseJson, a => a.Id == "wrbrop" ? yaeJson : null).First(i => i.Name == "Project Valkyrie").State == OptionState.Available);
+        // runs: base first, then add-ons; group rows become groups, mods become md5s
+        var jobs = OptionalCatalog.Jobs([Find("Some AMD Patch"), Find("Base Extra")], baseJson);
+        Check("jobs: base list first, then the add-on, each with its md5s",
+            jobs.Count == 2 && jobs[0].SourceId == "base" && jobs[0].Md5s.SequenceEqual(["b2"]) && jobs[1].SourceId == "wrbrop" && jobs[1].Md5s.SequenceEqual(["y3"]), J(jobs.Select(j => j.SourceId)));
+        Check("an installed or greyed-out row never makes a job", OptionalCatalog.Jobs([Find("Done Already"), pv], baseJson).Count == 0);
+        // picks are remembered per source and survive a registry rewrite
+        AddonRegistry.RecordOptional(dir, "wrbrop", ["y3"]);
+        AddonRegistry.RecordOptional(dir, null, ["b2"], ["ss2"]);
+        var reg2 = AddonRegistry.Load(dir);
+        Check("optional picks and base groups are recorded", AddonRegistry.OptionalFor(reg2, "wrbrop").SequenceEqual(["y3"]) && reg2.BaseOptional.SequenceEqual(["b2"]) && reg2.BaseGroups!.SequenceEqual(["ss2"]));
+        AddonRegistry.Upsert(dir, new InstalledAddon { Id = "wrbrop", Name = "YAE", Revision = "r17" });
+        Check("re-recording the add-on keeps its optional picks", AddonRegistry.OptionalFor(AddonRegistry.Load(dir), "wrbrop").SequenceEqual(["y3"]));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- hash-guided layout repair
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

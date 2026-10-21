@@ -100,6 +100,8 @@ public sealed class ModEntry
     /// <summary>sha256 hex (64 chars) — verified post-download when present.</summary>
     [JsonPropertyName("hash")] public string? Sha256 { get; set; }
     [JsonPropertyName("installAs")] public string InstallAs { get; set; } = "";
+    /// <summary>The mod's name as the collection lists it (what a person would recognise); InstallAs is the folder name.</summary>
+    [JsonPropertyName("displayName")] public string DisplayName { get; set; } = "";
 
     /// <summary>Vortex install phase. Lower phases install (and so deploy) first;
     /// the baseline for deploy order before modRules are applied.</summary>

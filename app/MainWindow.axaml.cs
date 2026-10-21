@@ -117,7 +117,7 @@ public partial class MainWindow : Window
                 bmp.Render(this);
                 bmp.Save(Path.Combine(dir, name + ".png"));
             }
-            string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail"];
+            string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail", "optional"];
             for (var i = 0; i < names.Length; i++)
             {
                 if (i == 6) { StartAddonGrab(); for (var tries = 0; tries < 60 && _liveAddons is null; tries++) await Task.Delay(500); await Task.Delay(1500); }
@@ -243,12 +243,12 @@ public partial class MainWindow : Window
 
     private void ShowPage(int page)
     {
-        Control[] pages = [PageModlist, PageSetup, PageNexus, PageInstall, PageDone, PageDetail, PageAddons, PageSettings, PageAddonDetail];
+        Control[] pages = [PageModlist, PageSetup, PageNexus, PageInstall, PageDone, PageDetail, PageAddons, PageSettings, PageAddonDetail, PageOptionalTab];
         for (var i = 0; i < pages.Length; i++) pages[i].IsVisible = i == page;
 
         // left rail: Modlist(0) / Add-Ons(6) / Settings(7)
         Nav.SelectionChanged -= OnNavChanged;
-        Nav.SelectedIndex = page is 6 or 8 ? 1 : page == 7 ? 2 : 0;
+        Nav.SelectedIndex = page is 6 or 8 ? 1 : page == 9 ? 2 : page == 7 ? 3 : 0;
         Nav.SelectionChanged += OnNavChanged;
 
         // wizard step bar only during an install flow.
@@ -257,6 +257,7 @@ public partial class MainWindow : Window
         var step = page switch { 0 => 0, 1 => 1, 2 or 3 => 2, 4 => 3, _ => -1 };
         for (var i = 0; i < steps.Length; i++) steps[i].IsChecked = i == step;
         if (page == 6) { StartAddonGrab(); RefreshAddons(); }
+        if (page == 9) RefreshOptionalTab();
     }
 
     /// <summary>Auto-discovers add-on collections (GraphQL listing only, no archive downloads).</summary>
@@ -290,7 +291,7 @@ public partial class MainWindow : Window
     private void OnNavChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (PageModlist is null) return; // still in InitializeComponent
-        ShowPage(Nav.SelectedIndex switch { 1 => 6, 2 => 7, _ => 0 });
+        ShowPage(Nav.SelectedIndex switch { 1 => 6, 2 => 9, 3 => 7, _ => 0 });
     }
 
     private void EnableNav(int upTo)
@@ -1105,27 +1106,137 @@ public partial class MainWindow : Window
         if (folders.Count > 0) TxtWatchDir.Text = folders[0].Path.LocalPath;
     }
 
+    // ---------- page 9: optional content ----------
+
+    private readonly Queue<OptionalJob> _jobQueue = new();
+    private OptionalJob? _currentJob;
+    private bool _runOk;
+    private readonly List<(CheckBox Box, OptionalItem Item)> _optRows = [];
+
+    /// <summary>collection.json of an installed add-on: the copy kept in the instance, else the app's cache.</summary>
+    private string? AddonCollectionFile(InstalledAddon a)
+    {
+        if (InstallState.GetInstallDir() is { } dir)
+        {
+            var kept = Path.Combine(dir, ".asw", a.Id + ".collection.json");
+            if (File.Exists(kept)) return kept;
+        }
+        var cached = Path.Combine(SyncCacheDir, "collections", a.Id, "r" + a.Revision.TrimStart('r'), "collection.json");
+        return File.Exists(cached) ? cached : null;
+    }
+
+    private async void RefreshOptionalTab()
+    {
+        PanelOptTab.Children.Clear();
+        _optRows.Clear();
+        BtnOptInstall.IsEnabled = false;
+        TxtOptSummary.Text = "";
+        var dir = InstallState.GetInstallDir();
+        if (dir is null || _collectionPath is null)
+        {
+            TxtOptEmpty.Text = "Install A StoryWealth first. Its optional content, and that of the add-ons you install, will be listed here.";
+            return;
+        }
+        TxtOptEmpty.Text = "Loading…";
+        var baseJson = _collectionPath;
+        var names = _liveAddons?.ToDictionary(c => c.Slug, c => c.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        List<OptionalItem> items;
+        try { items = await Task.Run(() => OptionalCatalog.Build(dir, baseJson, AddonCollectionFile, s => names.GetValueOrDefault(s) ?? AddonOptions.NameOf(s))); }
+        catch (Exception ex)
+        {
+            InstallLog.Error("ui", $"optional list failed: {ex.Message}");
+            TxtOptEmpty.Text = "Couldn't read the optional content list. The details are in the log.";
+            return;
+        }
+        TxtOptEmpty.Text = items.Count == 0 ? "There is no optional content to choose from yet." : "";
+        var grey = new SolidColorBrush(Color.Parse("#7A828E"));
+        foreach (var src in items.GroupBy(i => i.SourceId))
+        {
+            var head = new TextBlock { Text = src.First().SourceName, Margin = new Avalonia.Thickness(0, 16, 0, 4) };
+            head.Classes.Add("h2");
+            PanelOptTab.Children.Add(head);
+            foreach (var it in src)
+            {
+                var label = it.GroupId.Length > 0 ? $"{it.Name}  ·  {it.ModCount} mods, {SizeText(it.Bytes)}"
+                    : it.Bytes > 0 ? $"{it.Name}  ·  {SizeText(it.Bytes)}" : it.Name;
+                var box = new CheckBox { Content = label, IsChecked = it.State == OptionState.Installed, IsEnabled = it.State == OptionState.Available };
+                box.IsCheckedChanged += (_, _) => UpdateOptSummary();
+                var note = string.Join("  ", new[] { it.State == OptionState.Installed ? "Installed." : null, it.Reason.Length > 0 ? it.Reason + "." : null, it.Instruction }
+                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+                var row = new StackPanel { Opacity = it.State == OptionState.NotApplicable ? 0.45 : 1 };
+                row.Children.Add(box);
+                if (note.Length > 0)
+                    row.Children.Add(new TextBlock { Text = note, FontSize = 12, Foreground = grey, TextWrapping = TextWrapping.Wrap, Margin = new Avalonia.Thickness(28, -2, 0, 8) });
+                PanelOptTab.Children.Add(row);
+                _optRows.Add((box, it));
+            }
+        }
+        UpdateOptSummary();
+    }
+
+    private void UpdateOptSummary()
+    {
+        var ticked = _optRows.Where(r => r.Box.IsChecked == true && r.Item.State == OptionState.Available).Select(r => r.Item).ToList();
+        BtnOptInstall.IsEnabled = ticked.Count > 0 && !_installing;
+        TxtOptSummary.Text = ticked.Count == 0 ? "" : $"{ticked.Count} selected  ·  {SizeText(ticked.Sum(i => i.Bytes))} to download";
+    }
+
+    private void OnOptInstall(object? sender, RoutedEventArgs e)
+    {
+        if (_installing || _collectionPath is null) return;
+        if (InstallState.GetResume() is not null)
+        {
+            TxtOptSummary.Text = "An earlier install is unfinished. Open Modlist and resume it first.";
+            return;
+        }
+        var ticked = _optRows.Where(r => r.Box.IsChecked == true && r.Item.State == OptionState.Available).Select(r => r.Item).ToList();
+        var jobs = OptionalCatalog.Jobs(ticked, _collectionPath);
+        if (jobs.Count == 0) return;
+        foreach (var j in jobs) _jobQueue.Enqueue(j);
+        TxtInstallDir.Text = InstallState.GetInstallDir() ?? InstallState.GetLastDir() ?? TxtInstallDir.Text;
+        ClearInstallPage();
+        ShowPage(3);
+        _ = StartInstallAsync();
+    }
+
     private async Task StartInstallAsync()
     {
         if (_installing) return; // re-entrancy guard: no double installs, _cts stays valid
         _installing = true;
         SetRunning(true);
-        try { await RunInstallAsync(); }
+        try
+        {
+            // Optional-tab installs queue one run per source (base list first, then each add-on); a failed run drops the rest.
+            do
+            {
+                _runOk = false;
+                if (_currentJob is null && _jobQueue.Count > 0) _currentJob = _jobQueue.Dequeue();
+                await RunInstallAsync();
+            }
+            while (_runOk && _jobQueue.Count > 0);
+            if (!_runOk) _jobQueue.Clear();
+        }
         finally { _installing = false; SetRunning(false); }
     }
 
     private async Task RunInstallAsync()
     {
+        var job = _currentJob;
+        _currentJob = null;
         // Audit H1: refresh the checkpoint from disk — it advances during a run,
         // and Retry must pick up the runner's latest state, not a stale capture.
-        _resume = InstallState.GetResume();
+        _resume = job is null ? InstallState.GetResume() : null;
         var resuming = _resume is not null;
         if (resuming) { _resumeJsonPath = _resume!.JsonPath; _resumeAddonId = _resume.AddonId; }
         var dir = TxtInstallDir.Text!;
-        var jsonPath = resuming ? _resumeJsonPath! : _addonInstall ? _addonJsonPath! : _collectionPath!;
-        var installId = resuming ? _resumeAddonId! : _addonInstall ? _addonDetailCard!.Slug : AddonId;
-        var baseForAddon = !resuming && _addonInstall ? _collectionPath : null;   // add-on runs anchor on the installed base list
+        var jobIsBase = job?.SourceId == OptionalCatalog.BaseId;
+        var jsonPath = resuming ? _resumeJsonPath! : job is not null ? job.JsonPath : _addonInstall ? _addonJsonPath! : _collectionPath!;
+        var installId = resuming ? _resumeAddonId! : job is not null ? (jobIsBase ? AddonId : job.SourceId) : _addonInstall ? _addonDetailCard!.Slug : AddonId;
+        // add-on runs anchor on the installed base list
+        var baseForAddon = !resuming && (job is not null ? !jobIsBase : _addonInstall) ? _collectionPath : null;
         _addonInstall = false;
+        if (job is not null) InstallLog.Info("ui", $"optional content for {job.SourceName}: {job.Md5s.Count} mod(s), groups [{string.Join(", ", job.Groups)}]");
         ResetRunState();
         TxtPhase.Text = "Starting…";
         _cts = new CancellationTokenSource();
@@ -1167,20 +1278,27 @@ public partial class MainWindow : Window
             // thread-affine and Task.Run below runs on a worker thread.
             var dlThreads = (int)(NudDownloadThreads.Value ?? 1);
             var exThreads = (int)(NudExtractThreads.Value ?? 1);
-            var optionalGroups = SelectedGroups();
+            // base-list job: the groups already installed plus the ones just ticked; anything else follows the Setup boxes
+            var optionalGroups = jobIsBase
+                ? (AddonRegistry.Load(dir).BaseGroups ?? AStoryWealth.Core.OptionalGroups.Defaults(AStoryWealth.Core.OptionalGroups.Load(AddonId)))
+                    .Concat(job!.Groups).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                : SelectedGroups();
             var watchDir = string.IsNullOrWhiteSpace(TxtWatchDir.Text) ? null : TxtWatchDir.Text.Trim();
             await Task.Run(() => runner.RunAsync(jsonPath, installId, _apiKey!, dir,
                 gamePath ?? "", progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
                 downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups,
-                manualWatchDir: watchDir, baseCollectionJsonPath: baseForAddon));
+                manualWatchDir: watchDir, baseCollectionJsonPath: baseForAddon, optionalMods: job?.Md5s));
             _resume = null;
             ApplyResumeGroups();
             _installedDir = dir;
             InstallState.SetInstallDir(dir);
-            TxtDone.Text = "All done! A StoryWealth is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run. The game has to start through F4SE.";
+            TxtDone.Text = job is not null
+                ? "The optional content you picked is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run."
+                : "All done! A StoryWealth is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run. The game has to start through F4SE.";
             EnableNav(3);
-            ShowPage(4);
+            _runOk = true;
+            if (_jobQueue.Count == 0) ShowPage(4);
         }
         catch (OperationCanceledException)
         {

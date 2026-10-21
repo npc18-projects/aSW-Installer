@@ -115,6 +115,7 @@
                 <ListBox x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged">
                     <ListBoxItem Classes="navItem" IsSelected="True">Modlist</ListBoxItem>
                     <ListBoxItem x:Name="NavItemAddons" Classes="navItem" IsEnabled="False">Add-Ons</ListBoxItem>
+                    <ListBoxItem x:Name="NavItemOptional" Classes="navItem">Optional</ListBoxItem>
                     <ListBoxItem Classes="navItem">Settings</ListBoxItem>
                 </ListBox>
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,16" Spacing="4">
@@ -234,6 +235,24 @@
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- PAGE 9: Optional content (base + installed add-ons) -->
+            <Grid x:Name="PageOptionalTab" Background="#121519" IsVisible="False" RowDefinitions="*,Auto">
+                <ScrollViewer Grid.Row="0">
+                    <StackPanel Margin="36,28,36,12" Spacing="12" MaxWidth="900" HorizontalAlignment="Left">
+                        <TextBlock Classes="h1">Optional Content</TextBlock>
+                        <TextBlock Classes="sub" TextWrapping="Wrap">Extra mods from A StoryWealth and the add-ons you installed. Greyed-out options need something you haven't installed yet. Read each note: some depend on your hardware (such as AMD patches) or on Creation Club content you own.</TextBlock>
+                        <StackPanel x:Name="PanelOptTab" Spacing="4"/>
+                        <TextBlock x:Name="TxtOptEmpty" Classes="sub" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+                <Border Grid.Row="1" Background="#171A20" Padding="36,12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock x:Name="TxtOptSummary" VerticalAlignment="Center" Foreground="#B8BEC9" TextWrapping="Wrap" Margin="0,0,20,0"/>
+                        <Button Grid.Column="1" x:Name="BtnOptInstall" Classes="primary" MinWidth="170" Click="OnOptInstall" IsEnabled="False">Install selected</Button>
+                    </Grid>
+                </Border>
+            </Grid>
 
             <!-- PAGE 7: Settings -->
             <ScrollViewer x:Name="PageSettings" Background="#121519" IsVisible="False">

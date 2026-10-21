@@ -54,7 +54,8 @@ public sealed class InstallRunner
         CancellationToken ct = default, bool stockGame = false, string? reuseDir = null,
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
         int downloadThreads = 0, int extractThreads = 0, IReadOnlyCollection<string>? optionalGroups = null,
-        string? manualWatchDir = null, string? baseCollectionJsonPath = null)
+        string? manualWatchDir = null, string? baseCollectionJsonPath = null,
+        IReadOnlyCollection<string>? optionalMods = null)
     {
         InstallLog.Init(instanceDir);
         InstallLog.Info("auth", "validating Nexus account...");
@@ -66,7 +67,7 @@ public sealed class InstallRunner
         var optGroups = OptionalGroups.Load(addonId);
         var selectedGroups = (optionalGroups ?? OptionalGroups.Defaults(optGroups)).ToList();
         resume ??= new InstallState.ResumeInfo(collectionJsonPath, addonId, instanceDir, gamePath,
-            stockGame, reuseDir, downloadsDir, [], [], false, OptionalGroups: selectedGroups, BaseJsonPath: baseCollectionJsonPath);
+            stockGame, reuseDir, downloadsDir, [], [], false, OptionalGroups: selectedGroups, BaseJsonPath: baseCollectionJsonPath, OptionalMods: optionalMods?.ToList());
         baseCollectionJsonPath ??= resume.BaseJsonPath;   // a resumed add-on run keeps its base list
         selectedGroups = resume.OptionalGroups ?? selectedGroups;   // a resumed run keeps the choice it started with
         InstallState.SetResume(resume);
@@ -183,6 +184,15 @@ public sealed class InstallRunner
         // Downgrader first so the downgrade can run while the rest downloads.
         var installable = manifest.Mods.Where(m => !m.IsAnchor).ToList();   // anchors are already on disk
         var excludedMods = OptionalGroups.Excluded(installable, optGroups, selectedGroups);
+        // Optional mods the user picked (now, on an earlier run, or before a resume) are installed even though their group or
+        // the collection's "optional" flag would leave them out.
+        var pickedOptional = new HashSet<string>(
+            (optionalMods ?? []).Concat(resume.OptionalMods ?? [])
+                .Concat(AddonRegistry.OptionalFor(AddonRegistry.Load(instanceDir), isAddon ? addonId : null)),
+            StringComparer.OrdinalIgnoreCase);
+        var pickedNames = installable.Where(m => m.Nexus?.Md5 is { Length: > 0 } h && pickedOptional.Contains(h)).Select(m => m.InstallAs).ToList();
+        excludedMods.ExceptWith(pickedNames);
+        if (pickedNames.Count > 0) InstallLog.Info("config", $"{pickedNames.Count} optional mod(s) picked: {string.Join(", ", pickedNames.Take(5))}{(pickedNames.Count > 5 ? ", …" : "")}");
         var coreMods = installable.Where(m => !excludedMods.Contains(m.InstallAs)).ToList();
         InstallLog.Info("config", $"optional groups: installing [{string.Join(", ", selectedGroups)}]; leaving out {excludedMods.Count} mod(s) ({excludedMods.Sum(n => manifest.Mods.First(m => m.InstallAs == n).Nexus?.FileSize ?? 0) / 1_000_000_000.0:F1} GB)");
         var ordered = needsDowngrade && downgrader is not null
@@ -589,6 +599,16 @@ if (numbered >= 1) dumpSignature = true;
         // Tools are registered last: their executables live in mod folders and the game root (F4SE), which exist only now.
         Mo2InstanceWriter.WriteCustomExecutables(instanceDir, effectiveGamePath, manifest.Tools);
         Mo2InstanceWriter.PointF4seAtRootMod(instanceDir, effectiveGamePath);
+        // remember what was installed from the optional side, for the Optional tab and so a later run keeps it
+        AddonRegistry.RecordOptional(instanceDir, isAddon ? addonId : null,
+            pickedNames.Select(n => installable.First(m => m.InstallAs == n).Nexus!.Md5 ?? ""), isAddon ? null : selectedGroups);
+        try
+        {
+            // a copy of the list this run installed, so the Optional tab works offline and for add-ons later
+            var keep = Path.Combine(instanceDir, ".asw"); Directory.CreateDirectory(keep);
+            File.Copy(collectionJsonPath, Path.Combine(keep, addonId + ".collection.json"), true);
+        }
+        catch (Exception ex) { InstallLog.Warn("config", $"could not keep a copy of the collection list: {ex.Message}"); }
         InstallState.ClearResume();
         InstallLog.Info("done", $"install complete: {done}/{total} mods → {instanceDir}");
         progress?.Report(new(done, total, "done", "install complete"));
