@@ -241,9 +241,17 @@
                             <TextBlock Classes="h2">Nexus Mods account</TextBlock>
                             <TextBlock x:Name="TxtSettingsAuth" Classes="info" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Button x:Name="BtnSettingsLogin" Classes="primary" Click="OnLogin">Sign in with Nexus…</Button>
                                 <Button x:Name="BtnSettingsCheck" Classes="primary" Click="OnRefreshAuth">Check again</Button>
+                                <Button Click="OnForgetKey">Forget saved key</Button>
                             </StackPanel>
+                            <TextBlock Classes="sub">Nexus personal API key</TextBlock>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="TxtApiKeySettings" PasswordChar="●"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
+                                <Button Tag="settings" Classes="primary" Click="OnSaveKey">Save key</Button>
+                                <Button Click="OnOpenKeyPage">Get my key</Button>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
                     <Border Classes="card">
@@ -310,7 +318,7 @@
                                     <ComboBoxItem>Size (largest first)</ComboBoxItem>
                                     <ComboBoxItem>Size (smallest first)</ComboBoxItem>
                                 </ComboBox>
-                                <TextBox x:Name="TxtArchiveFilter" Width="180" Watermark="Filter by size, e.g. 500 MB" TextChanged="OnArchiveFilter"/>
+                                <TextBox x:Name="TxtArchiveFilter" Width="260" PlaceholderText="Filter by name or size, e.g. 500 MB" TextChanged="OnArchiveFilter"/>
                             </StackPanel>
                         </Grid>
                         <ScrollViewer Grid.Row="1" Margin="0,10">
@@ -351,11 +359,13 @@
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Installation location</TextBlock>
                             <TextBlock Classes="sub">Where this collection will be installed</TextBlock>
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBox x:Name="TxtInstallDir" Width="520"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="TxtInstallDir"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
                                 <Button x:Name="BtnPickDir" Click="OnPickDir">Browse…</Button>
                                 <Button x:Name="BtnValidateDir" Click="OnValidateDir">Check</Button>
-                            </StackPanel>
+                                </StackPanel>
+                            </Grid>
                             <TextBlock x:Name="TxtDirStatus" Classes="sub"/>
                         </StackPanel>
                     </Border>
@@ -365,18 +375,22 @@
                             <StackPanel x:Name="PnlFreshDownloads" Spacing="10">
                                 <TextBlock Classes="h2">Downloads location</TextBlock>
                                 <TextBlock Classes="sub">Where the downloads should be</TextBlock>
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBox x:Name="TxtDownloadsDir" Width="520"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="TxtDownloadsDir"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
                                     <Button x:Name="BtnPickDownloads" Click="OnPickDownloads">Browse…</Button>
-                                </StackPanel>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
                             <StackPanel x:Name="PnlVortexDownloads" Spacing="10" IsVisible="False">
                                 <TextBlock Classes="h2">Vortex Downloads location</TextBlock>
                                 <TextBlock Classes="sub">Point this at your Fallout 4 Vortex downloads folder</TextBlock>
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBox x:Name="TxtReuseDir" Width="520"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="TxtReuseDir"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
                                     <Button x:Name="BtnPickReuse" Click="OnPickReuse">Browse…</Button>
-                                </StackPanel>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -388,6 +402,13 @@
                                          Content="Use your existing Steam/GOG install"/>
                             <RadioButton x:Name="RbStockGame" Classes="opt" GroupName="game"
                                          Content="Use a separate install of the game"/>
+                            <TextBlock Classes="sub" Margin="0,6,0,0">Your Fallout 4 folder (found automatically for Steam; Browse for GOG or other locations)</TextBlock>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="TxtGameDir"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
+                                <Button Click="OnPickGameDir">Browse…</Button>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
@@ -423,9 +444,16 @@
                             <TextBlock Classes="h2">Account</TextBlock>
                             <TextBlock x:Name="TxtAuthDetail" Classes="info" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Button x:Name="BtnLogin" Classes="primary" Click="OnLogin">Sign in with Nexus…</Button>
                                 <Button x:Name="BtnRefreshAuth" Classes="primary" Click="OnRefreshAuth">Check again</Button>
                             </StackPanel>
+                            <TextBlock Classes="sub">Nexus personal API key</TextBlock>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="TxtApiKey" PasswordChar="●"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
+                                <Button Tag="nexus" Classes="primary" Click="OnSaveKey">Save key</Button>
+                                <Button Click="OnOpenKeyPage">Get my key</Button>
+                                </StackPanel>
+                            </Grid>
                             <TextBlock x:Name="TxtAuthNote" Classes="sub" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
@@ -440,10 +468,12 @@
                             <TextBlock Classes="h2">Downloading with a free account</TextBlock>
                             <TextBlock Classes="info" TextWrapping="Wrap">Nexus only allows automatic downloads for Premium members. The installer will open each mod's file page, one at a time, and you press Manual download, then Slow download, on the exact file shown. It notices the file, checks it and moves on to the next one.</TextBlock>
                             <TextBlock Classes="sub">Where your browser saves downloads</TextBlock>
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBox x:Name="TxtWatchDir" Width="520"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="TxtWatchDir"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
                                 <Button Click="OnPickWatchDir">Browse…</Button>
-                            </StackPanel>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -488,7 +518,8 @@
                     <TextBlock Classes="h1" HorizontalAlignment="Center" FontSize="34">✓ Install complete</TextBlock>
                     <TextBlock x:Name="TxtDone" Classes="sub" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" TextAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,10,0,0">
-                        <Button x:Name="BtnOpenFolder" Classes="primary" Click="OnOpenFolder">Open install folder</Button>
+                        <Button x:Name="BtnLaunchMo2" Classes="primary" Click="OnLaunchMo2">Launch Mod Organizer 2</Button>
+                        <Button x:Name="BtnOpenFolder" Click="OnOpenFolder">Open install folder</Button>
                         <Button Click="OnBackToModlist">Back to modlists</Button>
                     </StackPanel>
                 </StackPanel>

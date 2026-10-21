@@ -29,12 +29,18 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         BuildOptionalGroups();
-        _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY");
+        _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY") ?? SecretStore.Load("nexus-api-key");
         InstallRunner.UiLogLine += OnLogLine;
-        Closed += (_, _) => { _cts?.Cancel(); InstallRunner.UiLogLine -= OnLogLine; };
+        _logTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _logTimer.Tick += (_, _) => FlushLog();
+        _logTimer.Start();
+        Closed += (_, _) => { _cts?.Cancel(); InstallRunner.UiLogLine -= OnLogLine; _logTimer?.Stop(); };
         RbFresh.IsCheckedChanged += (_, _) => OnSourceChanged();
         RbVortex.IsCheckedChanged += (_, _) => OnSourceChanged();
+        if (Environment.GetEnvironmentVariable("ASW_UI_SHOT") is { Length: > 0 } shotDir)
+            Opened += (_, _) => RunScreenshotTour(shotDir);
         TxtWatchDir.Text = ManualDownloader.DefaultWatchDir();
+        TxtGameDir.Text = FindFallout4Path();
         var threads = InstallState.GetThreads();
         NudDownloadThreads.Value = threads.Download;
         NudExtractThreads.Value = threads.Extract;
@@ -87,6 +93,50 @@ public partial class MainWindow : Window
                 }
             }
         }
+    }
+
+    // ---------- screenshot hook (development only) ----------
+
+    /// <summary>
+    /// With ASW_UI_SHOT=&lt;dir&gt; the window renders each page to a PNG in that folder and closes (ASW_UI_SIZE=WxH
+    /// picks the window size). Lets the UI be checked without a person clicking through it; does nothing otherwise.
+    /// </summary>
+    private async void RunScreenshotTour(string dir)
+    {
+        try
+        {
+            Directory.CreateDirectory(dir);
+            if (Environment.GetEnvironmentVariable("ASW_UI_SIZE")?.Split('x') is [var w, var h] && double.TryParse(w, out var ww) && double.TryParse(h, out var hh))
+            { Width = ww; Height = hh; }
+            await Task.Delay(6000); // let the collection sync and cover images arrive
+            async Task Shot(string name)
+            {
+                await Task.Delay(700);
+                var size = new Avalonia.PixelSize((int)Bounds.Width, (int)Bounds.Height);
+                using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
+                bmp.Render(this);
+                bmp.Save(Path.Combine(dir, name + ".png"));
+            }
+            string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail"];
+            for (var i = 0; i < names.Length; i++)
+            {
+                if (i == 8) { _addonDetailCard = new AddonCard("sample", "Sample Add-On", "Author", "r1", false, ""); TxtAddDetName.Text = "Sample Add-On"; }
+                if (i == 3) { TxtPhase.Text = "Downloading mod 42 of 911"; TxtItem.Text = "Sample Mod"; TxtSpeed.Text = "12.4 MB/s"; TxtCounts.Text = "41/911"; PbOverall.Value = 4.5; OnLogLine("sample log line"); FlushLog(); }
+                if (i == 5) OnOpenDetail(null, new RoutedEventArgs());
+                ShowPage(i);
+                await Shot(names[i]);
+            }
+            // install page, free-account wait state and a stopped run
+            ShowPage(3);
+            TxtPhase.Text = "Your turn: download mod 3 of 911 in your browser"; TxtSpeed.Text = "On the page: Manual download, then Slow download";
+            BtnOpenPage.IsVisible = true; await Shot("install-manual");
+            BtnOpenPage.IsVisible = false; TxtPhase.Text = "Stopped. Everything downloaded so far is kept. Press Resume to pick up where it left off."; OfferContinue(false); await Shot("install-stopped");
+            CardManual.IsVisible = true; CardVortex.IsVisible = true; TxtVortexCheck.Text = "880 of 911 mods were found in your Vortex folder. 31 (4.2 GB) still need downloading.";
+            ShowPage(2); await Shot("nexus-free-vortex");
+            TxtSetupError.Text = "Choose an install folder."; ShowPage(1); await Shot("setup-error");
+        }
+        catch (Exception ex) { InstallLog.Error("ui", $"screenshot tour failed: {ex}"); }
+        Close();
     }
 
     // ---------- shared ----------
@@ -159,11 +209,27 @@ public partial class MainWindow : Window
         UpdateStats();
     }
 
-    private void OnLogLine(string line)
+    // Log lines arrive from worker threads by the thousand; they are queued and shown in batches (last 2,000 lines).
+    // The complete log is always in install.log next to the install.
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _logQueue = new();
+    private readonly Queue<string> _logLines = new();
+    private Avalonia.Threading.DispatcherTimer? _logTimer;
+    private const int LogKeep = 2000;
+
+    private void OnLogLine(string line) => _logQueue.Enqueue(line);
+
+    private void FlushLog()
     {
-        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
-        { Avalonia.Threading.Dispatcher.UIThread.Post(() => OnLogLine(line)); return; }
-        TxtLog.Text += line + Environment.NewLine;
+        if (_logQueue.IsEmpty) return;
+        while (_logQueue.TryDequeue(out var l)) { _logLines.Enqueue(l); if (_logLines.Count > LogKeep) _logLines.Dequeue(); }
+        TxtLog.Text = string.Join(Environment.NewLine, _logLines);
+    }
+
+    private void ClearLog()
+    {
+        while (_logQueue.TryDequeue(out _)) { }
+        _logLines.Clear();
+        TxtLog.Text = "";
     }
 
     private void OnLogChanged(object? sender, TextChangedEventArgs e)
@@ -285,8 +351,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnTabModlists(object? sender, Avalonia.Interactivity.RoutedEventArgs e) { }
-
     private void OnAddonsFilter(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => RefreshAddons();
 
     /// <summary>Renders add-on cards, honoring the update and author filters.</summary>
@@ -330,8 +394,9 @@ public partial class MainWindow : Window
             .Where(a => selected == "All authors" || string.Equals(a.Author, selected, StringComparison.OrdinalIgnoreCase))
             .Where(a => TglAddonsUpdate.IsChecked != true || a.UpdateAvailable)
             .ToList();
+        var listing = _apiKey != null && _liveAddons is null && _addonGrabbed; // still fetching the list
         TxtAddonsEmpty.Text = cards.Count == 0
-            ? "No add-ons are available yet."
+            ? (listing ? "" : "No add-ons are available yet.")
             : rows.Count == 0 ? "No add-ons match this filter." : "";
         foreach (var a in rows) GridAddons.Children.Add(BuildAddonCard(a, installed));
     }
@@ -381,7 +446,7 @@ public partial class MainWindow : Window
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     TxtAddDetStatus.Text = "Archive downloaded. Install when ready.";
-                    BtnAddDetInstall.IsEnabled = _collectionPath != null;
+                    BtnAddDetInstall.IsEnabled = _collectionPath != null && InstallState.GetInstallDir() is not null;
                 });
             }
             catch (Exception ex)
@@ -540,7 +605,8 @@ public partial class MainWindow : Window
         if (_archiveRows is null) return;
         var rows = _archiveRows.AsEnumerable();
         var filter = TxtArchiveFilter.Text?.Trim();
-        if (!string.IsNullOrEmpty(filter)) rows = rows.Where(r => r.Size.Contains(filter, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(filter))
+            rows = rows.Where(r => r.Size.Contains(filter, StringComparison.OrdinalIgnoreCase) || r.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
         rows = CmbSort.SelectedIndex switch
         {
             1 => rows.OrderByDescending(r => r.Bytes),
@@ -564,6 +630,10 @@ public partial class MainWindow : Window
             TxtInstallDir.Text = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "AStoryWealth", "Instance");
+        // the downloads box must never hold a relative default (".\Downloads" from before an install folder existed)
+        var dl = (TxtDownloadsDir.Text ?? "").Trim();
+        if (dl.Length == 0 || !Path.IsPathRooted(dl))
+            TxtDownloadsDir.Text = Path.Combine(TxtInstallDir.Text!.Trim(), "Downloads");
         ShowPage(1);
     }
 
@@ -588,7 +658,7 @@ public partial class MainWindow : Window
             if (vortexDefault is not null) TxtReuseDir.Text = vortexDefault;
         }
         if (fresh && string.IsNullOrWhiteSpace(TxtDownloadsDir.Text))
-            TxtDownloadsDir.Text = Path.Combine(TxtInstallDir.Text.Length > 0 ? TxtInstallDir.Text : ".", "Downloads");
+            TxtDownloadsDir.Text = Path.Combine(string.IsNullOrEmpty(TxtInstallDir.Text) ? "." : TxtInstallDir.Text, "Downloads");
     }
 
     private async void OnPickDownloads(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -687,10 +757,8 @@ public partial class MainWindow : Window
             }
         }
         catch { return "That folder path doesn't look valid. Try Browse."; }
-        if (_resume is null && FindFallout4Path().Length == 0)
-            return RbStockGame.IsChecked == true
-                ? "Couldn't find a Fallout 4 install to copy. Install the game through Steam once, then try again."
-                : "Couldn't find your Fallout 4 install. Install the game through Steam once, then try again.";
+        if (_resume is null && GameDir().Length == 0)
+            return "Couldn't find Fallout 4. Browse to the folder that contains Fallout4.exe.";
         return CheckSpace(dir);
     }
 
@@ -749,7 +817,7 @@ public partial class MainWindow : Window
         {
             TxtAuthDetail.Text = "Not signed in yet.";
             TxtSettingsAuth.Text = TxtAuthDetail.Text;
-            TxtAuthNote.Text = "Signing in lets the installer download mods for you. Your Nexus password is never shared with the installer.";
+            TxtAuthNote.Text = "Paste your personal API key from Nexus (Get my key → Personal API Key). It is stored encrypted on this PC and only used to talk to Nexus.";
             _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
@@ -774,7 +842,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            TxtAuthDetail.Text = "Couldn't reach Nexus Mods. Check your internet connection and try again.";
+            TxtAuthDetail.Text = "Nexus didn't accept the key, or couldn't be reached. Check the key and your internet connection, then try again.";
             InstallLog.Error("ui", $"auth check failed: {ex.Message}");
             _signedIn = false;
             BtnToInstall.IsEnabled = false;
@@ -792,7 +860,7 @@ public partial class MainWindow : Window
     {
         if (!_threadsLoaded) { _threadsLoaded = true; return; }
         InstallState.SetThreads(new InstallState.ThreadSettings(
-            (int)NudDownloadThreads.Value, (int)NudExtractThreads.Value));
+            (int)(NudDownloadThreads.Value ?? 1), (int)(NudExtractThreads.Value ?? 1)));
     }
 
     // ---------- collection sync (auto-download + update tracking) ----------
@@ -881,16 +949,33 @@ public partial class MainWindow : Window
     }
 
 
-    private async void OnLogin(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    // Browser sign-in (Nexus SSO) needs a Nexus-verified application, so until then the user's personal API key is
+    // the way in. It is kept DPAPI-encrypted for this Windows user (SecretStore); ASW_NEXUS_KEY still overrides it.
+    private const string KeyName = "nexus-api-key";
+    private const string KeyPageUrl = "https://www.nexusmods.com/settings/api-keys";
+
+    private async void OnSaveKey(object? sender, RoutedEventArgs e)
     {
-        // SSO browser flow: opens nexusmods.com/sso, key arrives over websocket.
-        // Blocked on a Nexus-issued application slug ("Application ID was invalid"
-        // otherwise) — see skill asw-installer. Until then the machine-local
-        // ASW_NEXUS_KEY serves as the testing-stage authorization.
-        TxtAuthNote.Text = "Browser login is pending a Nexus-issued application ID (support@nexusmods.com). " +
-                           "For now, this machine's testing authorization is used automatically.";
-        if (_apiKey != null) await RefreshAuthAsync();
+        var box = (sender as Control)?.Tag as string == "settings" ? TxtApiKeySettings : TxtApiKey;
+        var key = (box.Text ?? "").Trim();
+        if (key.Length == 0) { TxtAuthNote.Text = "Paste your Nexus personal API key first."; return; }
+        try { SecretStore.Save(KeyName, key); }
+        catch (Exception ex) { InstallLog.Error("ui", $"couldn't store the API key: {ex.Message}"); TxtAuthNote.Text = "Couldn't save the key on this PC."; return; }
+        _apiKey = key;
+        TxtApiKey.Text = TxtApiKeySettings.Text = "";
+        _addonGrabbed = false;
+        await RefreshAuthAsync();
     }
+
+    private void OnForgetKey(object? sender, RoutedEventArgs e)
+    {
+        try { SecretStore.Delete(KeyName); } catch { }
+        _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY");
+        _ = RefreshAuthAsync();
+    }
+
+    private void OnOpenKeyPage(object? sender, RoutedEventArgs e)
+        => Process.Start(new ProcessStartInfo(KeyPageUrl) { UseShellExecute = true });
 
     private void OnToInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -905,7 +990,7 @@ public partial class MainWindow : Window
     /// <summary>Fresh start from Setup: empty log, counters and buttons.</summary>
     private void ClearInstallPage()
     {
-        TxtLog.Text = "";
+        ClearLog();
         ResetRunState();
         BtnResume.IsVisible = BtnRetry.IsVisible = BtnInstallBack.IsVisible = false;
     }
@@ -932,6 +1017,7 @@ public partial class MainWindow : Window
     /// <summary>A run stopped without finishing: offer to continue it or go back to Setup.</summary>
     private void OfferContinue(bool retryFailedOnly)
     {
+        TxtSpeed.Text = "";
         BtnRetry.IsVisible = retryFailedOnly;
         BtnResume.IsVisible = !retryFailedOnly;
         BtnInstallBack.IsVisible = true;
@@ -1002,11 +1088,11 @@ public partial class MainWindow : Window
         });
         try
         {
-            var gamePath = resuming ? _resume!.GamePath : FindFallout4Path();
+            var gamePath = resuming ? _resume!.GamePath : GameDir();
             var stockGame = resuming ? _resume!.StockGame : RbStockGame.IsChecked == true; // read on the UI thread — IsChecked is thread-affine
             // Older checkpoints stored the Stock Game destination as GamePath; if so, rediscover the real Steam source.
             if (stockGame && gamePath is not null && gamePath.TrimEnd('\\').EndsWith("Stock Game", StringComparison.OrdinalIgnoreCase))
-                gamePath = FindFallout4Path();
+                gamePath = GameDir();
             var fresh = RbFresh.IsChecked == true; // resume restores the saved radio, so Vortex reuse survives a resume
             var reuseDir = fresh ? null
                 : (string.IsNullOrWhiteSpace(TxtReuseDir.Text) ? null : TxtReuseDir.Text.Trim());
@@ -1015,12 +1101,12 @@ public partial class MainWindow : Window
             InstallState.SetLastPath(dir, reuseDir, downloadsDir, stockGame); // remembered even if the install is cancelled
             // Read UI control values on the UI thread — Avalonia controls are
             // thread-affine and Task.Run below runs on a worker thread.
-            var dlThreads = (int)NudDownloadThreads.Value;
-            var exThreads = (int)NudExtractThreads.Value;
+            var dlThreads = (int)(NudDownloadThreads.Value ?? 1);
+            var exThreads = (int)(NudExtractThreads.Value ?? 1);
             var optionalGroups = SelectedGroups();
             var watchDir = string.IsNullOrWhiteSpace(TxtWatchDir.Text) ? null : TxtWatchDir.Text.Trim();
             await Task.Run(() => runner.RunAsync(jsonPath, installId, _apiKey!, dir,
-                gamePath, progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
+                gamePath ?? "", progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
                 downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups,
                 manualWatchDir: watchDir));
@@ -1028,7 +1114,7 @@ public partial class MainWindow : Window
             ApplyResumeGroups();
             _installedDir = dir;
             InstallState.SetInstallDir(dir);
-            TxtDone.Text = $"All done! A StoryWealth is installed.\nTo play, open the folder below and run Mod Organizer 2, just like starting the game normally.";
+            TxtDone.Text = "All done! A StoryWealth is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run. The game has to start through F4SE.";
             EnableNav(3);
             ShowPage(4);
         }
@@ -1106,8 +1192,38 @@ public partial class MainWindow : Window
             }
         }
         catch (Exception ex) { InstallLog.Warn("game", $"steam discovery failed: {ex.Message}"); }
-        var fallback = @"D:\Games\Steam\steamapps\common\Fallout 4";
-        return File.Exists(Path.Combine(fallback, "Fallout4.exe")) ? fallback : "";
+        // Bethesda launcher and GOG leave their install path in the registry
+        foreach (var (sub, name) in new[] { (@"SOFTWARE\WOW6432Node\Bethesda Softworks\Fallout4", "Installed Path"), (@"SOFTWARE\WOW6432Node\GOG.com\Games\1998527297", "path") })
+        {
+            try
+            {
+                using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(sub);
+                if (k?.GetValue(name) is string p && File.Exists(Path.Combine(p, "Fallout4.exe"))) return p.TrimEnd('\\');
+            }
+            catch { /* not installed that way */ }
+        }
+        return "";
+    }
+
+    /// <summary>The game folder from the Setup box if it holds Fallout4.exe, else whatever auto-detection finds.</summary>
+    private string GameDir()
+    {
+        var typed = (TxtGameDir.Text ?? "").Trim();
+        return typed.Length > 0 && File.Exists(Path.Combine(typed, "Fallout4.exe")) ? typed : FindFallout4Path();
+    }
+
+    private async void OnPickGameDir(object? sender, RoutedEventArgs e)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        { Title = "Choose your Fallout 4 folder (the one with Fallout4.exe)", AllowMultiple = false });
+        if (folders.Count > 0) TxtGameDir.Text = folders[0].Path.LocalPath;
+    }
+
+    private void OnLaunchMo2(object? sender, RoutedEventArgs e)
+    {
+        var exe = _installedDir is null ? null : Path.Combine(_installedDir, "ModOrganizer.exe");
+        if (exe is not null && File.Exists(exe))
+            Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true, WorkingDirectory = _installedDir });
     }
 
     private void OnOpenFolder(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
