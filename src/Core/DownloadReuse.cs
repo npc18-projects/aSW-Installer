@@ -18,6 +18,9 @@ public static class DownloadReuse
     // one snapshot per reuse dir per run; 1893 files × 921 mods must not rescan every time
     private static readonly ConcurrentDictionary<string, string[]> _cache = new();
 
+    /// <summary>Forget the cached folder listing so files added since the last scan are seen.</summary>
+    public static void Refresh(string dir) => _cache.TryRemove(Path.GetFullPath(dir), out _);
+
     public static async Task<string?> FindArchiveAsync(string dir, ModEntry mod,
         Func<string, Task<(bool ok, string detail)>> verify, Action<string, string>? onRejected = null)
     {

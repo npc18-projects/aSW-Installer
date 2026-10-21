@@ -236,10 +236,28 @@ public partial class MainWindow : Window
         {
             Title = "Choose a collection file",
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Collection") { Patterns = ["*.json"] }]
+            FileTypeFilter = [new FilePickerFileType("Collection") { Patterns = ["*.7z", "*.json"] }]
         });
         if (files.Count == 0) return;
-        await LoadCollectionAsync(files[0].Path.LocalPath);
+        var picked = files[0].Path.LocalPath;
+        if (!picked.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            // the archive Nexus gives for a manual collection download: take collection.json out of it
+            try
+            {
+                var outDir = Path.Combine(SyncCacheDir, "manual", Path.GetFileNameWithoutExtension(picked));
+                Directory.CreateDirectory(outDir);
+                await Task.Run(() => SevenZip.ExtractSingleFile(picked, "collection.json", outDir));
+                picked = Path.Combine(outDir, "collection.json");
+            }
+            catch (Exception ex)
+            {
+                InstallLog.Error("ui", $"couldn't open collection archive {picked}: {ex.Message}");
+                TxtCollectionSummary.Text = "Couldn't read that file. Choose the collection archive (.7z) you downloaded from Nexus.";
+                return;
+            }
+        }
+        await LoadCollectionAsync(picked);
     }
 
     private async Task LoadCollectionAsync(string path)
@@ -252,7 +270,7 @@ public partial class MainWindow : Window
             UpdateOptionalLabels();
             UpdateStats();
             TxtCollectionSummary.Text = "";
-            BtnPickCollection.IsVisible = false;
+            PnlPickCollection.IsVisible = false;
             BtnToInstall.IsEnabled = _signedIn;
             BtnToSetup.IsEnabled = true;
             BtnDetailInstall.IsEnabled = true;
@@ -682,6 +700,45 @@ public partial class MainWindow : Window
         if (TxtSetupError.Text.Length > 0) return;
         ShowPage(2);
         _ = RefreshAuthAsync();
+        _ = CheckVortexAsync();
+    }
+
+    private int _vortexMissing = -1; // -1 = not checked / not applicable
+
+    /// <summary>The by-hand download card only matters when something actually has to be downloaded.</summary>
+    private void UpdateManualCard() =>
+        CardManual.IsVisible = _signedIn && !_authPremium && (RbFresh.IsChecked == true || _vortexMissing != 0);
+
+    /// <summary>
+    /// Vortex transfer: counts which of the chosen mods are already in the Vortex folder (file name/mod id + exact size;
+    /// the install still md5-checks every one) so the user sees what, if anything, still has to be downloaded.
+    /// </summary>
+    private async Task CheckVortexAsync()
+    {
+        _vortexMissing = -1;
+        CardVortex.IsVisible = RbVortex.IsChecked == true;
+        var dir = (TxtReuseDir.Text ?? "").Trim();
+        if (RbVortex.IsChecked != true || _manifest is null || !Directory.Exists(dir)) { UpdateManualCard(); return; }
+        TxtVortexCheck.Text = "Checking your Vortex downloads…";
+        var skip = AStoryWealth.Core.OptionalGroups.Excluded(_manifest.Mods, AStoryWealth.Core.OptionalGroups.Load(AddonId), SelectedGroups());
+        var mods = _manifest.Mods.Where(m => m.Nexus is not null && !skip.Contains(m.InstallAs)).ToList();
+        var (found, missing, missingBytes) = await Task.Run(async () =>
+        {
+            DownloadReuse.Refresh(dir);
+            int f = 0, miss = 0; long bytes = 0;
+            foreach (var m in mods)
+            {
+                if (await DownloadReuse.FindArchiveAsync(dir, m, _ => Task.FromResult((true, ""))) is not null) f++;
+                else { miss++; bytes += m.Nexus?.FileSize ?? 0; }
+            }
+            return (f, miss, bytes);
+        });
+        _vortexMissing = missing;
+        TxtVortexCheck.Text = missing == 0
+            ? $"All {found:N0} mods were found in your Vortex folder. Nothing needs downloading."
+            : $"{found:N0} of {found + missing:N0} mods were found in your Vortex folder. {missing:N0} ({missingBytes / 1_000_000_000.0:N1} GB) still need downloading"
+              + (_signedIn && !_authPremium ? ", which you'll do by hand in your browser." : ".");
+        UpdateManualCard();
     }
 
     // ---------- page 2: nexus ----------
@@ -705,12 +762,12 @@ public partial class MainWindow : Window
             using var api = new AStoryWealth.NexusApi.NexusApiClient(_apiKey);
             var user = await api.ValidateUserAsync();
             _authPremium = user.IsPremium;
-            CardManual.IsVisible = !user.IsPremium;
             TxtAuthDetail.Text = user.IsPremium
                 ? $"Signed in as {user.Name}. Downloads will run automatically at full speed."
                 : $"Signed in as {user.Name}. Free account: you'll download each mod yourself in your browser, one at a time. The installer opens the right page and does the rest.";
             TxtAuthNote.Text = "You're all set. Continue to install.";
             _signedIn = true;
+            UpdateManualCard();
             BtnToInstall.IsEnabled = _collectionPath != null;
             SetStatus($"Signed in: {user.Name}");
             _ = SyncCollectionAsync(); // pull the latest collection in the background
@@ -790,11 +847,11 @@ public partial class MainWindow : Window
             {
                 // Nexus only gives the collection file itself to Premium members.
                 TxtCollectionSummary.Text = ex.Message.Contains("premium", StringComparison.OrdinalIgnoreCase)
-                    ? "Nexus only provides the collection file to Premium members. If you already have a collection.json for this version, choose it below."
+                    ? "The installer can't fetch the mod list automatically with a free account. Open the collection page, download the collection (Manual download), then choose the file you got."
                     : ex.Message.Contains("7-Zip", StringComparison.OrdinalIgnoreCase)
                         ? "7-Zip is needed to unpack the mod list and wasn't found. Install it from 7-zip.org, then press Check again."
                         : "Couldn't reach Nexus. Check your internet connection and try again later.";
-                BtnPickCollection.IsVisible = true;
+                PnlPickCollection.IsVisible = true;
             }
             RefreshInstallCheck();
         }
