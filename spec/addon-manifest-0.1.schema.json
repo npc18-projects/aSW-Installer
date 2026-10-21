@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astorywealth.dev/schemas/addon-manifest-0.1.json",
+  "title": "aSW Addon Manifest",
+  "type": "object",
+  "required": [
+    "schemaVersion", "addonId", "name", "author", "version",
+    "requires", "scope", "installPriority", "mods"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "addonId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "author": { "type": "string" },
+    "version": { "type": "string", "$comment": "semver, not validated strictly here" },
+    "description": { "type": "string" },
+    "homepage": { "type": "string", "format": "uri" },
+    "requires": {
+      "type": "object",
+      "required": ["baseCollectionId", "baseRevision"],
+      "additionalProperties": false,
+      "properties": {
+        "baseCollectionId": { "type": "string" },
+        "baseRevision": { "type": ["integer", "string"] },
+        "installerMin": { "type": "string" }
+      }
+    },
+    "scope": { "enum": ["core", "optional", "recommended"] },
+    "installPriority": { "type": "integer", "minimum": 0 },
+    "mods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "installAs"],
+        "additionalProperties": false,
+        "properties": {
+          "source": { "const": "nexus" },
+          "nexus": {
+            "type": "object",
+            "required": ["modId", "fileId"],
+            "additionalProperties": false,
+            "properties": {
+              "modId": { "type": "integer", "minimum": 1 },
+              "fileId": { "type": "integer", "minimum": 1 },
+              "game": { "type": "string", "default": "fallout4" }
+            }
+          },
+          "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "installAs": { "type": "string", "minLength": 1 },
+          "mkdir": { "type": "array", "items": { "type": "string" } },
+          "choose": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["label"],
+              "properties": {
+                "label": { "type": "string" },
+                "nexus": {
+                  "type": "object",
+                  "properties": {
+                    "modId": { "type": "integer" },
+                    "fileId": { "type": "integer" }
+                  }
+                },
+                "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+              }
+            }
+          },
+          "patchTarget": {
+            "type": "object",
+            "required": ["against", "kind"],
+            "properties": {
+              "against": { "type": "array", "items": { "type": "string" } },
+              "kind": { "type": "string" }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "source": { "const": "url" } } },
+            "then": { "required": ["url", "hash"] }
+          },
+          {
+            "if": { "properties": { "source": { "const": "builtin" } } },
+            "then": { "required": ["builtin", "hash"] }
+          },
+          {
+            "if": { "properties": { "source": { "const": "nexus" } } },
+            "then": { "required": ["nexus"] }
+          }
+        ]
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["plugin"],
+        "additionalProperties": false,
+        "properties": {
+          "plugin": { "type": "string" },
+          "enabled": { "type": "boolean", "default": true },
+          "loadAfter": { "type": "array", "items": { "type": "string" } },
+          "esl": { "enum": ["as-is", "force", "never"], "default": "as-is" }
+        }
+      }
+    },
+    "modRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "object", "type"],
+        "properties": {
+          "source": { "type": "string" },
+          "object": { "type": "string" },
+          "type": { "enum": ["before", "after", "overwrite", "requires"] },
+          "scope": { "enum": ["profile", "mod"], "default": "mod" }
+        }
+      }
+    },
+    "iniTweaks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "section", "key", "action"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "section": { "type": "string" },
+          "key": { "type": "string" },
+          "value": { "type": "string" },
+          "action": { "enum": ["set", "append-csv", "remove"] }
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "path"],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "args": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["with", "resolution"],
+        "properties": {
+          "with": { "type": "string" },
+          "resolution": { "enum": ["wins", "loses", "incompatible"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eslFlagging": { "type": "boolean", "default": false }
+      }
+    },
+    "gameVersion": {
+      "type": "object",
+      "required": ["target", "method"],
+      "additionalProperties": false,
+      "properties": {
+        "target": { "type": "string" },
+        "f4se": { "type": "string" },
+        "method": { "enum": ["depot", "patch-pack"] },
+        "patchPack": {
+          "type": "object",
+          "properties": {
+            "modId": { "type": "integer" },
+            "fileId": { "type": "integer" }
+          }
+        }
+      }
+    }
+  }
+}

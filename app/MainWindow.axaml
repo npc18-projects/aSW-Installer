@@ -1,0 +1,463 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:AStoryWealth.Installer"
+        x:Class="AStoryWealth.Installer.MainWindow"
+        Title="A StoryWealth Installer"
+        Width="1080" Height="720"
+        MinWidth="900" MinHeight="600"
+        Background="#121519">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.h1">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#F2C48D"/>
+        </Style>
+        <Style Selector="TextBlock.h2">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#E8ECF2"/>
+        </Style>
+        <Style Selector="TextBlock.sub">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#B8BEC9"/>
+        </Style>
+        <Style Selector="TextBlock.stat">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#F2C48D"/>
+        </Style>
+        <Style Selector="TextBlock.info">
+            <Setter Property="Foreground" Value="#DDE2EA"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#2F6FA8"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button.primary:pointer /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3D86C8"/>
+        </Style>
+        <Style Selector="Button.cta">
+            <Setter Property="MinWidth" Value="240"/>
+            <Setter Property="MinHeight" Value="48"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="ListBox.nav">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0,8"/>
+        </Style>
+        <Style Selector="ListBoxItem.navItem">
+            <Setter Property="Padding" Value="16,11"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#8B93A0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBoxItem.navItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#262B33"/>
+            <Setter Property="Foreground" Value="#F2C48D"/>
+        </Style>
+        <Style Selector="ListBoxItem.navItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1D2128"/>
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#1D2128"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+        <Style Selector="TextBox.logbox">
+            <Setter Property="Background" Value="#0C0F13"/>
+            <Setter Property="Foreground" Value="#9FE0A8"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="RadioButton.opt">
+            <Setter Property="Foreground" Value="#DDE2EA"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style Selector="RadioButton.opt:disabled">
+            <Setter Property="Foreground" Value="#7A828E"/>
+        </Style>
+        <Style Selector="ToggleButton.tab">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#9AA3AE"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="ToggleButton.tab:checked">
+            <Setter Property="Foreground" Value="#F2C48D"/>
+            <Setter Property="BorderBrush" Value="#F2C48D"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="ToggleButton.tab:disabled">
+            <Setter Property="Foreground" Value="#4A5058"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid ColumnDefinitions="220,*">
+
+        <!-- ===== LEFT RAIL ===== -->
+        <Border Background="#171A20">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="16,18,16,20" Spacing="2">
+                    <TextBlock Text="A STORYWEALTH" FontSize="16" FontWeight="Bold" Foreground="#F2C48D"/>
+                    <TextBlock Text="Installer  v0.3-dev" FontSize="11" Foreground="#7A828E"/>
+                </StackPanel>
+                <ListBox x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged">
+                    <ListBoxItem Classes="navItem" IsSelected="True">Modlist</ListBoxItem>
+                    <ListBoxItem x:Name="NavItemAddons" Classes="navItem" IsEnabled="False">Add-Ons</ListBoxItem>
+                    <ListBoxItem Classes="navItem">Settings</ListBoxItem>
+                </ListBox>
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,16" Spacing="4">
+                    <TextBlock x:Name="TxtNavStatus" FontSize="11" Foreground="#7A828E" TextWrapping="Wrap"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== CONTENT ===== -->
+        <DockPanel Grid.Column="1" Margin="0">
+
+            <!-- Wizard step bar, shown once an install flow starts -->
+            <Border x:Name="WizBar" DockPanel.Dock="Top" Background="#171A20" IsVisible="False" Padding="36,8">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ToggleButton x:Name="Wiz0" Classes="tab" IsHitTestVisible="False" Focusable="False">Overview</ToggleButton>
+                    <ToggleButton x:Name="Wiz1" Classes="tab" IsHitTestVisible="False" Focusable="False">Install Location</ToggleButton>
+                    <ToggleButton x:Name="Wiz2" Classes="tab" IsHitTestVisible="False" Focusable="False">Installation</ToggleButton>
+                    <ToggleButton x:Name="Wiz3" Classes="tab" IsHitTestVisible="False" Focusable="False">Post-Install</ToggleButton>
+                </StackPanel>
+            </Border>
+
+            <Panel Margin="0">
+
+            <!-- PAGE 0: Modlist gallery -->
+            <ScrollViewer x:Name="PageModlist" Background="#121519">
+                <StackPanel Margin="36,28,36,28" Spacing="18">
+                    <!-- Modlist gallery -->
+                    <WrapPanel x:Name="GridModlists">
+                        <Border Classes="card" Width="340" Tapped="OnOpenDetail" Cursor="Hand">
+                            <StackPanel>
+                                <Border Height="190" CornerRadius="6" Margin="-18,-18,-18,14" ClipToBounds="True">
+                                    <Panel>
+                                        <Image x:Name="ImgBaseCard" Stretch="UniformToFill" IsVisible="False"/>
+                                        <Panel>
+                                            <Panel.Background>
+                                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                                    <GradientStop Color="#00000000" Offset="0"/>
+                                                    <GradientStop Color="#B3000000" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Panel.Background>
+                                            <StackPanel VerticalAlignment="Bottom" Margin="18,0,0,12">
+                                                <TextBlock Text="A STORYWEALTH" FontSize="22" FontWeight="Bold" Foreground="#FDF6EC"/>
+                                                <TextBlock Text="Vanilla Plus · Gameplay · Visuals" FontSize="12" Foreground="#D9CBA8"/>
+                                            </StackPanel>
+                                        </Panel>
+                                    </Panel>
+                                </Border>
+                                <TextBlock Classes="sub" TextWrapping="Wrap" Margin="0,0,0,12" FontSize="12"
+                                    Text="A curated StoryWealth experience, played through Mod Organizer 2. Everything is downloaded and set up for you. No manual mod installation."/>
+                                <StackPanel Orientation="Horizontal" Spacing="22" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock x:Name="TxtStatMods" Classes="stat">—</TextBlock>
+                                        <TextBlock Classes="sub" FontSize="11">Mods</TextBlock>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock x:Name="TxtStatSize" Classes="stat">—</TextBlock>
+                                        <TextBlock Classes="sub" FontSize="11">Download</TextBlock>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock x:Name="TxtStatStorage" Classes="stat">—</TextBlock>
+                                        <TextBlock Classes="sub" FontSize="11">Storage</TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button x:Name="BtnToSetup" Classes="primary" HorizontalAlignment="Stretch" Click="OnToSetup" IsEnabled="False">Install A StoryWealth →</Button>
+                                <TextBlock x:Name="TxtCollectionSummary" Classes="sub" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="12"/>
+                                <TextBlock x:Name="TxtInstallCheck" Classes="sub" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- PAGE 6: Add-ons -->
+            <ScrollViewer x:Name="PageAddons" Background="#121519" IsVisible="False">
+                <StackPanel Margin="36,28,36,28" Spacing="18">
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                    <TextBlock Classes="h1">Add-Ons</TextBlock>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <ToggleButton x:Name="TglAddonsAll" Classes="tab" IsChecked="True" Click="OnAddonsFilter">All</ToggleButton>
+                        <ToggleButton x:Name="TglAddonsUpdate" Classes="tab" Click="OnAddonsFilter">Update available</ToggleButton>
+                        <ComboBox x:Name="CmbAddonsAuthor" MinWidth="140" SelectionChanged="OnAddonsAuthorChanged"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel x:Name="PanelAddonsBody">
+                    <WrapPanel x:Name="GridAddons" ItemSpacing="20" LineSpacing="20"/>
+                    <TextBlock x:Name="TxtAddonsStatus" Classes="sub" FontSize="12" Foreground="#B8BEC9" IsVisible="False"/>
+                    <TextBlock x:Name="TxtAddonsEmpty" Classes="sub" TextWrapping="Wrap">Add-ons for A StoryWealth will be listed here.</TextBlock>
+                </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- PAGE 8: Add-on detail -->
+            <ScrollViewer x:Name="PageAddonDetail" Background="#121519" IsVisible="False">
+                <StackPanel Margin="36,28,36,28" Spacing="14" MaxWidth="860" HorizontalAlignment="Left">
+                    <Border Height="240" CornerRadius="6" ClipToBounds="True">
+                        <Panel>
+                            <Image x:Name="ImgAddDet" Stretch="UniformToFill" IsVisible="False"/>
+                            <StackPanel VerticalAlignment="Bottom" Margin="18,0,0,12">
+                                <TextBlock x:Name="TxtAddDetName" FontSize="24" FontWeight="Bold" Foreground="#FDF6EC" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TxtAddDetBy" FontSize="13" Foreground="#D9CBA8"/>
+                            </StackPanel>
+                        </Panel>
+                    </Border>
+                    <TextBlock x:Name="TxtAddDetSummary" Classes="sub" TextWrapping="Wrap" FontSize="13"/>
+                    <TextBlock x:Name="TxtAddDetStatus" Classes="sub" FontSize="12" Foreground="#B8BEC9"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button x:Name="BtnAddDetDownload" Classes="primary" Click="OnAddDetDownload">Download archive</Button>
+                        <Button x:Name="BtnAddDetInstall" Classes="primary" Click="OnAddDetInstall" IsEnabled="False">Install</Button>
+                        <Button Click="OnAddDetBack">Back</Button>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- PAGE 7: Settings -->
+            <ScrollViewer x:Name="PageSettings" Background="#121519" IsVisible="False">
+                <StackPanel Margin="36,28,36,28" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
+                    <TextBlock Classes="h1">Settings</TextBlock>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Nexus Mods account</TextBlock>
+                            <TextBlock x:Name="TxtSettingsAuth" Classes="info" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="BtnSettingsLogin" Classes="primary" Click="OnLogin">Sign in with Nexus…</Button>
+                                <Button x:Name="BtnSettingsCheck" Classes="primary" Click="OnRefreshAuth">Check again</Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Performance</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Threads used for downloading and extracting. Defaults to one less than your CPU's core count.</TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock VerticalAlignment="Center">Download threads</TextBlock>
+                                <NumericUpDown x:Name="NudDownloadThreads" Minimum="1" Maximum="32" Increment="1" Width="110" ValueChanged="OnThreadsChanged"/>
+                                <TextBlock VerticalAlignment="Center">Extract threads</TextBlock>
+                                <NumericUpDown x:Name="NudExtractThreads" Minimum="1" Maximum="16" Increment="1" Width="110" ValueChanged="OnThreadsChanged"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Logs</TextBlock>
+                            <Button Click="OnOpenLogs">Open logs folder</Button>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- PAGE 5: Mod list detail -->
+            <Grid x:Name="PageDetail" Background="#121519" IsVisible="False"
+                  ColumnDefinitions="360,*" Margin="36,28,36,28">
+                <ScrollViewer Grid.Column="0" Margin="0,0,24,0">
+                    <StackPanel Spacing="14">
+                        <Border Height="240" CornerRadius="6" ClipToBounds="True">
+                            <Panel>
+                                <Image x:Name="ImgDetailBanner" Stretch="UniformToFill" IsVisible="False"/>
+                                <Panel>
+                                    <Panel.Background>
+                                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                            <GradientStop Color="#00000000" Offset="0"/>
+                                            <GradientStop Color="#B3000000" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Panel.Background>
+                                    <StackPanel VerticalAlignment="Bottom" Margin="18,0,0,12">
+                                        <TextBlock Text="A STORYWEALTH" FontSize="22" FontWeight="Bold" Foreground="#FDF6EC"/>
+                                        <TextBlock Text="Vanilla Plus · Gameplay · Visuals" FontSize="12" Foreground="#D9CBA8"/>
+                                    </StackPanel>
+                                </Panel>
+                            </Panel>
+                        </Border>
+                        <TextBlock Classes="sub" TextWrapping="Wrap"
+                            Text="A curated StoryWealth experience, played through Mod Organizer 2. Everything is downloaded and set up for you. No manual mod installation."/>
+                        <StackPanel Spacing="8">
+                            <Button HorizontalAlignment="Stretch" Click="OnOpenNexus">View on Nexus Mods</Button>
+                            <Button HorizontalAlignment="Stretch" Click="OnOpenDiscord">Join the Discord</Button>
+                            <Button HorizontalAlignment="Stretch" Click="OnToggleArchives">Archives</Button>
+                            <Button x:Name="BtnDetailInstall" Classes="primary" HorizontalAlignment="Stretch" Click="OnDetailInstall" IsEnabled="False">Install A StoryWealth →</Button>
+                        </StackPanel>
+                        <Button Click="OnBackToModlist">← Back</Button>
+                    </StackPanel>
+                </ScrollViewer>
+                    <Grid x:Name="ColArchives" Grid.Column="1" RowDefinitions="Auto,*,Auto"
+                          Margin="24,0,0,0" IsVisible="False">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="h2" VerticalAlignment="Center">Archives</TextBlock>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="CmbSort" SelectedIndex="0" SelectionChanged="OnArchiveSort">
+                                    <ComboBoxItem>Name (A-Z)</ComboBoxItem>
+                                    <ComboBoxItem>Size (largest first)</ComboBoxItem>
+                                    <ComboBoxItem>Size (smallest first)</ComboBoxItem>
+                                </ComboBox>
+                                <TextBox x:Name="TxtArchiveFilter" Width="180" Watermark="Filter by size, e.g. 500 MB" TextChanged="OnArchiveFilter"/>
+                            </StackPanel>
+                        </Grid>
+                        <ScrollViewer Grid.Row="1" Margin="0,10">
+                            <ItemsControl x:Name="LstArchives">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:ArchiveRow">
+                                        <Border Background="#171A20" CornerRadius="4" Padding="10,6" Margin="0,0,0,4">
+                                            <Grid ColumnDefinitions="*,120">
+                                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="#DDE2EA" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Size}" Foreground="#9AA3AE" FontSize="12" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock x:Name="TxtArchiveCount" Grid.Row="2" Classes="sub" Margin="0,6,0,0"/>
+                    </Grid>
+            </Grid>
+
+            <!-- PAGE 1: Setup -->
+            <Grid x:Name="PageSetup" Background="#121519" IsVisible="False" RowDefinitions="*,Auto">
+                <ScrollViewer Grid.Row="0">
+                <StackPanel Margin="36,28,36,12" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
+                    <TextBlock Classes="h1">Setup</TextBlock>
+
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Are you transferring from a Vortex installation or installing fresh?</TextBlock>
+                            <RadioButton x:Name="RbFresh" Classes="opt" GroupName="source" IsChecked="True"
+                                         Content="Installing fresh"/>
+                            <RadioButton x:Name="RbVortex" Classes="opt" GroupName="source"
+                                         Content="Transferring from Vortex"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Installation location</TextBlock>
+                            <TextBlock Classes="sub">Where this collection will be installed</TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBox x:Name="TxtInstallDir" Width="520"/>
+                                <Button x:Name="BtnPickDir" Click="OnPickDir">Browse…</Button>
+                                <Button x:Name="BtnValidateDir" Click="OnValidateDir">Check</Button>
+                            </StackPanel>
+                            <TextBlock x:Name="TxtDirStatus" Classes="sub"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <StackPanel x:Name="PnlFreshDownloads" Spacing="10">
+                                <TextBlock Classes="h2">Downloads location</TextBlock>
+                                <TextBlock Classes="sub">Where the downloads should be</TextBlock>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBox x:Name="TxtDownloadsDir" Width="520"/>
+                                    <Button x:Name="BtnPickDownloads" Click="OnPickDownloads">Browse…</Button>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel x:Name="PnlVortexDownloads" Spacing="10" IsVisible="False">
+                                <TextBlock Classes="h2">Vortex Downloads location</TextBlock>
+                                <TextBlock Classes="sub">Point this at your Fallout 4 Vortex downloads folder</TextBlock>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBox x:Name="TxtReuseDir" Width="520"/>
+                                    <Button x:Name="BtnPickReuse" Click="OnPickReuse">Browse…</Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Game Setup</TextBlock>
+                            <RadioButton x:Name="RbAttached" Classes="opt" GroupName="game" IsChecked="True"
+                                         Content="Use your existing Steam/GOG install"/>
+                            <RadioButton x:Name="RbStockGame" Classes="opt" GroupName="game"
+                                         Content="Use a separate install of the game"/>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+                </ScrollViewer>
+                <Border Grid.Row="1" Background="#171A20" Padding="36,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button MinWidth="150" Click="OnBackToModlist">← Back</Button>
+                        <Button x:Name="BtnToNexus" Classes="primary" MinWidth="150" Click="OnToNexus">Continue →</Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- PAGE 2: Nexus -->
+            <Grid x:Name="PageNexus" Background="#121519" IsVisible="False" RowDefinitions="*,Auto">
+                <ScrollViewer Grid.Row="0">
+                <StackPanel Margin="36,28,36,12" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
+                    <TextBlock Classes="h1">Nexus Mods</TextBlock>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Account</TextBlock>
+                            <TextBlock x:Name="TxtAuthDetail" Classes="info" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="BtnLogin" Classes="primary" Click="OnLogin">Sign in with Nexus…</Button>
+                                <Button x:Name="BtnRefreshAuth" Classes="primary" Click="OnRefreshAuth">Check again</Button>
+                            </StackPanel>
+                            <TextBlock x:Name="TxtAuthNote" Classes="sub" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                </ScrollViewer>
+                <Border Grid.Row="1" Background="#171A20" Padding="36,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button MinWidth="150" Click="OnBackToSetup">← Back</Button>
+                        <Button x:Name="BtnToInstall" Classes="primary" MinWidth="150" Click="OnToInstall" IsEnabled="False">Continue →</Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- PAGE 3: Install -->
+            <Panel x:Name="PageInstall" Background="#121519" IsVisible="False">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="36,28,36,20">
+                    <TextBlock Classes="h1" Text="Installing A StoryWealth"/>
+                    <StackPanel Grid.Row="1" Spacing="6" Margin="0,14,0,10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock x:Name="TxtPhase" Classes="info" FontSize="15"/>
+                            <TextBlock x:Name="TxtCounts" Grid.Column="1" Classes="sub"/>
+                        </Grid>
+                        <ProgressBar x:Name="PbOverall" Height="10" Minimum="0" Maximum="100"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock x:Name="TxtItem" Classes="sub" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="TxtSpeed" Grid.Column="1" Classes="sub" Foreground="#F2C48D"/>
+                        </Grid>
+                    </StackPanel>
+                    <TextBox x:Name="TxtLog" Grid.Row="3" Classes="logbox" TextChanged="OnLogChanged"/>
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="10" Margin="0,14,0,0">
+                        <Button x:Name="BtnCancel" Click="OnCancel">Cancel</Button>
+                        <Button x:Name="BtnRetry" Classes="primary" Click="OnRetry" IsVisible="False">Retry failed downloads</Button>
+                    </StackPanel>
+                </Grid>
+            </Panel>
+
+            <!-- PAGE 4: Done -->
+            <Panel x:Name="PageDone" Background="#121519" IsVisible="False">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                    <TextBlock Classes="h1" HorizontalAlignment="Center" FontSize="34">✓ Install complete</TextBlock>
+                    <TextBlock x:Name="TxtDone" Classes="sub" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" TextAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,10,0,0">
+                        <Button x:Name="BtnOpenFolder" Classes="primary" Click="OnOpenFolder">Open install folder</Button>
+                        <Button Click="OnBackToModlist">Back to modlists</Button>
+                    </StackPanel>
+                </StackPanel>
+            </Panel>
+        </Panel>
+    </DockPanel>
+    </Grid>
+</Window>

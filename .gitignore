@@ -1,0 +1,10 @@
+bin/
+obj/
+dist/
+dist-gui/
+pub/
+tmp*/
+test-instance/
+*.user
+.vs/
+samples/
