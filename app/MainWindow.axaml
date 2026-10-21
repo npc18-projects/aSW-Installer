@@ -180,6 +180,7 @@
                                 </StackPanel>
                                 <Button x:Name="BtnToSetup" Classes="primary" HorizontalAlignment="Stretch" Click="OnToSetup" IsEnabled="False">Install A StoryWealth →</Button>
                                 <TextBlock x:Name="TxtCollectionSummary" Classes="sub" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="12"/>
+                                <Button x:Name="BtnPickCollection" Margin="0,6,0,0" IsVisible="False" Click="OnPickCollection">Choose a collection file…</Button>
                                 <TextBlock x:Name="TxtInstallCheck" Classes="sub" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"/>
                             </StackPanel>
                         </Border>
@@ -392,16 +393,20 @@
                             <TextBlock Classes="h2">Optional Content</TextBlock>
                             <TextBlock Classes="info" TextWrapping="Wrap">Untick anything you don't want. Leaving a group out skips its downloads and install; you can add it with a later run.</TextBlock>
                             <StackPanel x:Name="PanelOptional" Spacing="8"/>
+                            <TextBlock x:Name="TxtOptionalNote" Classes="sub" TextWrapping="Wrap" IsVisible="False"/>
                         </StackPanel>
                     </Border>
 
                 </StackPanel>
                 </ScrollViewer>
                 <Border Grid.Row="1" Background="#171A20" Padding="36,12">
-                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-                        <Button MinWidth="150" Click="OnBackToModlist">← Back</Button>
-                        <Button x:Name="BtnToNexus" Classes="primary" MinWidth="150" Click="OnToNexus">Continue →</Button>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock x:Name="TxtSetupError" Foreground="Salmon" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <Button MinWidth="150" Click="OnBackToModlist">← Back</Button>
+                            <Button x:Name="BtnToNexus" Classes="primary" MinWidth="150" Click="OnToNexus">Continue →</Button>
+                        </StackPanel>
+                    </Grid>
                 </Border>
             </Grid>
 
@@ -419,6 +424,17 @@
                                 <Button x:Name="BtnRefreshAuth" Classes="primary" Click="OnRefreshAuth">Check again</Button>
                             </StackPanel>
                             <TextBlock x:Name="TxtAuthNote" Classes="sub" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="CardManual" Classes="card" IsVisible="False">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Downloading with a free account</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Nexus only allows automatic downloads for Premium members. The installer will open each mod's file page, one at a time, and you press Manual download, then Slow download, on the exact file shown. It notices the file, checks it and moves on to the next one.</TextBlock>
+                            <TextBlock Classes="sub">Where your browser saves downloads</TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBox x:Name="TxtWatchDir" Width="520"/>
+                                <Button Click="OnPickWatchDir">Browse…</Button>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -448,8 +464,11 @@
                     </StackPanel>
                     <TextBox x:Name="TxtLog" Grid.Row="3" Classes="logbox" TextChanged="OnLogChanged"/>
                     <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="10" Margin="0,14,0,0">
+                        <Button x:Name="BtnOpenPage" Classes="primary" Click="OnOpenModPage" IsVisible="False">Open the page again</Button>
                         <Button x:Name="BtnCancel" Click="OnCancel">Cancel</Button>
                         <Button x:Name="BtnRetry" Classes="primary" Click="OnRetry" IsVisible="False">Retry failed downloads</Button>
+                        <Button x:Name="BtnResume" Classes="primary" Click="OnRetry" IsVisible="False">Resume install</Button>
+                        <Button x:Name="BtnInstallBack" Click="OnInstallBack" IsVisible="False">← Back to setup</Button>
                     </StackPanel>
                 </Grid>
             </Panel>

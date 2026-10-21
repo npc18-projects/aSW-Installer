@@ -182,6 +182,31 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     Check("no shipped groups: only the collection's optional mods are skipped", J(legacy) == "Textures9", J(legacy));
 }
 
+// ---- free-account manual download: pick the right file out of the browser folder
+{
+    var root = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    var watch = Path.Combine(root, "browser"); var dest = Path.Combine(root, "downloads");
+    Directory.CreateDirectory(watch);
+    try
+    {
+        File.WriteAllText(Path.Combine(watch, "unrelated.zip"), "something else entirely");
+        File.WriteAllText(Path.Combine(watch, "same-size-wrong.7z"), "WRONG");
+        File.WriteAllText(Path.Combine(watch, "Real Mod-1-1-0.7z"), "RIGHT");
+        var m = Mod("Real Mod", 0, "x"); m.Nexus!.FileSize = 5;
+        var got = await ManualDownloader.FetchAsync(m, watch,
+            n => Path.Combine(dest, n),
+            p => Task.FromResult((File.ReadAllText(p) == "RIGHT", "content differs")),
+            _ => Check("a file already in the browser folder needs no page to be opened", false), CancellationToken.None);
+        Check("manual download takes the verified file and moves it to the downloads folder",
+            got == Path.Combine(dest, "Real Mod-1-1-0.7z") && File.Exists(got) && !File.Exists(Path.Combine(watch, "Real Mod-1-1-0.7z")), got);
+        Check("manual download leaves other files in the browser folder alone",
+            File.Exists(Path.Combine(watch, "same-size-wrong.7z")) && File.Exists(Path.Combine(watch, "unrelated.zip")));
+        Check("page url carries mod id and file id",
+            ManualDownloader.PageUrl(m) == $"https://www.nexusmods.com/{m.Nexus.Game}/mods/1?tab=files&file_id=1", ManualDownloader.PageUrl(m));
+    }
+    finally { try { Directory.Delete(root, true); } catch { } }
+}
+
 // ---- structured priority order
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

@@ -53,7 +53,8 @@ public sealed class InstallRunner
         string instanceDir, string gamePath, IProgress<ProgressInfo>? progress = null,
         CancellationToken ct = default, bool stockGame = false, string? reuseDir = null,
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
-        int downloadThreads = 0, int extractThreads = 0, IReadOnlyCollection<string>? optionalGroups = null)
+        int downloadThreads = 0, int extractThreads = 0, IReadOnlyCollection<string>? optionalGroups = null,
+        string? manualWatchDir = null)
     {
         InstallLog.Init(instanceDir);
         InstallLog.Info("auth", "validating Nexus account...");
@@ -158,7 +159,11 @@ public sealed class InstallRunner
         if (reuseDir is { } rdir)
             InstallLog.Info("reuse", $"checking existing archives in {rdir} ({Directory.EnumerateFiles(rdir).Count()} files)");
 
-        var dlThreads = downloadThreads > 0 ? downloadThreads : DownloadThreads;
+        // Free accounts get no direct links: every mod is downloaded by hand, one at a time (see ManualDownloader).
+        var manual = !user.IsPremium;
+        var watchDir = string.IsNullOrWhiteSpace(manualWatchDir) ? ManualDownloader.DefaultWatchDir() : manualWatchDir;
+        if (manual) InstallLog.Info("download", $"free account: mods are downloaded in your browser one at a time; watching {watchDir}");
+        var dlThreads = manual ? 1 : downloadThreads > 0 ? downloadThreads : DownloadThreads;
         var exThreads = extractThreads > 0 ? extractThreads : ExtractThreads;
         InstallLog.Info("config", $"threads: {dlThreads} download / {exThreads} extract");
 
@@ -254,7 +259,16 @@ public sealed class InstallRunner
                 }
                 finally { reuseGate.Release(); }
             }
-            if (!reused)
+            if (!reused && manual)
+            {
+                archivePath = await ManualDownloader.FetchAsync(mod, watchDir,
+                    name => Mo2InstanceWriter.ArchivePath(instanceDir, mod, name, downloadsDir),
+                    p => ArchiveVerifyCache.VerifyAsync(p, mod, q => ManifestResolver.VerifyArchiveAsync(q, mod)),
+                    url => progress?.Report(new(done, total, "manual", mod.InstallAs,
+                        "On the page: Manual download, then Slow download")), ct2);
+                reused = true; // already verified; the shared verify below is a cache hit
+            }
+            else if (!reused)
             {
                 link = await RetryAsync(
                     () => api.GetDownloadLinkAsync(mod.Nexus!.Game, mod.Nexus!.ModId, mod.Nexus.FileId),

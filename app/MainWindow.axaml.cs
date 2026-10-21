@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private string? _resumeAddonId;
     private CancellationTokenSource? _cts;
     private bool _authPremium;
+    private bool _signedIn;
 
     public MainWindow()
     {
@@ -33,6 +34,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => { _cts?.Cancel(); InstallRunner.UiLogLine -= OnLogLine; };
         RbFresh.IsCheckedChanged += (_, _) => OnSourceChanged();
         RbVortex.IsCheckedChanged += (_, _) => OnSourceChanged();
+        TxtWatchDir.Text = ManualDownloader.DefaultWatchDir();
         var threads = InstallState.GetThreads();
         NudDownloadThreads.Value = threads.Download;
         NudExtractThreads.Value = threads.Extract;
@@ -55,6 +57,7 @@ public partial class MainWindow : Window
             }
             if (r.StockGame) RbStockGame.IsChecked = true;
             TxtDirStatus.Text = "Previous install was interrupted — installing again resumes where it left off.";
+            ApplyResumeGroups();
         }
         else if (last is { } ld2 && ld2.Dir is { } ld && Directory.Exists(ld))
         {
@@ -95,14 +98,65 @@ public partial class MainWindow : Window
         CardOptional.IsVisible = groups.Count > 0;
         foreach (var g in groups)
         {
-            var box = new CheckBox
-            {
-                Tag = g.Id,
-                IsChecked = g.DefaultOn,
-                Content = string.IsNullOrWhiteSpace(g.Description) ? g.Name : $"{g.Name} — {g.Description}",
-            };
+            var box = new CheckBox { Tag = g.Id, IsChecked = g.DefaultOn };
+            box.IsCheckedChanged += (_, _) => { UpdateStats(); TxtSetupError.Text = ""; };
             PanelOptional.Children.Add(box);
         }
+        UpdateOptionalLabels();
+    }
+
+    private IEnumerable<CheckBox> OptionalBoxes => PanelOptional.Children.OfType<CheckBox>();
+    private List<string> SelectedGroups() => OptionalBoxes.Where(c => c.IsChecked == true).Select(c => (string)c.Tag!).ToList();
+
+    /// <summary>Checkbox text with each group's mod count and download size (once the collection is loaded).</summary>
+    private void UpdateOptionalLabels()
+    {
+        var groups = AStoryWealth.Core.OptionalGroups.Load(AddonId);
+        foreach (var box in OptionalBoxes)
+        {
+            var g = groups.FirstOrDefault(x => x.Id == (string)box.Tag!);
+            if (g is null) continue;
+            var text = string.IsNullOrWhiteSpace(g.Description) ? g.Name : $"{g.Name} — {g.Description}";
+            if (_manifest is not null)
+            {
+                var only = AStoryWealth.Core.OptionalGroups.Excluded(_manifest.Mods, groups, groups.Where(x => x.Id != g.Id).Select(x => x.Id).ToList());
+                var bytes = _manifest.Mods.Where(m => only.Contains(m.InstallAs)).Sum(m => m.Nexus?.FileSize ?? 0);
+                text += $"  ({only.Count} mods, {bytes / 1_000_000_000.0:N1} GB)";
+            }
+            box.Content = text;
+        }
+    }
+
+    /// <summary>Mod count and download size of what the current optional-group ticks will actually install.</summary>
+    private (int Mods, double Gb) SelectionTotals()
+    {
+        if (_manifest is null) return (0, 0);
+        var groups = AStoryWealth.Core.OptionalGroups.Load(AddonId);
+        var skip = AStoryWealth.Core.OptionalGroups.Excluded(_manifest.Mods, groups, SelectedGroups());
+        var kept = _manifest.Mods.Where(m => !skip.Contains(m.InstallAs)).ToList();
+        return (kept.Count, kept.Sum(m => m.Nexus?.FileSize ?? 0) / 1_000_000_000.0);
+    }
+
+    private void UpdateStats()
+    {
+        if (_manifest is null) return;
+        var (mods, gb) = SelectionTotals();
+        TxtStatMods.Text = mods.ToString("N0");
+        TxtStatSize.Text = $"~{gb:N0} GB";
+        TxtStatStorage.Text = $"~{gb * 2:N0} GB";
+    }
+
+    /// <summary>An unfinished install keeps the groups it started with; the boxes mirror them and are locked.</summary>
+    private void ApplyResumeGroups()
+    {
+        var locked = _resume?.OptionalGroups is not null;
+        if (locked)
+            foreach (var box in OptionalBoxes)
+                box.IsChecked = _resume!.OptionalGroups!.Contains((string)box.Tag!, StringComparer.OrdinalIgnoreCase);
+        foreach (var box in OptionalBoxes) box.IsEnabled = !locked;
+        TxtOptionalNote.IsVisible = locked;
+        TxtOptionalNote.Text = locked ? "An earlier install is unfinished, so it keeps the choices it started with." : "";
+        UpdateStats();
     }
 
     private void OnLogLine(string line)
@@ -195,11 +249,11 @@ public partial class MainWindow : Window
             var manifest = await Task.Run(() => VortexCollectionMapper.Map(path, AddonId));
             _collectionPath = path;
             _manifest = manifest;
-            var totalGb = manifest.Mods.Sum(m => m.Nexus?.FileSize ?? 0) / 1_000_000_000.0;
-            TxtStatMods.Text = manifest.Mods.Count.ToString("N0");
-            TxtStatSize.Text = $"~{totalGb:N0} GB";
-            TxtStatStorage.Text = $"~{totalGb * 2:N0} GB";
+            UpdateOptionalLabels();
+            UpdateStats();
             TxtCollectionSummary.Text = "";
+            BtnPickCollection.IsVisible = false;
+            BtnToInstall.IsEnabled = _signedIn;
             BtnToSetup.IsEnabled = true;
             BtnDetailInstall.IsEnabled = true;
             EnableNav(1);
@@ -329,6 +383,7 @@ public partial class MainWindow : Window
         if (_addonJsonPath is null || _collectionPath is null) return;
         _addonInstall = true;
         TxtInstallDir.Text = InstallState.GetLastDir() ?? TxtInstallDir.Text;
+        ClearInstallPage();
         ShowPage(3);
         _ = StartInstallAsync();
     }
@@ -543,24 +598,91 @@ public partial class MainWindow : Window
     {
         var dir = TxtInstallDir.Text;
         if (string.IsNullOrWhiteSpace(dir)) { TxtDirStatus.Text = "Pick a folder first."; return; }
+        TxtDirStatus.Text = CheckSpace(dir.Trim()) is { } problem ? problem : SpaceSummary(dir.Trim());
+    }
+
+    /// <summary>Free space per drive against what the ticked groups need: downloads once, plus about the same again for the installed mods.</summary>
+    private (string Install, string Downloads, double InstallNeed, double DownloadsNeed) SpacePlan(string installDir)
+    {
+        var gb = SelectionTotals().Gb;
+        var dl = RbFresh.IsChecked == true && !string.IsNullOrWhiteSpace(TxtDownloadsDir.Text)
+            ? TxtDownloadsDir.Text!.Trim() : installDir;
+        var iRoot = Path.GetPathRoot(Path.GetFullPath(installDir)) ?? "";
+        var dRoot = Path.GetPathRoot(Path.GetFullPath(dl)) ?? "";
+        return string.Equals(iRoot, dRoot, StringComparison.OrdinalIgnoreCase)
+            ? (iRoot, dRoot, gb * 2, 0)
+            : (iRoot, dRoot, gb, gb);
+    }
+
+    private static double FreeGb(string root) => new DriveInfo(root).AvailableFreeSpace / 1_000_000_000.0;
+
+    /// <summary>Null when every drive involved has the space; otherwise the message to show.</summary>
+    private string? CheckSpace(string installDir)
+    {
         try
         {
-            var drive = Path.GetPathRoot(Path.GetFullPath(dir));
-            var di = drive != null ? new DriveInfo(drive) : null;
-            var freeGb = di?.AvailableFreeSpace / 1_000_000_000.0 ?? 0;
-            var need = _collectionPath != null
-                ? VortexCollectionMapper.Map(_collectionPath, AddonId).Mods.Sum(m => m.Nexus?.FileSize ?? 0) / 1_000_000_000.0
-                : 0;
-            TxtDirStatus.Text = freeGb < need * 2
-                ? $"Not enough space. {drive} has {freeGb:N0} GB free, this pack needs about {need * 2:N0} GB."
-                : $"Good. {drive} has enough space (about {need * 2:N0} GB needed).";
+            if (_manifest is null) return null;
+            var p = SpacePlan(installDir);
+            if (FreeGb(p.Install) < p.InstallNeed)
+                return $"Not enough space. {p.Install} has {FreeGb(p.Install):N0} GB free, this install needs about {p.InstallNeed:N0} GB.";
+            if (p.DownloadsNeed > 0 && FreeGb(p.Downloads) < p.DownloadsNeed)
+                return $"Not enough space for the downloads. {p.Downloads} has {FreeGb(p.Downloads):N0} GB free, they need about {p.DownloadsNeed:N0} GB.";
+            return null;
         }
-        catch { TxtDirStatus.Text = "That folder path doesn't look valid. Try Browse."; }
+        catch { return "That folder path doesn't look valid. Try Browse."; }
+    }
+
+    private string SpaceSummary(string installDir)
+    {
+        try
+        {
+            var p = SpacePlan(installDir);
+            return $"Good. {p.Install} has enough space (about {p.InstallNeed + p.DownloadsNeed:N0} GB needed).";
+        }
+        catch { return "That folder path doesn't look valid. Try Browse."; }
     }
 
     private void OnBackToSetup(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => ShowPage(1);
 
-    private void OnToNexus(object? sender, Avalonia.Interactivity.RoutedEventArgs e) { ShowPage(2); _ = RefreshAuthAsync(); }
+    /// <summary>The first problem with the Setup page, or null. Runs before moving on so the install never starts half-configured.</summary>
+    private string? ValidateSetup()
+    {
+        var dir = (TxtInstallDir.Text ?? "").Trim();
+        if (dir.Length == 0) return "Choose an install folder.";
+        if (_manifest is null) return "The mod list hasn't loaded yet. Wait a moment, or check the Nexus sign-in.";
+        try
+        {
+            if (!Path.IsPathRooted(dir) || Path.GetPathRoot(dir) is not { Length: > 0 } root || !Directory.Exists(root))
+                return "The install folder isn't a valid path on this PC. Try Browse.";
+            if (File.Exists(dir)) return "The install folder is a file. Choose a folder.";
+            var dl = (TxtDownloadsDir.Text ?? "").Trim();
+            if (RbFresh.IsChecked == true)
+            {
+                if (dl.Length == 0) return "Choose a downloads folder.";
+                if (!Path.IsPathRooted(dl) || !Directory.Exists(Path.GetPathRoot(dl)!))
+                    return "The downloads folder isn't a valid path on this PC. Try Browse.";
+            }
+            else
+            {
+                var reuse = (TxtReuseDir.Text ?? "").Trim();
+                if (reuse.Length == 0 || !Directory.Exists(reuse)) return "The Vortex downloads folder doesn't exist. Point it at your Fallout 4 downloads folder.";
+            }
+        }
+        catch { return "That folder path doesn't look valid. Try Browse."; }
+        if (_resume is null && FindFallout4Path().Length == 0)
+            return RbStockGame.IsChecked == true
+                ? "Couldn't find a Fallout 4 install to copy. Install the game through Steam once, then try again."
+                : "Couldn't find your Fallout 4 install. Install the game through Steam once, then try again.";
+        return CheckSpace(dir);
+    }
+
+    private void OnToNexus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        TxtSetupError.Text = ValidateSetup() ?? "";
+        if (TxtSetupError.Text.Length > 0) return;
+        ShowPage(2);
+        _ = RefreshAuthAsync();
+    }
 
     // ---------- page 2: nexus ----------
 
@@ -571,6 +693,7 @@ public partial class MainWindow : Window
             TxtAuthDetail.Text = "Not signed in yet.";
             TxtSettingsAuth.Text = TxtAuthDetail.Text;
             TxtAuthNote.Text = "Signing in lets the installer download mods for you. Your Nexus password is never shared with the installer.";
+            _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
             return;
@@ -582,18 +705,21 @@ public partial class MainWindow : Window
             using var api = new AStoryWealth.NexusApi.NexusApiClient(_apiKey);
             var user = await api.ValidateUserAsync();
             _authPremium = user.IsPremium;
+            CardManual.IsVisible = !user.IsPremium;
             TxtAuthDetail.Text = user.IsPremium
                 ? $"Signed in as {user.Name}. Downloads will run automatically at full speed."
-                : $"Signed in as {user.Name}. You'll confirm each download in your browser, the installer handles the rest.";
+                : $"Signed in as {user.Name}. Free account: you'll download each mod yourself in your browser, one at a time. The installer opens the right page and does the rest.";
             TxtAuthNote.Text = "You're all set. Continue to install.";
-            BtnToInstall.IsEnabled = true;
+            _signedIn = true;
+            BtnToInstall.IsEnabled = _collectionPath != null;
             SetStatus($"Signed in: {user.Name}");
-            if (user.IsPremium) _ = SyncCollectionAsync(); // pull the collection archive in the background
+            _ = SyncCollectionAsync(); // pull the latest collection in the background
         }
         catch (Exception ex)
         {
             TxtAuthDetail.Text = "Couldn't reach Nexus Mods. Check your internet connection and try again.";
             InstallLog.Error("ui", $"auth check failed: {ex.Message}");
+            _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
         }
@@ -624,7 +750,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private bool _syncing;
+
     private async Task SyncCollectionAsync()
+    {
+        if (_syncing) return;
+        _syncing = true;
+        try { await SyncCollectionCoreAsync(); }
+        finally { _syncing = false; }
+    }
+
+    private async Task SyncCollectionCoreAsync()
     {
         TxtCollectionSummary.Text = "Fetching the latest version of A StoryWealth…";
         SetStatus("Fetching the latest version…");
@@ -642,9 +778,24 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            TxtCollectionSummary.Text = "Couldn't reach Nexus. Check your internet connection and try again later.";
             InstallLog.Error("ui", $"collection sync failed: {ex.Message}");
             SetStatus("Couldn't fetch the latest version");
+            var saved = new CollectionSync(SyncCacheDir).LoadState();
+            if (saved is not null && File.Exists(saved.CollectionJsonPath))
+            {
+                await LoadCollectionAsync(saved.CollectionJsonPath);
+                TxtCollectionSummary.Text = $"Couldn't check for a newer version, so the saved copy (r{saved.Revision}) is being used.";
+            }
+            else
+            {
+                // Nexus only gives the collection file itself to Premium members.
+                TxtCollectionSummary.Text = ex.Message.Contains("premium", StringComparison.OrdinalIgnoreCase)
+                    ? "Nexus only provides the collection file to Premium members. If you already have a collection.json for this version, choose it below."
+                    : ex.Message.Contains("7-Zip", StringComparison.OrdinalIgnoreCase)
+                        ? "7-Zip is needed to unpack the mod list and wasn't found. Install it from 7-zip.org, then press Check again."
+                        : "Couldn't reach Nexus. Check your internet connection and try again later.";
+                BtnPickCollection.IsVisible = true;
+            }
             RefreshInstallCheck();
         }
     }
@@ -687,18 +838,74 @@ public partial class MainWindow : Window
     private void OnToInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (_collectionPath == null) return;
+        ClearInstallPage();
         ShowPage(3);
         _ = StartInstallAsync();
     }
 
     // ---------- page 3: install ----------
 
+    /// <summary>Fresh start from Setup: empty log, counters and buttons.</summary>
+    private void ClearInstallPage()
+    {
+        TxtLog.Text = "";
+        ResetRunState();
+        BtnResume.IsVisible = BtnRetry.IsVisible = BtnInstallBack.IsVisible = false;
+    }
+
+    /// <summary>Per-run state that must not leak from one attempt into the next.</summary>
+    private void ResetRunState()
+    {
+        TxtItem.ClearValue(TextBlock.ForegroundProperty);
+        TxtItem.Text = "";
+        TxtSpeed.Text = "";
+        TxtCounts.Text = "";
+        PbOverall.Value = 0;
+    }
+
+    /// <summary>Install page controls and the left nav follow whether a run is active.</summary>
+    private void SetRunning(bool running)
+    {
+        BtnCancel.IsVisible = running;
+        if (running) { BtnResume.IsVisible = BtnRetry.IsVisible = BtnInstallBack.IsVisible = BtnOpenPage.IsVisible = false; }
+        else BtnOpenPage.IsVisible = false;
+        Nav.IsEnabled = !running;
+    }
+
+    /// <summary>A run stopped without finishing: offer to continue it or go back to Setup.</summary>
+    private void OfferContinue(bool retryFailedOnly)
+    {
+        BtnRetry.IsVisible = retryFailedOnly;
+        BtnResume.IsVisible = !retryFailedOnly;
+        BtnInstallBack.IsVisible = true;
+    }
+
+    private void OnInstallBack(object? sender, RoutedEventArgs e)
+    {
+        if (_installing) return;
+        ApplyResumeGroups();
+        ShowPage(1);
+    }
+
+    private void OnOpenModPage(object? sender, RoutedEventArgs e)
+    {
+        if (ManualDownloader.CurrentUrl is { } url) ManualDownloader.OpenPage(url);
+    }
+
+    private async void OnPickWatchDir(object? sender, RoutedEventArgs e)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        { Title = "Choose where your browser saves downloads", AllowMultiple = false });
+        if (folders.Count > 0) TxtWatchDir.Text = folders[0].Path.LocalPath;
+    }
+
     private async Task StartInstallAsync()
     {
         if (_installing) return; // re-entrancy guard: no double installs, _cts stays valid
         _installing = true;
+        SetRunning(true);
         try { await RunInstallAsync(); }
-        finally { _installing = false; }
+        finally { _installing = false; SetRunning(false); }
     }
 
     private async Task RunInstallAsync()
@@ -712,7 +919,7 @@ public partial class MainWindow : Window
         var jsonPath = resuming ? _resumeJsonPath! : _addonInstall ? _addonJsonPath! : _collectionPath!;
         var installId = resuming ? _resumeAddonId! : _addonInstall ? _addonDetailCard!.Slug : AddonId;
         _addonInstall = false;
-        BtnRetry.IsVisible = false;
+        ResetRunState();
         TxtPhase.Text = "Starting…";
         _cts = new CancellationTokenSource();
         var runner = new InstallRunner();
@@ -725,12 +932,15 @@ public partial class MainWindow : Window
                 "mo2" => "Setting up Mod Organizer 2…",
                 "install" => "Installing mods…",
                 "download" => p.Total == 0 ? $"Downloading {ShortModName(p.CurrentItem)}" : $"Downloading mod {p.Current + 1} of {p.Total}",
+                "manual" => $"Your turn: download mod {p.Current + 1} of {p.Total} in your browser",
                 "finalize" => "Finishing up…",
                 "done" => "Done.",
                 _ => p.Phase
             };
             TxtItem.Text = ShortModName(p.CurrentItem);
             TxtSpeed.Text = p.Speed ?? "";
+            BtnOpenPage.IsVisible = p.Phase == "manual";
+            PbOverall.IsIndeterminate = p.Total == 0;
             if (p.Total > 0) { PbOverall.Value = 100.0 * p.Current / p.Total; TxtCounts.Text = $"{p.Current}/{p.Total}"; }
         });
         try
@@ -750,12 +960,15 @@ public partial class MainWindow : Window
             // thread-affine and Task.Run below runs on a worker thread.
             var dlThreads = (int)NudDownloadThreads.Value;
             var exThreads = (int)NudExtractThreads.Value;
-            var optionalGroups = PanelOptional.Children.OfType<CheckBox>().Where(c => c.IsChecked == true).Select(c => (string)c.Tag!).ToList();
+            var optionalGroups = SelectedGroups();
+            var watchDir = string.IsNullOrWhiteSpace(TxtWatchDir.Text) ? null : TxtWatchDir.Text.Trim();
             await Task.Run(() => runner.RunAsync(jsonPath, installId, _apiKey!, dir,
                 gamePath, progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
-                downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups));
+                downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups,
+                manualWatchDir: watchDir));
             _resume = null;
+            ApplyResumeGroups();
             _installedDir = dir;
             InstallState.SetInstallDir(dir);
             TxtDone.Text = $"All done! A StoryWealth is installed.\nTo play, open the folder below and run Mod Organizer 2, just like starting the game normally.";
@@ -764,7 +977,9 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
-            TxtPhase.Text = "Cancelled. Everything downloaded so far is kept. Press Continue to pick up where it stopped.";
+            TxtPhase.Text = "Stopped. Everything downloaded so far is kept. Press Resume to pick up where it left off.";
+            PbOverall.IsIndeterminate = false;
+            OfferContinue(false);
         }
         catch (InstallRunner.DownloadIncompleteException die)
         {
@@ -773,13 +988,16 @@ public partial class MainWindow : Window
             TxtPhase.Text = $"{die.Failures.Count} mod(s) couldn't be downloaded. Everything else downloaded fine. Check your connection, then press Retry — only the failed downloads will run again.";
             TxtItem.Text = $"Failed: {list}";
             TxtItem.Foreground = Brushes.Salmon;
-            BtnRetry.IsVisible = true;
+            PbOverall.IsIndeterminate = false;
+            OfferContinue(true);
         }
         catch (Exception ex)
         {
             TxtPhase.Text = "Something went wrong. The details are in the log below, and in install.log next to your install. That file is what you'd send us if you need help.";
             TxtItem.Text = ex.Message;
             TxtItem.Foreground = Brushes.Salmon;
+            PbOverall.IsIndeterminate = false;
+            OfferContinue(false);
         }
     }
 
@@ -800,8 +1018,7 @@ public partial class MainWindow : Window
 
     private void OnRetry(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        BtnRetry.IsVisible = false;
-        InstallLog.Info("ui", "retrying failed downloads");
+        InstallLog.Info("ui", "retrying / resuming install");
         _ = StartInstallAsync(); // _resume still holds the checkpoint — only failed downloads re-run
     }
 
