@@ -5,6 +5,7 @@
     pwsh build/publish.ps1 -SkipTests      # skip the tests
     pwsh build/publish.ps1 -Output D:\out  # different output folder
     pwsh build/publish.ps1 -Loose          # old layout: the exe plus 220+ separate files
+    pwsh build/publish.ps1 -NoZip          # no zip and no signing (build/alpha.ps1 uses this)
 
   The tests run first. If one fails, the build stops. Nothing is signed, so sign
   dist\...\AStoryWealth.Installer.exe yourself if you have a certificate.
@@ -27,7 +28,8 @@ param(
     [switch]$NoSevenZip,
     [switch]$Loose,
     [string]$SigningKey,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$NoZip
 )
 
 function Find-SevenZipDir {
@@ -79,6 +81,10 @@ try {
         Write-Host "Bundled 7-Zip $ver from $sz (7z.exe sha256 $hash)"
     }
 
+    if ($NoZip) {
+        Write-Host "Built $dir ($((Get-ChildItem $dir -File | Measure-Object).Count) files)"
+        return
+    }
     $zip = "$dir.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $dir '*') -DestinationPath $zip

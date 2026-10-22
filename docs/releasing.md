@@ -29,6 +29,18 @@ The app can update itself from GitHub releases. It stays off until you set it up
    ```
    Don't tick "pre-release": the app ignores those.
 
+## Local alpha builds
+
+Before a test build goes out, try the working tree locally:
+
+```
+pwsh build/alpha.ps1
+```
+
+This builds into `dist-alpha\` (the newest three are kept), with a version like `0.5.0-alpha.g1a2b3c4.dirty` (`.dirty` means uncommitted changes). It builds from a temporary copy, so a running copy of the app doesn't block it. An alpha is not zipped or signed and never updates itself. It shares the app's settings and install record, so it opens on the same install.
+
+The order is alpha (local), beta (GitHub pre-release for testers), then the release.
+
 ## Test builds
 
 Test builds go out as GitHub pre-releases, so they don't count as a public release. The app ignores pre-releases unless the user ticks Settings > Updates > Include test builds.

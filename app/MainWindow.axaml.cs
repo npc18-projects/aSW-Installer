@@ -239,6 +239,12 @@ public partial class MainWindow : Window
         var settings = UpdateSettings.Load();
         ChkUpdateAuto.IsChecked = settings.CheckAtStartup;
         ChkUpdateTest.IsChecked = settings.IncludeTestBuilds;
+        if (_version.Contains("-alpha", StringComparison.OrdinalIgnoreCase))
+        {
+            TxtUpdateStatus.Text = $"You're on version {_version}, a local alpha build. It doesn't update itself.";
+            ChkUpdateAuto.IsEnabled = ChkUpdateTest.IsEnabled = BtnUpdateCheck.IsEnabled = false;
+            return;
+        }
         if (!UpdateCfg.Enabled)
         {
             TxtUpdateStatus.Text = $"You're on version {_version}. Updates aren't set up in this build.";
