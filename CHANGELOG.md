@@ -2,7 +2,7 @@
 
 ## 0.4.4
 
-- Add-on mods are named "Atmosphere - Mod name" (the add-on's title without the A Storywealth / aSW prefix), instead of "A Storywealth - Atmosphere - Mod name". Folders from earlier versions are still recognised.
+- Add-on mods are named after their add-on, without the A Storywealth / aSW prefix (for example "Atmosphere - Mod name"). Each add-on uses its own title. Folders from earlier versions are still recognised.
 
 ## 0.4.3
 
