@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.4
 
 - Add-on mods are named "Atmosphere - Mod name" (the add-on's title without the A Storywealth / aSW prefix), instead of "A Storywealth - Atmosphere - Mod name". Folders from earlier versions are still recognised.
 
