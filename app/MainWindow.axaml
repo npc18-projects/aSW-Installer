@@ -135,8 +135,18 @@
                 </StackPanel>
                 <ListBox Grid.Row="1" x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged" VerticalAlignment="Top">
                     <ListBoxItem x:Name="NavItemHome" Classes="navItem" Tag="10" IsVisible="False">Home</ListBoxItem>
-                    <ListBoxItem Classes="navItem" Tag="0" IsSelected="True">Modlist</ListBoxItem>
-                    <ListBoxItem x:Name="NavItemAddons" Classes="navItem" Tag="6" IsEnabled="False">Add-Ons</ListBoxItem>
+                    <ListBoxItem Classes="navItem" Tag="0" IsSelected="True">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Modlist"/>
+                            <Ellipse x:Name="DotModlist" Width="8" Height="8" Fill="#6FCF83" VerticalAlignment="Center" IsVisible="False" ToolTip.Tip="An update is available"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem x:Name="NavItemAddons" Classes="navItem" Tag="6" IsEnabled="False">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Add-Ons"/>
+                            <Ellipse x:Name="DotAddons" Width="8" Height="8" Fill="#6FCF83" VerticalAlignment="Center" IsVisible="False" ToolTip.Tip="An add-on has an update"/>
+                        </StackPanel>
+                    </ListBoxItem>
                     <ListBoxItem x:Name="NavItemOptional" Classes="navItem" Tag="9">Optional</ListBoxItem>
                     <ListBoxItem Classes="navItem" Tag="7">Settings</ListBoxItem>
                 </ListBox>
@@ -226,7 +236,6 @@
                 <StackPanel Orientation="Horizontal" Spacing="14">
                     <TextBlock Classes="h1">Add-Ons</TextBlock>
                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <ToggleButton x:Name="TglAddonsAll" Classes="tab" IsChecked="True" Click="OnAddonsFilter">All</ToggleButton>
                         <ToggleButton x:Name="TglAddonsUpdate" Classes="tab" Click="OnAddonsFilter">Update available</ToggleButton>
                         <ComboBox x:Name="CmbAddonsAuthor" MinWidth="140" SelectionChanged="OnAddonsAuthorChanged"/>
                         <ComboBox x:Name="CmbAddonsSort" MinWidth="170" SelectedIndex="0" SelectionChanged="OnAddonsSortChanged">

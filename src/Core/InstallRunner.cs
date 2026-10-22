@@ -618,7 +618,10 @@ if (numbered >= 1) dumpSignature = true;
         {
             // a copy of the list this run installed, so the Optional tab works offline and for add-ons later
             var keep = Path.Combine(instanceDir, ".asw"); Directory.CreateDirectory(keep);
-            File.Copy(collectionJsonPath, Path.Combine(keep, addonId + ".collection.json"), true);
+            var dest = Path.Combine(keep, addonId + ".collection.json");
+            // An optional-content run reads the latest list but doesn't update the mods already installed, so the copy that
+            // says which list the install was made from (the Modlist update dot) is left as it was.
+            if (!(optionalMods is not null && File.Exists(dest))) File.Copy(collectionJsonPath, dest, true);
         }
         catch (Exception ex) { InstallLog.Warn("config", $"could not keep a copy of the collection list: {ex.Message}"); }
         InstallState.ClearResume();

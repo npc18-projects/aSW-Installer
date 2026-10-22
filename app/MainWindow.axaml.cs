@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         NudExtractThreads.Value = threads.Extract;
         _resume = InstallState.GetResume();
         _ = RefreshAuthAsync();
-        TxtCollectionSummary.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty) TxtDetailSummary.Text = TxtCollectionSummary.Text; };
+        TxtCollectionSummary.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty) RefreshDetailHeader(); };
         PnlPickCollection.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) PnlDetailPick.IsVisible = PnlPickCollection.IsVisible; };
         InitUpdates();
         ShowExistingInstall();
@@ -597,9 +597,32 @@ public partial class MainWindow : Window
     private void RefreshDetailHeader()
     {
         var installed = Mo2Launcher.IsInstalled(InstallState.GetInstallDir());
-        BtnDetailInstall.Content = installed ? "Reinstall / repair →" : "Install A StoryWealth →";
-        TxtDetailSummary.Text = TxtCollectionSummary.Text;
+        BtnDetailInstall.Content = !installed ? "Install A StoryWealth →" : _baseUpdate ? "Update A StoryWealth →" : "Reinstall / repair →";
+        TxtDetailSummary.Text = installed && _baseUpdate ? "Update available: the latest list differs from the one you installed." : TxtCollectionSummary.Text;
         PnlDetailPick.IsVisible = PnlPickCollection.IsVisible;
+    }
+
+    private bool _baseUpdate;
+    private bool _addonUpdates;
+
+    /// <summary>The green dots next to Modlist and Add-Ons.</summary>
+    private void UpdateNavBadges()
+    {
+        var forced = Environment.GetEnvironmentVariable("ASW_UI_DOTS") == "1";   // for screenshots
+        DotModlist.IsVisible = _baseUpdate || forced;
+        DotAddons.IsVisible = _addonUpdates || forced;
+    }
+
+    /// <summary>Compares the list the install was made from with the latest one, off the UI thread.</summary>
+    private async Task CheckBaseUpdateAsync()
+    {
+        var dir = InstallState.GetInstallDir();
+        var latest = _collectionPath;
+        if (dir is null || latest is null) { _baseUpdate = false; UpdateNavBadges(); return; }
+        var differs = await Task.Run(() => InstallHealth.BaseUpdateAvailable(dir, latest));
+        _baseUpdate = differs == true;
+        UpdateNavBadges();
+        RefreshDetailHeader();
     }
 
     // ---------- home ----------
@@ -869,6 +892,7 @@ public partial class MainWindow : Window
             UpdateOptionalLabels();
             UpdateStats();
             FillDetail();
+            _ = CheckBaseUpdateAsync();
             TxtCollectionSummary.Text = "";
             PnlPickCollection.IsVisible = false;
             BtnToInstall.IsEnabled = _signedIn;
@@ -919,6 +943,8 @@ public partial class MainWindow : Window
             3 => cards.OrderByDescending(c => c.Stats?.LastPublished ?? DateTime.MinValue),
             _ => cards.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
         }).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        _addonUpdates = cards.Any(c => c.UpdateAvailable);
+        UpdateNavBadges();
 
         // author filter dropdown: All + one entry per author, keep current selection
         var authors = cards.Select(c => c.Author).Where(a => !string.IsNullOrWhiteSpace(a))
@@ -1529,6 +1555,7 @@ public partial class MainWindow : Window
                 : $"Signed in as {user.Name}. Free account: you'll download each mod yourself in your browser, one at a time. The installer opens the right page and does the rest.";
             TxtAuthNote.Text = "Ready to install.";
             _signedIn = true;
+            if (Mo2Launcher.IsInstalled(InstallState.GetInstallDir())) StartAddonGrab();   // so the Add-Ons dot is right from the start
             UpdateManualCard();
             BtnToInstall.IsEnabled = _collectionPath != null;
             SetStatus($"Signed in: {user.Name}");
@@ -1966,6 +1993,7 @@ public partial class MainWindow : Window
             catch { TxtDoneSummary.Text = $"Installed in {dir}"; }
             EnableNav(3);
             UpdateHomeTab();
+            _ = CheckBaseUpdateAsync();
             _runOk = true;
             if (_jobQueue.Count == 0) ShowPage(4);
         }

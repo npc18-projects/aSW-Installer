@@ -633,6 +633,23 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- update dot: the installed list against the latest one
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var inst = Path.Combine(dir, "inst"); Directory.CreateDirectory(Path.Combine(inst, ".asw"));
+        var latest = Path.Combine(dir, "latest.json");
+        File.WriteAllText(Path.Combine(inst, ".asw", "a-storywealth.collection.json"), "{\"v\":282}");
+        File.WriteAllText(latest, "{\"v\":282}");
+        Check("same list: no update", InstallHealth.BaseUpdateAvailable(inst, latest) == false);
+        File.WriteAllText(latest, "{\"v\":284}");
+        Check("a different latest list: update available", InstallHealth.BaseUpdateAvailable(inst, latest) == true);
+        Check("no saved copy: unknown", InstallHealth.BaseUpdateAvailable(Path.Combine(dir, "other"), latest) is null);
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- Home tab: install health
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

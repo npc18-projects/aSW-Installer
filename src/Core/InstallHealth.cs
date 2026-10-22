@@ -71,6 +71,23 @@ public static class InstallHealth
         return total;
     }
 
+    /// <summary>
+    /// True when the list this install was made from differs from the latest one, false when they are the same, null when the
+    /// install kept no copy (or the latest isn't available). The install keeps a copy at .asw\a-storywealth.collection.json.
+    /// </summary>
+    public static bool? BaseUpdateAvailable(string instanceDir, string latestJsonPath)
+    {
+        var installed = Path.Combine(instanceDir, ".asw", "a-storywealth.collection.json");
+        if (!File.Exists(installed) || !File.Exists(latestJsonPath)) return null;
+        try
+        {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            using var a = File.OpenRead(installed); using var b = File.OpenRead(latestJsonPath);
+            return !sha.ComputeHash(a).AsSpan().SequenceEqual(sha.ComputeHash(b));
+        }
+        catch { return null; }
+    }
+
     public static List<HealthItem> Check(string instanceDir, (int W, int H)? display = null)
     {
         var items = new List<HealthItem>();
