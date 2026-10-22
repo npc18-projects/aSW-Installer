@@ -46,4 +46,4 @@ The app can update itself from GitHub releases. It stays off until you set it up
 
 - Users can turn off the startup check in Settings. Auto-update needs a folder the app can write to.
 - Only the zip's own signature protects users. If the private key leaks, make a new key pair and ship a build with the new public key by hand.
-- Tested without the network: the checks, the signature handling and the file replacement, plus a full rehearsal of the helper with a throwaway key. Not tested against a live GitHub release yet.
+- Tested: the checks, the signature handling and the file replacement without the network, and a real update on a copy of the 0.4.0 app, which found 0.4.1 on GitHub, downloaded it, verified it, installed it and restarted in about 30 seconds.
