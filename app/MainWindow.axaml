@@ -312,8 +312,13 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="10">
-                            <TextBlock Classes="h2">Logs</TextBlock>
-                            <Button Click="OnOpenLogs">Open logs folder</Button>
+                            <TextBlock Classes="h2">Logs and support</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">If something goes wrong, save a report and send it. It's one zip with the install logs, your mod list, and basic details about this PC. Nothing is uploaded, and your Nexus key is left out.</TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="BtnSaveReport" Classes="primary" Click="OnSaveReport">Save report…</Button>
+                                <Button Click="OnOpenLogs">Open logs folder</Button>
+                            </StackPanel>
+                            <TextBlock x:Name="TxtReportStatus" Classes="sub" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>

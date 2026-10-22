@@ -101,6 +101,35 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------- support report ----------
+
+    private async void OnSaveReport(object? sender, RoutedEventArgs e)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save report",
+            SuggestedFileName = $"aSW-report-{_version}-{DateTime.Now:yyyyMMdd-HHmm}.zip",
+            DefaultExtension = "zip",
+            FileTypeChoices = [new FilePickerFileType("Zip file") { Patterns = ["*.zip"] }],
+        });
+        if (file is null) return;
+        var path = file.Path.LocalPath;
+        var ctx = new ReportContext(_version, InstallState.GetInstallDir(), GameDir() is { Length: > 0 } g ? g : null,
+            string.IsNullOrWhiteSpace(TxtDownloadsDir.Text) ? null : TxtDownloadsDir.Text.Trim(),
+            RbStockGame.IsChecked, _signedIn ? _authPremium : null, InstallState.GetResume() is not null, _apiKey);
+        try
+        {
+            await Task.Run(() => ReportBuilder.Build(path, ctx));
+            TxtReportStatus.Text = $"Saved to {path}. Send that file when you ask for help.";
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            InstallLog.Warn("report", ex.Message);
+            TxtReportStatus.Text = $"Couldn't save the report: {ex.Message}";
+        }
+    }
+
     // ---------- existing install ----------
 
     private void ShowExistingInstall()

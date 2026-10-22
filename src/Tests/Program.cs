@@ -708,6 +708,35 @@ foreach (var sample in FindSamples())
     finally { InstallState.UseDirectory(null); try { Directory.Delete(state, true); } catch { } }
 }
 
+// ---- support report: one zip with logs, lists and a summary; the API key never leaves the PC
+{
+    var root = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var inst = Path.Combine(root, "inst"); var profile = Path.Combine(inst, "profiles", "A StoryWealth");
+        Directory.CreateDirectory(profile);
+        const string key = "SECRETKEY1234567890";
+        File.WriteAllText(Path.Combine(inst, "install-20261022-100000.log"), $"2026 [INFO ] start\nheader apikey: {key}\n");
+        File.WriteAllText(Path.Combine(inst, "install-20261022-110000.log"), "second run\n");
+        File.WriteAllLines(Path.Combine(profile, "modlist.txt"), ["# header", "+Mod B", "-Fixes_separator", "-Mod A"]);
+        File.WriteAllText(Path.Combine(profile, "plugins.txt"), "*A.esp\n");
+        File.WriteAllText(Path.Combine(inst, "ModOrganizer.ini"), $"nexus={key}");
+        AddonRegistry.Save(inst, new AddonRegistryFile { BaseGroups = ["ss2"], Addons = [new InstalledAddon { Id = "x", Name = "Some Add-on", Revision = "r5" }] });
+        var zipPath = Path.Combine(root, "out", "report.zip");
+        ReportBuilder.Build(zipPath, new ReportContext("9.9.9", inst, "G:\\Games\\Fallout 4", null, true, false, false, key));
+        using var z = ZipFile.OpenRead(zipPath);
+        string Read(string n) { using var r = new StreamReader(z.GetEntry(n)!.Open()); return r.ReadToEnd(); }
+        var names = z.Entries.Select(e => e.FullName).ToList();
+        Check("the report holds the summary, the logs, the lists and the add-on record",
+            new[] { "report.txt", "logs/install-20261022-100000.log", "logs/install-20261022-110000.log", "profile/modlist.txt", "profile/plugins.txt", "instance/.asw-addons.json" }.All(names.Contains), J(names));
+        Check("the summary says the version, game mode, account type, mods and add-ons",
+            Read("report.txt") is var s && s.Contains("9.9.9") && s.Contains("separate copy") && s.Contains("free") && s.Contains("2 mods") && s.Contains("Some Add-on r5") && s.Contains("ss2"), Read("report.txt"));
+        Check("the API key is removed from the logs", !Read("logs/install-20261022-100000.log").Contains(key) && Read("logs/install-20261022-100000.log").Contains("[key removed]"));
+        Check("files that could hold the key (ModOrganizer.ini) are not included", !names.Any(n => n.Contains("ModOrganizer.ini")));
+    }
+    finally { try { Directory.Delete(root, true); } catch { } }
+}
+
 // ---- the update settings that ship in the exe
 {
     var shipped = UpdateConfig.Load();
