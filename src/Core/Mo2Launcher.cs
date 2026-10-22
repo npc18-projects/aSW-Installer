@@ -40,6 +40,21 @@ public static class Mo2Launcher
         return null;
     }
 
+    /// <summary>MO2's download folder from its ini (%BASE_DIR% is the install folder), else the Downloads folder in the install.</summary>
+    public static string DownloadsDir(string instanceDir)
+    {
+        var fallback = Path.Combine(instanceDir, "Downloads");
+        var ini = Path.Combine(instanceDir, "ModOrganizer.ini");
+        if (!File.Exists(ini)) return fallback;
+        foreach (var l in File.ReadLines(ini))
+            if (l.StartsWith("download_directory=", StringComparison.OrdinalIgnoreCase))
+            {
+                var v = l["download_directory=".Length..].Trim().Replace("%BASE_DIR%", instanceDir.TrimEnd('/', (char)92), StringComparison.OrdinalIgnoreCase).Replace('/', (char)92);
+                return v.Length > 0 ? v : fallback;
+            }
+        return fallback;
+    }
+
     public static void StartMo2(string instanceDir) =>
         Process.Start(new ProcessStartInfo(Mo2Exe(instanceDir)) { WorkingDirectory = instanceDir, UseShellExecute = true });
 

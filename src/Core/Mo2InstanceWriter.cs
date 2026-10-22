@@ -357,7 +357,7 @@ public static partial class Mo2InstanceWriter
 
     /// <summary>plugin file name → winning path: later (higher priority) enabled mods override
     /// earlier ones; the game's own Data folder is the fallback for vanilla/CC plugins.</summary>
-    private static Dictionary<string, string> LocatePlugins(
+    public static Dictionary<string, string> LocatePlugins(
         string instanceDir, IReadOnlyList<(string Name, char Prefix)> ascending, string? gameDir)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Home tab: banner with the base list's revision and stats, an install health check (disabled mods or plugins, missing masters, game version, F4SE), an install summary, and links to the Nexus page and the install, mods, downloads and logs folders.
 - Settings > Updates > Include test builds: testers get pre-release builds (such as 0.5.0-beta.1) automatically. Off by default.
 - Latest changelog from Nexus: "What's new" on the Home tab for the base list, and on each add-on's page.
 - Home tab (shown once the base list is installed): open Mod Organizer 2, or launch the game with F4SE through MO2.

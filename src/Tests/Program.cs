@@ -545,6 +545,34 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     Check("stats carry the newest revision's changelog", st.Revision == 284 && st.Changelog == "hi" && st.ChangelogDate?.Year == 2026);
 }
 
+// ---- Home tab: install health
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var prof = Path.Combine(dir, "profiles", "A StoryWealth");
+        Directory.CreateDirectory(prof);
+        Directory.CreateDirectory(Path.Combine(dir, "mods", "Mod A"));
+        File.WriteAllText(Path.Combine(dir, "ModOrganizer.exe"), "x");
+        File.WriteAllText(Path.Combine(prof, "modlist.txt"), "# c\n+Mod A\n-Mod B\n-Weapons_separator\n");
+        File.WriteAllText(Path.Combine(prof, "plugins.txt"), "# c\n*One.esp\nTwo.esp\n");
+        File.WriteAllText(Path.Combine(dir, "ModOrganizer.ini"), "[General]\ndownload_directory=%BASE_DIR%/dl\n");
+        var health = InstallHealth.Check(dir);
+        HealthItem H(string l) => health.First(h => h.Label == l);
+        Check("a disabled mod is a failure and separators don't count", H("Mods").Level == HealthLevel.Fail && H("Mods").Detail.Contains("Mod B") && !H("Mods").Detail.Contains("Weapons"), H("Mods").Detail);
+        Check("a disabled plugin is a failure", H("Plugins").Level == HealthLevel.Fail && H("Plugins").Detail.Contains("Two.esp"), H("Plugins").Detail);
+        Check("F4SE missing from MO2 is reported", H("F4SE").Level == HealthLevel.Fail);
+        var sum = InstallHealth.Summary(dir);
+        Check("the summary counts mods and plugins", sum.Mods == 2 && sum.EnabledMods == 1 && sum.Plugins == 2 && sum.EnabledPlugins == 1);
+        File.WriteAllText(Path.Combine(prof, "modlist.txt"), "+Mod A\n");
+        File.WriteAllText(Path.Combine(prof, "plugins.txt"), "*One.esp\n");
+        var clean = InstallHealth.Check(dir);
+        Check("nothing disabled gives green for mods and plugins", clean.First(h => h.Label == "Mods").Level == HealthLevel.Ok && clean.First(h => h.Label == "Plugins").Level == HealthLevel.Ok);
+        Check("MO2's download folder comes from its ini", Mo2Launcher.DownloadsDir(dir) == Path.Combine(dir, "dl").Replace('/', '\\'), Mo2Launcher.DownloadsDir(dir));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- Home tab: finding the F4SE program in MO2's list
 {
     var ini = new[] { "[General]", "x=1", "[customExecutables]", "size=3",

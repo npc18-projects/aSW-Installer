@@ -443,6 +443,7 @@ public partial class MainWindow : Window
                 if (i == 3) { TxtPhase.Text = "Downloading mod 42 of 911"; TxtItem.Text = "Sample Mod"; TxtSpeed.Text = "12.4 MB/s"; TxtCounts.Text = "41/911"; PbOverall.Value = 4.5; OnLogLine("sample log line"); FlushLog(); }
                 if (i == 5) OnOpenDetail(null, new RoutedEventArgs());
                 ShowPage(i);
+                if (i == 10) await Task.Delay(12000);   // Home reads the whole install: health check and folder size
                 await Shot(names[i]);
                 if (i == 1 && PageSetup.Children.OfType<ScrollViewer>().FirstOrDefault() is { } sv) { sv.ScrollToEnd(); await Shot("setup-bottom"); }
             }
@@ -590,6 +591,8 @@ public partial class MainWindow : Window
         NavItemHome.IsVisible = Mo2Launcher.IsInstalled(dir);
     }
 
+    private int _homeRun;
+
     private void RefreshHome()
     {
         var dir = InstallState.GetInstallDir();
@@ -597,6 +600,73 @@ public partial class MainWindow : Window
         var title = dir is null ? null : Mo2Launcher.FindF4seTitle(dir);
         BtnHomeF4se.IsEnabled = title is not null;
         BtnHomeF4se.Content = title is null ? "F4SE not found in Mod Organizer 2" : "Launch with F4SE";
+        if (dir is null || !Mo2Launcher.IsInstalled(dir)) return;
+        var run = ++_homeRun;
+
+        // numbers first (quick), then the folder size and the health check, which read a lot of files
+        InstallSummary sum;
+        try { sum = InstallHealth.Summary(dir); } catch { return; }
+        string Summary(string size) =>
+            $"{sum.Mods:N0} mods ({sum.EnabledMods:N0} enabled)\n{sum.Plugins:N0} plugins ({sum.EnabledPlugins:N0} enabled)\n"
+            + $"{sum.AddOns} add-on{(sum.AddOns == 1 ? "" : "s")} installed\nOptional groups: {sum.Groups}\nSize on disk: {size}";
+        TxtHomeSummary.Text = Summary("calculating…");
+        PnlHealth.Children.Clear();
+        PnlHealth.Children.Add(new TextBlock { Text = "Checking…", Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
+        _ = Task.Run(() =>
+        {
+            var health = InstallHealth.Check(dir);
+            var size = InstallHealth.FolderSize(Path.Combine(dir, "mods"));
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (run != _homeRun) return;   // the page was refreshed again meanwhile
+                TxtHomeSummary.Text = Summary(SizeText(size));
+                ShowHealth(health);
+            });
+        });
+    }
+
+    private void ShowHealth(List<HealthItem> items)
+    {
+        PnlHealth.Children.Clear();
+        foreach (var it in items)
+        {
+            var (glyph, color) = it.Level switch
+            {
+                HealthLevel.Ok => ("✓", "#6FCF83"), HealthLevel.Warn => ("!", "#F2C48D"), _ => ("✗", "#EB6B6B"),
+            };
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*") };
+            row.Children.Add(new TextBlock { Text = glyph, FontSize = 16, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse(color)) });
+            var text = new StackPanel { Spacing = 1 };
+            text.Children.Add(new TextBlock { Text = it.Label, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(Color.Parse("#FDF6EC")) });
+            text.Children.Add(new TextBlock { Text = it.Detail, TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
+            Grid.SetColumn(text, 1);
+            row.Children.Add(text);
+            PnlHealth.Children.Add(row);
+        }
+        var bad = items.Count(i => i.Level == HealthLevel.Fail);
+        PnlHealth.Children.Add(new TextBlock
+        {
+            Margin = new Avalonia.Thickness(0, 6, 0, 0), FontSize = 12, TextWrapping = TextWrapping.Wrap,
+            Text = bad == 0 ? "Everything checks out." : "Something is wrong. Save a report from Settings and send it with a screenshot of this.",
+            Foreground = new SolidColorBrush(Color.Parse(bad == 0 ? "#6FCF83" : "#EB6B6B")),
+        });
+    }
+
+    private void OnHomeRecheck(object? sender, RoutedEventArgs e) => RefreshHome();
+
+    private static void OpenFolder(string path)
+    {
+        try { if (Directory.Exists(path)) Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true }); }
+        catch (Exception ex) { InstallLog.Warn("home", ex.Message); }
+    }
+
+    private void OnHomeFolderInstall(object? sender, RoutedEventArgs e) { if (InstallState.GetInstallDir() is { } d) OpenFolder(d); }
+    private void OnHomeFolderMods(object? sender, RoutedEventArgs e) { if (InstallState.GetInstallDir() is { } d) OpenFolder(Path.Combine(d, "mods")); }
+    private void OnHomeFolderDownloads(object? sender, RoutedEventArgs e) { if (InstallState.GetInstallDir() is { } d) OpenFolder(Mo2Launcher.DownloadsDir(d)); }
+    private void OnHomeNexus(object? sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/games/fallout4/collections/{CollectionSync.BaseSlug}") { UseShellExecute = true }); }
+        catch (Exception ex) { InstallLog.Warn("home", ex.Message); }
     }
 
     /// <summary>Fills a "latest changes" card from a collection's newest revision; hides it when Nexus has none.</summary>
@@ -981,9 +1051,11 @@ public partial class MainWindow : Window
                 TxtBaseStats.Text = StatsLine(bs, withSize: false);
                 TxtBaseStatsDetail.Text = StatsDetail(bs, " (everything, including optional files)", stacked: true);
                 ShowChangelog(CardHomeChanges, TxtHomeChangesTitle, TxtHomeChanges, bs);
+                TxtHomeBannerSub.Text = (bs.Revision > 0 ? $"Revision {bs.Revision}   ·   " : "") + StatsLine(bs, withSize: false);
             }
             await LoadImageAsync(ImgBaseCard, info.HeaderImageUrl, "base");
             await LoadImageAsync(ImgDetailBanner, info.HeaderImageUrl, "base");
+            await LoadImageAsync(ImgHomeBanner, info.HeaderImageUrl, "base");
         }
         catch { /* offline: gradient stays */ }
     }

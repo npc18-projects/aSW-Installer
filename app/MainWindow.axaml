@@ -268,25 +268,74 @@
 
             <!-- PAGE 7: Settings -->
             <ScrollViewer x:Name="PageHome" Background="#121519" IsVisible="False">
-                <StackPanel Margin="36,28,36,28" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
-                    <TextBlock Classes="h1">Home</TextBlock>
-                    <Border Classes="card">
-                        <StackPanel Spacing="10">
-                            <TextBlock Classes="h2">Play</TextBlock>
-                            <TextBlock x:Name="TxtHomeDir" Classes="info" TextWrapping="Wrap"/>
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Button x:Name="BtnHomeF4se" Classes="primary" Click="OnHomeF4se">Launch with F4SE</Button>
-                                <Button x:Name="BtnHomeMo2" Click="OnHomeMo2">Open Mod Organizer 2</Button>
+                <StackPanel Margin="36,28,36,28" Spacing="18" MaxWidth="1180" HorizontalAlignment="Stretch">
+                    <Border Height="190" CornerRadius="6" ClipToBounds="True">
+                        <Panel>
+                            <Image x:Name="ImgHomeBanner" Stretch="UniformToFill" IsVisible="False"/>
+                            <Border>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                        <GradientStop Color="#00000000" Offset="0"/>
+                                        <GradientStop Color="#C0000000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            <StackPanel VerticalAlignment="Bottom" Margin="20,0,0,14" Spacing="2">
+                                <TextBlock Text="A StoryWealth" FontSize="28" FontWeight="Bold" Foreground="#FDF6EC"/>
+                                <TextBlock x:Name="TxtHomeBannerSub" FontSize="13" Foreground="#F2C48D"/>
                             </StackPanel>
-                            <TextBlock x:Name="TxtHomeStatus" Classes="info" TextWrapping="Wrap"/>
-                        </StackPanel>
+                        </Panel>
                     </Border>
-                    <Border x:Name="CardHomeChanges" Classes="card" IsVisible="False">
-                        <StackPanel Spacing="8">
-                            <TextBlock x:Name="TxtHomeChangesTitle" Classes="h2"/>
-                            <TextBlock x:Name="TxtHomeChanges" Classes="info" TextWrapping="Wrap"/>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <StackPanel Grid.Column="0" Spacing="18">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="h2">Play</TextBlock>
+                                    <TextBlock x:Name="TxtHomeDir" Classes="info" TextWrapping="Wrap"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Button x:Name="BtnHomeF4se" Classes="primary" Click="OnHomeF4se">Launch with F4SE</Button>
+                                        <Button x:Name="BtnHomeMo2" Click="OnHomeMo2">Open Mod Organizer 2</Button>
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtHomeStatus" Classes="info" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="h2">Your install</TextBlock>
+                                    <TextBlock x:Name="TxtHomeSummary" Classes="info" TextWrapping="Wrap" LineHeight="22"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="h2">Links and folders</TextBlock>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,8,8" Click="OnHomeNexus">Collection page on Nexus</Button>
+                                        <Button Margin="0,0,8,8" Click="OnHomeFolderInstall">Install folder</Button>
+                                        <Button Margin="0,0,8,8" Click="OnHomeFolderMods">Mods folder</Button>
+                                        <Button Margin="0,0,8,8" Click="OnHomeFolderDownloads">Downloads folder</Button>
+                                        <Button Margin="0,0,8,8" Click="OnOpenLogs">Logs folder</Button>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
+                        <StackPanel Grid.Column="1" Spacing="18">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="h2">Install health</TextBlock>
+                                        <Button Grid.Column="1" Click="OnHomeRecheck">Check again</Button>
+                                    </Grid>
+                                    <StackPanel x:Name="PnlHealth" Spacing="8"/>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="CardHomeChanges" Classes="card" IsVisible="False">
+                                <StackPanel Spacing="8">
+                                    <TextBlock x:Name="TxtHomeChangesTitle" Classes="h2"/>
+                                    <TextBlock x:Name="TxtHomeChanges" Classes="info" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </ScrollViewer>
             <ScrollViewer x:Name="PageSettings" Background="#121519" IsVisible="False">
