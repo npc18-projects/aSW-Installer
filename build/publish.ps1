@@ -1,16 +1,17 @@
 <#
   Builds a self-contained Windows release of the installer.
 
-    pwsh build/publish.ps1                 # -> dist/AStoryWealth-Installer-<version>-win-x64/ and a .zip next to it
-    pwsh build/publish.ps1 -SkipTests      # skip the test run
-    pwsh build/publish.ps1 -Output D:\out  # another output folder
+    pwsh build/publish.ps1                 # dist/AStoryWealth-Installer-<version>-win-x64/ and a .zip next to it
+    pwsh build/publish.ps1 -SkipTests      # skip the tests
+    pwsh build/publish.ps1 -Output D:\out  # different output folder
 
-  The test suite runs first and a failing test stops the build. Nothing is signed; sign dist\...\AStoryWealth.Installer.exe
-  yourself if you have a certificate.
+  The tests run first. If one fails, the build stops. Nothing is signed, so sign
+  dist\...\AStoryWealth.Installer.exe yourself if you have a certificate.
 
-  7-Zip is bundled: 7z.exe, 7z.dll and its licence are copied next to the exe, where the installer looks first. They are taken
-  from -SevenZipDir, else the folder of ASW_7Z, else Program Files\7-Zip, else the folder of 7z.exe on PATH. The binaries are
-  not kept in the repository. The build stops if 7-Zip cannot be found; pass -NoSevenZip to build without it.
+  7-Zip gets bundled: 7z.exe, 7z.dll and its licence are copied next to the exe, where the
+  installer looks first. The script finds them in -SevenZipDir, then the folder of ASW_7Z,
+  then Program Files\7-Zip, then the folder of 7z.exe on PATH. They aren't kept in the repo.
+  If 7-Zip isn't found the build stops. Pass -NoSevenZip to build without it.
 #>
 param(
     [string]$Output = (Join-Path $PSScriptRoot '..\dist'),
@@ -49,8 +50,8 @@ try {
         -p:PublishSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o $dir
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
 
-    # The shipped metadata is embedded in the exe. An override file in <exe folder>\order\ wins over it (docs/formats.md),
-    # so none is copied here: a stale override would hide newer embedded data after an in-place update.
+    # The shipped data is embedded in the exe. A file in <exe folder>\order\ overrides it (docs/formats.md),
+    # so none is copied here. A stale override would hide newer embedded data after an in-place update.
     Copy-Item (Join-Path $root 'README.md'), (Join-Path $root 'CHANGELOG.md'), (Join-Path $root 'THIRD-PARTY-NOTICES.md') $dir
 
     if (-not $NoSevenZip) {

@@ -84,7 +84,7 @@ public sealed class InstallRunner
         {
             if (!Directory.Exists(gamePath))
                 throw new DirectoryNotFoundException(
-                    "Couldn't find a Fallout 4 install. Install the game through Steam once; the installer can then make its own private copy.");
+                    "Couldn't find Fallout 4. Install it through Steam once, then the installer can copy it.");
             effectiveGamePath = Path.Combine(instanceDir, "Stock Game");
             var stockExe = Path.Combine(effectiveGamePath, "Fallout4.exe");
             var stockData = Path.Combine(effectiveGamePath, "Data", "Fallout4.esm");
@@ -130,7 +130,7 @@ public sealed class InstallRunner
             if (i.Severity == "error") InstallLog.Error("plan", i.Message);
             else InstallLog.Warn("plan", i.Message);
         }
-        if (plan.HasErrors) throw new InvalidOperationException("manifest failed resolution — see log");
+        if (plan.HasErrors) throw new InvalidOperationException("The mod list failed its checks. See the log.");
 
         Mo2InstanceWriter.Scaffold(instanceDir, effectiveGamePath, downloadsDir);
         Mo2InstanceWriter.EnsureProfileFiles(instanceDir, effectiveGamePath);
@@ -158,7 +158,7 @@ public sealed class InstallRunner
         var needsDowngrade = GameVersionAbove163(effectiveGamePath);
         if (needsDowngrade && downgrader is null)
             throw new InvalidOperationException(
-                "your Fallout 4 is next-gen but this collection manifest has no Downgrader mod — it needs the 1.10.163 runtime");
+                "Your Fallout 4 is next-gen, but this collection has no Downgrader mod. It needs version 1.10.163.");
         if (needsDowngrade && downgrader is not null)
         {
             var where = stockGame ? "Stock Game copy" : "REAL game install (in place)";
@@ -296,7 +296,7 @@ public sealed class InstallRunner
                 link = await RetryAsync(
                     () => api.GetDownloadLinkAsync(mod.Nexus!.Game, mod.Nexus!.ModId, mod.Nexus.FileId),
                     $"link for {mod.InstallAs}", ct2)
-                    ?? throw new InvalidOperationException($"no CDN link for {mod.InstallAs} — non-premium key?");
+                    ?? throw new InvalidOperationException($"No download link for {mod.InstallAs}. Is this a free account?");
                 fileName = Uri.UnescapeDataString(new Uri(link).Segments[^1]);
                 archivePath = Mo2InstanceWriter.ArchivePath(instanceDir, mod, fileName, downloadsDir);
                 if (File.Exists(archivePath))
@@ -591,7 +591,7 @@ if (numbered >= 1) dumpSignature = true;
         // from it on exit — an open MO2 would silently revert the profile.
         if (Process.GetProcesses().Any(p => p.ProcessName.StartsWith("ModOrganizer", StringComparison.OrdinalIgnoreCase)))
             InstallLog.Warn("mo2",
-                "Mod Organizer 2 is running and will overwrite modlist.txt/plugins.txt with its stale state. Close MO2 and re-run the install finalize (or restart the install) afterwards.");
+                "Mod Organizer 2 is running and will overwrite modlist.txt and plugins.txt when it closes. Close it and run the install again.");
         var optionalNames = new HashSet<string>(excludedMods, StringComparer.OrdinalIgnoreCase);
         optionalNames.UnionWith(rootMods);
         optionalNames.UnionWith(Mo2InstanceWriter.InstalledTools(instanceDir));   // live in <instance>/Tools, not the mod list
@@ -701,7 +701,7 @@ if (numbered >= 1) dumpSignature = true;
             SevenZip.ExtractMatching(downgraderArchive, "Assets/*", scratch);
             var assets = Path.Combine(scratch, "Assets");
             if (!Directory.Exists(Path.Combine(assets, "Patch")))
-                throw new InvalidOperationException("the Downgrader archive has no Assets/Patch folder — cannot downgrade the next-gen game");
+                throw new InvalidOperationException("The Downgrader archive has no Assets/Patch folder, so the game can't be downgraded.");
             var n = GameDowngrader.Patch(gamePath, assets, ct: ct);
             InstallLog.Info("game", $"downgrader replaced {n} file(s) in {gamePath}");
         }
@@ -710,7 +710,7 @@ if (numbered >= 1) dumpSignature = true;
             try { DeleteTree(scratch); } catch { }
         }
         if (GameVersionAbove163(gamePath))
-            throw new InvalidOperationException("Fallout4.exe is still newer than 1.10.163 after the downgrade — see the 'downgrade' lines in the install log");
+            throw new InvalidOperationException("Fallout4.exe is still newer than 1.10.163 after the downgrade. Check the 'downgrade' lines in the install log.");
         InstallLog.Info("game", $"downgrade complete, new version: {FileVersionInfo.GetVersionInfo(Path.Combine(gamePath, "Fallout4.exe")).FileVersion ?? "unknown"}");
     }
 

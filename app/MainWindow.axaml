@@ -233,7 +233,7 @@
                 <ScrollViewer Grid.Row="0">
                     <StackPanel Margin="36,28,36,12" Spacing="12" MaxWidth="900" HorizontalAlignment="Left">
                         <TextBlock Classes="h1">Optional Content</TextBlock>
-                        <TextBlock Classes="sub" TextWrapping="Wrap">Extra mods from A StoryWealth and the add-ons you installed. Greyed-out options need something you haven't installed yet. Read each note: some depend on your hardware (such as AMD patches) or on Creation Club content you own.</TextBlock>
+                        <TextBlock Classes="sub" TextWrapping="Wrap">Extra mods for A StoryWealth and the add-ons you've installed. Greyed-out options need an add-on you don't have. Read the notes: some depend on your GPU (AMD patches) or on Creation Club content.</TextBlock>
                         <StackPanel x:Name="PanelOptTab" Spacing="4"/>
                         <TextBlock x:Name="TxtOptEmpty" Classes="sub" TextWrapping="Wrap"/>
                     </StackPanel>
@@ -271,7 +271,7 @@
                     <Border Classes="card">
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Performance</TextBlock>
-                            <TextBlock Classes="info" TextWrapping="Wrap">Threads used for downloading and extracting. Defaults to one less than your CPU's core count.</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Threads for downloading and extracting. The default is your CPU's core count minus one.</TextBlock>
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <TextBlock VerticalAlignment="Center">Download threads</TextBlock>
                                 <NumericUpDown x:Name="NudDownloadThreads" Minimum="1" Maximum="32" Increment="1" Width="110" ValueChanged="OnThreadsChanged"/>
@@ -312,7 +312,7 @@
                             </Panel>
                         </Border>
                         <TextBlock Classes="sub" TextWrapping="Wrap"
-                            Text="A curated StoryWealth experience, played through Mod Organizer 2. Everything is downloaded and set up for you. No manual mod installation."/>
+                            Text="The A StoryWealth collection, set up in Mod Organizer 2. The installer downloads and installs the mods for you."/>
                         <TextBlock x:Name="TxtBaseStatsDetail" Foreground="#F2C48D" FontSize="13" TextWrapping="Wrap" LineHeight="22"/>
                         <!-- what the current optional-group choices will install -->
                         <StackPanel Orientation="Horizontal" Spacing="22" Margin="0,4,0,4">
@@ -377,7 +377,7 @@
 
                     <Border Classes="card">
                         <StackPanel Spacing="10">
-                            <TextBlock Classes="h2">Are you transferring from a Vortex installation or installing fresh?</TextBlock>
+                            <TextBlock Classes="h2">Coming from Vortex, or installing fresh?</TextBlock>
                             <RadioButton x:Name="RbFresh" Classes="opt" GroupName="source" IsChecked="True"
                                          Content="Installing fresh"/>
                             <RadioButton x:Name="RbVortex" Classes="opt" GroupName="source"
@@ -388,7 +388,7 @@
                     <Border Classes="card">
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Installation location</TextBlock>
-                            <TextBlock Classes="sub">Where this collection will be installed</TextBlock>
+                            <TextBlock Classes="sub">Where to install it</TextBlock>
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBox x:Name="TxtInstallDir"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
@@ -404,7 +404,7 @@
                         <StackPanel Spacing="10">
                             <StackPanel x:Name="PnlFreshDownloads" Spacing="10">
                                 <TextBlock Classes="h2">Downloads location</TextBlock>
-                                <TextBlock Classes="sub">Where the downloads should be</TextBlock>
+                                <TextBlock Classes="sub">Where to keep the downloaded archives</TextBlock>
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBox x:Name="TxtDownloadsDir"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
@@ -414,7 +414,7 @@
                             </StackPanel>
                             <StackPanel x:Name="PnlVortexDownloads" Spacing="10" IsVisible="False">
                                 <TextBlock Classes="h2">Vortex Downloads location</TextBlock>
-                                <TextBlock Classes="sub">Point this at your Fallout 4 Vortex downloads folder</TextBlock>
+                                <TextBlock Classes="sub">Your Fallout 4 downloads folder in Vortex</TextBlock>
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBox x:Name="TxtReuseDir"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
@@ -429,10 +429,10 @@
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Game Setup</TextBlock>
                             <RadioButton x:Name="RbAttached" Classes="opt" GroupName="game" IsChecked="True"
-                                         Content="Use your existing Steam/GOG install"/>
+                                         Content="Use my existing game install"/>
                             <RadioButton x:Name="RbStockGame" Classes="opt" GroupName="game"
-                                         Content="Use a separate install of the game"/>
-                            <TextBlock Classes="sub" Margin="0,6,0,0">Your Fallout 4 folder (found automatically for Steam; Browse for GOG or other locations)</TextBlock>
+                                         Content="Make a separate copy of the game"/>
+                            <TextBlock Classes="sub" Margin="0,6,0,0">Your Fallout 4 folder. Steam is found automatically; browse for anything else.</TextBlock>
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBox x:Name="TxtGameDir"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
@@ -445,7 +445,7 @@
                     <Border x:Name="CardOptional" Classes="card">
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Optional Content</TextBlock>
-                            <TextBlock Classes="info" TextWrapping="Wrap">Untick anything you don't want. Leaving a group out skips its downloads and install; you can add it with a later run.</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Untick what you don't want. You can add it later from the Optional tab.</TextBlock>
                             <StackPanel x:Name="PanelOptional" Spacing="8"/>
                             <TextBlock x:Name="TxtOptionalNote" Classes="sub" TextWrapping="Wrap" IsVisible="False"/>
                         </StackPanel>
@@ -496,7 +496,7 @@
                     <Border x:Name="CardManual" Classes="card" IsVisible="False">
                         <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Downloading with a free account</TextBlock>
-                            <TextBlock Classes="info" TextWrapping="Wrap">Nexus only allows automatic downloads for Premium members. The installer will open each mod's file page, one at a time, and you press Manual download, then Slow download, on the exact file shown. It notices the file, checks it and moves on to the next one.</TextBlock>
+                            <TextBlock Classes="info" TextWrapping="Wrap">Nexus only allows automatic downloads for Premium accounts. The installer opens each mod's file page, one at a time. Click Manual download, then Slow download. It picks up the file, checks it and opens the next page.</TextBlock>
                             <TextBlock Classes="sub">Where your browser saves downloads</TextBlock>
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBox x:Name="TxtWatchDir"/>
@@ -545,7 +545,7 @@
             <!-- PAGE 4: Done -->
             <Panel x:Name="PageDone" Background="#121519" IsVisible="False">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
-                    <TextBlock Classes="h1" HorizontalAlignment="Center" FontSize="34">✓ Install complete</TextBlock>
+                    <TextBlock Classes="h1" HorizontalAlignment="Center" FontSize="34">Install complete</TextBlock>
                     <TextBlock x:Name="TxtDone" Classes="sub" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" TextAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,10,0,0">
                         <Button x:Name="BtnLaunchMo2" Classes="primary" Click="OnLaunchMo2">Launch Mod Organizer 2</Button>

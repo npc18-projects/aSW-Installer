@@ -65,7 +65,7 @@ public partial class MainWindow : Window
                 TxtReuseDir.Text = rr;
             }
             if (r.StockGame) RbStockGame.IsChecked = true;
-            TxtDirStatus.Text = "Previous install was interrupted — installing again resumes where it left off.";
+            TxtDirStatus.Text = "Your last install was interrupted. Start it again to pick up where it stopped.";
             ApplyResumeGroups();
         }
         else if (last is { } ld2 && ld2.Dir is { } ld && Directory.Exists(ld))
@@ -139,7 +139,7 @@ public partial class MainWindow : Window
             ShowPage(3);
             TxtPhase.Text = "Your turn: download mod 3 of 911 in your browser"; TxtSpeed.Text = "On the page: Manual download, then Slow download";
             BtnOpenPage.IsVisible = true; await Shot("install-manual");
-            BtnOpenPage.IsVisible = false; TxtPhase.Text = "Stopped. Everything downloaded so far is kept. Press Resume to pick up where it left off."; OfferContinue(false); await Shot("install-stopped");
+            BtnOpenPage.IsVisible = false; TxtPhase.Text = "Stopped. Your downloads so far are kept. Press Resume to continue."; OfferContinue(false); await Shot("install-stopped");
             CardManual.IsVisible = true; CardVortex.IsVisible = true; TxtVortexCheck.Text = "880 of 911 mods were found in your Vortex folder. 31 (4.2 GB) still need downloading.";
             ShowPage(2); await Shot("nexus-free-vortex");
             TxtSetupError.Text = "Choose an install folder."; ShowPage(1); await Shot("setup-error");
@@ -175,7 +175,7 @@ public partial class MainWindow : Window
         {
             var g = groups.FirstOrDefault(x => x.Id == (string)box.Tag!);
             if (g is null) continue;
-            var text = string.IsNullOrWhiteSpace(g.Description) ? g.Name : $"{g.Name} — {g.Description}";
+            var text = string.IsNullOrWhiteSpace(g.Description) ? g.Name : $"{g.Name}. {g.Description}";
             if (_manifest is not null)
             {
                 var only = AStoryWealth.Core.OptionalGroups.Excluded(_manifest.Mods, groups, groups.Where(x => x.Id != g.Id).Select(x => x.Id).ToList());
@@ -533,7 +533,7 @@ public partial class MainWindow : Window
                 InstallLog.Info("addons", $"fetch {card.Slug}: {ex.Message}");
                 var premium = ex.Message.Contains("premium", StringComparison.OrdinalIgnoreCase);
                 TxtAddDetStatus.Text = premium
-                    ? "The installer can't fetch this add-on's list automatically with a free account. Open the collection page, download the collection (Manual download), then choose the file you got."
+                    ? "Free accounts can't fetch this list automatically. Open the collection page, use Manual download, then choose the file you get."
                     : "Couldn't fetch the add-on list. Check your connection and try again; the details are in the logs.";
                 PnlAddDetManual.IsVisible = premium;
                 BtnAddDetInstall.IsEnabled = true;
@@ -935,7 +935,7 @@ public partial class MainWindow : Window
         {
             TxtAuthDetail.Text = "Not signed in yet.";
             TxtSettingsAuth.Text = TxtAuthDetail.Text;
-            TxtAuthNote.Text = "Paste your personal API key from Nexus (Get my key → Personal API Key). It is stored encrypted on this PC and only used to talk to Nexus.";
+            TxtAuthNote.Text = "Paste your personal API key from Nexus (use Get my key, then Personal API Key). It's stored encrypted on this PC and only sent to Nexus.";
             _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
@@ -951,7 +951,7 @@ public partial class MainWindow : Window
             TxtAuthDetail.Text = user.IsPremium
                 ? $"Signed in as {user.Name}. Downloads will run automatically at full speed."
                 : $"Signed in as {user.Name}. Free account: you'll download each mod yourself in your browser, one at a time. The installer opens the right page and does the rest.";
-            TxtAuthNote.Text = "You're all set. Continue to install.";
+            TxtAuthNote.Text = "Ready to install.";
             _signedIn = true;
             UpdateManualCard();
             BtnToInstall.IsEnabled = _collectionPath != null;
@@ -1027,13 +1027,13 @@ public partial class MainWindow : Window
             if (saved is not null && File.Exists(saved.CollectionJsonPath))
             {
                 await LoadCollectionAsync(saved.CollectionJsonPath);
-                TxtCollectionSummary.Text = $"Couldn't check for a newer version, so the saved copy (r{saved.Revision}) is being used.";
+                TxtCollectionSummary.Text = $"Couldn't check for a newer version. Using the saved copy (r{saved.Revision}).";
             }
             else
             {
                 // Nexus only gives the collection file itself to Premium members.
                 TxtCollectionSummary.Text = ex.Message.Contains("premium", StringComparison.OrdinalIgnoreCase)
-                    ? "The installer can't fetch the mod list automatically with a free account. Open the collection page, download the collection (Manual download), then choose the file you got."
+                    ? "Free accounts can't fetch the mod list automatically. Open the collection page, use Manual download, then choose the file you get."
                     : ex.Message.Contains("7-Zip", StringComparison.OrdinalIgnoreCase)
                         ? "7-Zip is needed to unpack the mod list and wasn't found. Install it from 7-zip.org, then press Check again."
                         : "Couldn't reach Nexus. Check your internet connection and try again later.";
@@ -1186,7 +1186,7 @@ public partial class MainWindow : Window
         var dir = InstallState.GetInstallDir();
         if (dir is null || _collectionPath is null)
         {
-            TxtOptEmpty.Text = "Install A StoryWealth first. Its optional content, and that of the add-ons you install, will be listed here.";
+            TxtOptEmpty.Text = "Install A StoryWealth first. Optional mods for it and for your add-ons show up here.";
             return;
         }
         TxtOptEmpty.Text = "Loading…";
@@ -1367,7 +1367,7 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
-            TxtPhase.Text = "Stopped. Everything downloaded so far is kept. Press Resume to pick up where it left off.";
+            TxtPhase.Text = "Stopped. Your downloads so far are kept. Press Resume to continue.";
             PbOverall.IsIndeterminate = false;
             OfferContinue(false);
         }
@@ -1375,7 +1375,7 @@ public partial class MainWindow : Window
         {
             var list = string.Join(", ", die.Failures.Keys.Take(5));
             if (die.Failures.Count > 5) list += $", and {die.Failures.Count - 5} more";
-            TxtPhase.Text = $"{die.Failures.Count} mod(s) couldn't be downloaded. Everything else downloaded fine. Check your connection, then press Retry — only the failed downloads will run again.";
+            TxtPhase.Text = $"{die.Failures.Count} downloads failed. Check your connection and press Retry. Only the failed ones run again.";
             TxtItem.Text = $"Failed: {list}";
             TxtItem.Foreground = Brushes.Salmon;
             PbOverall.IsIndeterminate = false;
@@ -1383,7 +1383,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            TxtPhase.Text = "Something went wrong. The details are in the log below, and in install.log next to your install. That file is what you'd send us if you need help.";
+            TxtPhase.Text = "Something went wrong. The log below has the details, and so does install.log in your install folder. Send that file if you need help.";
             TxtItem.Text = ex.Message;
             TxtItem.Foreground = Brushes.Salmon;
             PbOverall.IsIndeterminate = false;
