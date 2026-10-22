@@ -2,19 +2,25 @@
 
 ## 0.4.1
 
-- Fixed: on a PC that had never saved the app's settings, a finished install wasn't recorded. After installing, the app acted as if nothing was installed (Add-Ons and Optional said "install the base list first"), and an interrupted install couldn't resume. The settings file is now written on the first run too, and a failed write is logged.
-- New: Settings has an "Existing install" card. If the app lost track of an install, choose its folder (the one with ModOrganizer.exe) and it picks it up again.
+- Fixed: a finished install wasn't recorded on a PC with no settings file, so the app acted as if nothing was installed
+- Fixed: an interrupted install couldn't resume on a fresh PC
+- Added: Settings > Existing install, to point the app at an install it lost track of
 
 ## 0.4.0
 
-- Add-ons install on top of the base list. Each gets its own section. Mods that have to load before a base mod are placed next to it. Cards show installed and update badges, and install is one click.
-- New Optional tab for optional mods and groups, A–Z in a drop-down per source. Options that need a missing add-on are greyed out. The collection authors' notes show next to each option, and your picks are remembered.
-- Optional groups at setup: Sim Settlements 2 is on by default, HD textures off.
-- Free accounts download in the browser, one mod at a time. The installer opens the file page, watches your download folder, checks the file and moves it. Coming from Vortex, it checks your Vortex folder first.
-- Downloads, endorsements, rating, mod count and size show on the base list and every add-on. Add-ons can be sorted.
-- Structured MO2 order: separators, patches and BodySlide sets after the mods they need, A–Z inside each group, and an "Added mods" section for your own mods.
-- Mod Organizer 2 (2.5.2) and Root Builder (5.1.1) are pinned. Root Builder places F4SE and other root mods. Standalone tools go in `<instance>/Tools`. The Downgrader step runs natively.
-- Setup checks your paths, game folder and free disk space before you continue. Stopped installs offer Resume and Back. The install log is buffered. You can browse for the game folder (Steam, Bethesda launcher and GOG are detected).
-- The app can update itself from GitHub releases (off until a repository and signing key are set up, see docs/releasing.md). Updates are signed, checked, and installed on a restart.
-- Release builds include 7-Zip. `build/publish.ps1` copies it from a local install.
-- Sign in with a Nexus personal API key, stored encrypted for your Windows user, until Nexus verifies the app for browser sign-in.
+- Add-ons install on top of the base list, each in its own section
+- Optional tab for optional mods and groups, greyed out when an add-on is missing
+- Optional groups at setup: Sim Settlements 2 on, HD textures off
+- Free accounts download in the browser, one mod at a time
+- Vortex downloads are used first
+- Downloads, endorsements, rating and size shown on the base list and add-ons
+- Structured MO2 order with separators and an "Added mods" section
+- Mod Organizer 2 2.5.2 and Root Builder 5.1.1 pinned
+- F4SE and root mods go through Root Builder; tools go in `<instance>/Tools`
+- Built-in Downgrader step
+- Setup checks paths, game folder and free disk space
+- Resume and Back after a stopped install
+- Game folder picker (Steam, Bethesda launcher and GOG detected)
+- 7-Zip bundled
+- Updates itself from GitHub releases
+- Sign-in with a Nexus personal API key
