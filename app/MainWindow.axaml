@@ -296,6 +296,7 @@
                                         <Button x:Name="BtnHomeF4se" Classes="primary" Click="OnHomeF4se">Launch with F4SE</Button>
                                         <Button x:Name="BtnHomeMo2" Click="OnHomeMo2">Open Mod Organizer 2</Button>
                                     </StackPanel>
+                                    <Button x:Name="BtnHomeRes" HorizontalAlignment="Left" Click="OnHomeMatchRes">Match the game's resolution to my display</Button>
                                     <TextBlock x:Name="TxtHomeStatus" Classes="info" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>

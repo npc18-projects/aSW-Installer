@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Game settings: a new install sets the game's resolution to your main display. Home has a button to do it again later (the old file is kept) and a health line that shows when they differ.
+- The profile INIs can be shipped with the list (put them in src/Core/Data/ini); a profile that already has its own is never overwritten.
 - Home tab: banner with the base list's revision and stats, an install health check (disabled mods or plugins, missing masters, game version, F4SE), an install summary, and links to the Nexus page and the install, mods, downloads and logs folders.
 - Settings > Updates > Include test builds: testers get pre-release builds (such as 0.5.0-beta.1) automatically. Off by default.
 - Latest changelog from Nexus: "What's new" on the Home tab for the base list, and on each add-on's page.

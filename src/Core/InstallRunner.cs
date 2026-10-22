@@ -55,7 +55,7 @@ public sealed class InstallRunner
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
         int downloadThreads = 0, int extractThreads = 0, IReadOnlyCollection<string>? optionalGroups = null,
         string? manualWatchDir = null, string? baseCollectionJsonPath = null,
-        IReadOnlyCollection<string>? optionalMods = null)
+        IReadOnlyCollection<string>? optionalMods = null, (int W, int H)? gameResolution = null)
     {
         InstallLog.Init(instanceDir);
         InstallLog.Info("auth", "validating Nexus account...");
@@ -135,7 +135,7 @@ public sealed class InstallRunner
         if (plan.HasErrors) throw new InvalidOperationException("The mod list failed its checks. See the log.");
 
         Mo2InstanceWriter.Scaffold(instanceDir, effectiveGamePath, downloadsDir);
-        Mo2InstanceWriter.EnsureProfileFiles(instanceDir, effectiveGamePath);
+        Mo2InstanceWriter.EnsureProfileFiles(instanceDir, effectiveGamePath, gameResolution);
 
         // Classification (from collection.json details.type):
         // - gameRootMods: the Downgrader — patches the game itself,

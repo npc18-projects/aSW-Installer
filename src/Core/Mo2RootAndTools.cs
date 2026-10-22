@@ -238,29 +238,49 @@ public static partial class Mo2InstanceWriter
     /// settings.ini and INIs, so the user's Documents\My Games\Fallout4 is never touched, plus the
     /// loose-file invalidation every MO2 Fallout 4 setup requires. Existing files are kept.
     /// </summary>
-    public static void EnsureProfileFiles(string instanceDir, string gameRoot)
+    public static void EnsureProfileFiles(string instanceDir, string gameRoot, (int W, int H)? resolution = null)
     {
         var profile = Path.Combine(instanceDir, "profiles", "A StoryWealth");
         Directory.CreateDirectory(profile);
-        void Write(string name, Func<string> content)
+        bool Write(string name, Func<string> content)
         {
             var path = Path.Combine(profile, name);
-            if (File.Exists(path)) return;
+            if (File.Exists(path)) return false;
             File.WriteAllText(path, content(), new System.Text.UTF8Encoding(false));
+            return true;
         }
+        // The INIs shipped with the list (Data/ini, tuned in BethINI) win over the game's own defaults, but only when the
+        // profile has none yet: a person's own settings are never replaced.
         Write("settings.ini", () => "[General]\nLocalSaves=true\nLocalSettings=true\nAutomaticArchiveInvalidation=true\n");
         Write("fallout4.ini", () =>
         {
+            if (ShippedIni("Fallout4.ini") is { } shipped) return shipped;
             var def = Path.Combine(gameRoot, "Fallout4_Default.ini");
             return File.Exists(def) ? File.ReadAllText(def) : "[General]\n";
         });
-        Write("fallout4prefs.ini", () =>
+        var madePrefs = Write("fallout4prefs.ini", () =>
         {
+            if (ShippedIni("Fallout4Prefs.ini") is { } shipped) return shipped;
             var prefs = Path.Combine(gameRoot, "Fallout4", "Fallout4Prefs.ini");
             return File.Exists(prefs) ? File.ReadAllText(prefs) : "[Launcher]\nbEnableFileSelection=1\n";
         });
-        Write("fallout4custom.ini", () => "[Launcher]\nbEnableFileSelection=1\n\n[Archive]\nbInvalidateOlderFiles=1\nsResourceDataDirsFinal=\n");
+        Write("fallout4custom.ini", () => ShippedIni("Fallout4Custom.ini") ?? "[Launcher]\nbEnableFileSelection=1\n\n[Archive]\nbInvalidateOlderFiles=1\nsResourceDataDirsFinal=\n");
         Write("initweaks.ini", () => "[Archive]\nbInvalidateOlderFiles=1\n");
+
+        // The shipped settings are tuned for no particular screen, so the game's size is set to the main display's.
+        if (madePrefs && resolution is { } r && GameDisplay.ApplyResolution(Path.Combine(profile, "fallout4prefs.ini"), r.W, r.H))
+            InstallLog.Info("config", $"game resolution set to {r.W}x{r.H} (your main display)");
+    }
+
+    /// <summary>An INI embedded from Data/ini, or null when the build ships none of that name.</summary>
+    private static string? ShippedIni(string fileName)
+    {
+        var asm = typeof(Mo2InstanceWriter).Assembly;
+        var res = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("." + fileName, StringComparison.OrdinalIgnoreCase));
+        if (res is null) return null;
+        using var s = asm.GetManifestResourceStream(res)!;
+        using var r = new StreamReader(s, detectEncodingFromByteOrderMarks: true);
+        return r.ReadToEnd();
     }
 
     /// <summary>

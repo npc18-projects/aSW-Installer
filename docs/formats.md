@@ -70,3 +70,10 @@ dotnet run --project src/OrderTool -- optional <base.json> <filter.json> <instan
 ```
 
 The first builds the structured order for a collection from its rules and the file conflicts of an installed instance, and prints an A–Z audit. The second builds an optional group from a Nexus filter collection, like the Sim Settlements 2 group from `4rfeex`.
+
+
+## Profile INIs (Data/ini)
+
+Put `Fallout4.ini`, `Fallout4Prefs.ini` and/or `Fallout4Custom.ini` (tuned in BethINI) in `src/Core/Data/ini/`. They are embedded in the exe. When a new profile is made, a shipped file is used instead of the game's own default. A profile that already has the file is never changed.
+
+After that the installer sets `iSize W` and `iSize H` in `[Display]` of `Fallout4Prefs.ini` to the main display's real size (read with Avalonia's screen information, nothing else is probed). Home > "Match the game's resolution to my display" does it again later and keeps the old file as `Fallout4Prefs.ini.asw-backup`.

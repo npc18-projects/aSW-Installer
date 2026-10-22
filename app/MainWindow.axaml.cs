@@ -602,6 +602,9 @@ public partial class MainWindow : Window
         BtnHomeF4se.Content = title is null ? "F4SE not found in Mod Organizer 2" : "Launch with F4SE";
         if (dir is null || !Mo2Launcher.IsInstalled(dir)) return;
         var run = ++_homeRun;
+        var display = MainDisplay();
+        BtnHomeRes.Content = display is { } dd ? $"Match the game's resolution to my display ({dd.W}x{dd.H})" : "Match the game's resolution to my display";
+        BtnHomeRes.IsEnabled = display is not null;
 
         // numbers first (quick), then the folder size and the health check, which read a lot of files
         InstallSummary sum;
@@ -614,7 +617,7 @@ public partial class MainWindow : Window
         PnlHealth.Children.Add(new TextBlock { Text = "Checking…", Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
         _ = Task.Run(() =>
         {
-            var health = InstallHealth.Check(dir);
+            var health = InstallHealth.Check(dir, display);
             var size = InstallHealth.FolderSize(Path.Combine(dir, "mods"));
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -650,6 +653,24 @@ public partial class MainWindow : Window
             Text = bad == 0 ? "Everything checks out." : "Something is wrong. Save a report from Settings and send it with a screenshot of this.",
             Foreground = new SolidColorBrush(Color.Parse(bad == 0 ? "#6FCF83" : "#EB6B6B")),
         });
+    }
+
+    /// <summary>The main display's size in real pixels (not scaled), or null when Windows doesn't say.</summary>
+    private (int W, int H)? MainDisplay() =>
+        Screens.Primary is { } sc && sc.Bounds.Width >= 640 && sc.Bounds.Height >= 480 ? (sc.Bounds.Width, sc.Bounds.Height) : null;
+
+    private void OnHomeMatchRes(object? sender, RoutedEventArgs e)
+    {
+        if (InstallState.GetInstallDir() is not { } dir || MainDisplay() is not { } d) return;
+        try
+        {
+            var ok = GameDisplay.ApplyResolution(GameDisplay.ProfilePrefs(dir), d.W, d.H);
+            TxtHomeStatus.Text = ok ? $"The game's resolution is now {d.W}x{d.H}. The old file is kept as Fallout4Prefs.ini{GameDisplay.BackupSuffix}."
+                : "Couldn't find the profile's Fallout4Prefs.ini.";
+            if (ok) InstallLog.Info("config", $"game resolution set to {d.W}x{d.H} (your main display)");
+        }
+        catch (Exception ex) { InstallLog.Warn("home", ex.Message); TxtHomeStatus.Text = $"Couldn't change it: {ex.Message}"; }
+        RefreshHome();
     }
 
     private void OnHomeRecheck(object? sender, RoutedEventArgs e) => RefreshHome();
@@ -1831,7 +1852,7 @@ public partial class MainWindow : Window
                 gamePath ?? "", progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
                 downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups,
-                manualWatchDir: watchDir, baseCollectionJsonPath: baseForAddon, optionalMods: job?.Md5s));
+                manualWatchDir: watchDir, baseCollectionJsonPath: baseForAddon, optionalMods: job?.Md5s, gameResolution: MainDisplay()));
             _resume = null;
             ApplyResumeGroups();
             _installedDir = dir;

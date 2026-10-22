@@ -545,6 +545,34 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     Check("stats carry the newest revision's changelog", st.Revision == 284 && st.Changelog == "hi" && st.ChangelogDate?.Year == 2026);
 }
 
+// ---- game INIs: resolution from the main display
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var ini = "[General]\nsLanguage=en\n\n[Display]\nbFull Screen=1\niSize H=720\niSize W=1280\n; keep\nfoo=bar\n";
+        var set = IniEdit.SetValue(ini, "Display", "iSize W", "2560");
+        Check("one value changes, the rest of the file stays", set.Contains("iSize W=2560") && set.Contains("iSize H=720") && set.Contains("; keep") && set.Contains("sLanguage=en"), set);
+        var added = IniEdit.SetValue("[General]\na=1\n", "Display", "iSize W", "1920");
+        Check("a missing section and key are added", IniEdit.GetValue(added, "Display", "iSize W") == "1920" && IniEdit.GetValue(added, "General", "a") == "1");
+        Check("a missing key goes into its own section", IniEdit.SetValue("[Display]\na=1\n\n[Other]\nb=2\n", "Display", "x", "9").IndexOf("x=9") < IniEdit.SetValue("[Display]\na=1\n\n[Other]\nb=2\n", "Display", "x", "9").IndexOf("[Other]"));
+        Check("Windows line endings are kept", IniEdit.SetValue("[Display]\r\niSize W=1\r\n", "Display", "iSize W", "2").Contains("\r\n") && !IniEdit.SetValue("[Display]\r\niSize W=1\r\n", "Display", "iSize W", "2").Replace("\r\n", "").Contains('\n'));
+
+        var game = Path.Combine(dir, "game"); var inst = Path.Combine(dir, "inst");
+        Directory.CreateDirectory(Path.Combine(game, "Fallout4"));
+        File.WriteAllText(Path.Combine(game, "Fallout4", "Fallout4Prefs.ini"), ini);
+        Mo2InstanceWriter.EnsureProfileFiles(inst, game, (2560, 1440));
+        var prefs = Path.Combine(inst, "profiles", "A StoryWealth", "fallout4prefs.ini");
+        Check("a new profile gets the main display's size", GameDisplay.ReadResolution(prefs) == (2560, 1440), GameDisplay.ReadResolution(prefs)?.ToString());
+        File.WriteAllText(prefs, IniEdit.SetValue(File.ReadAllText(prefs), "Display", "iSize W", "1111"));
+        Mo2InstanceWriter.EnsureProfileFiles(inst, game, (3840, 2160));
+        Check("an existing profile's settings are left alone", GameDisplay.ReadResolution(prefs)?.W == 1111);
+        Check("matching the display later keeps a backup of the old file", GameDisplay.ApplyResolution(prefs, 3840, 2160) && File.Exists(prefs + GameDisplay.BackupSuffix) && GameDisplay.ReadResolution(prefs) == (3840, 2160));
+        Check("a silly size is refused", !GameDisplay.ApplyResolution(prefs, 10, 10));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- Home tab: install health
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

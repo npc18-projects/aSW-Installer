@@ -71,7 +71,7 @@ public static class InstallHealth
         return total;
     }
 
-    public static List<HealthItem> Check(string instanceDir)
+    public static List<HealthItem> Check(string instanceDir, (int W, int H)? display = null)
     {
         var items = new List<HealthItem>();
         items.Add(Mo2Launcher.IsInstalled(instanceDir)
@@ -93,6 +93,7 @@ public static class InstallHealth
         var gameDir = Path.Combine(instanceDir, "Stock Game");
         items.Add(MissingMastersItem(instanceDir, mods, plugins, Directory.Exists(gameDir) ? gameDir : null));
         items.Add(GameVersionItem(gameDir));
+        items.Add(ResolutionItem(instanceDir, display));
 
         var f4se = Mo2Launcher.FindF4seTitle(instanceDir);
         items.Add(f4se is null ? new("F4SE", HealthLevel.Fail, "Not in Mod Organizer 2's program list.")
@@ -119,6 +120,15 @@ public static class InstallHealth
                 : new("Missing masters", HealthLevel.Fail, $"{bad.Count:N0} plugin(s): " + string.Join(", ", bad.Take(3).Select(b => $"{b.Plugin} needs {b.Master}")) + (bad.Count > 3 ? $" and {bad.Count - 3} more" : ""));
         }
         catch (Exception ex) { return new("Missing masters", HealthLevel.Warn, "Couldn't check: " + ex.Message); }
+    }
+
+    private static HealthItem ResolutionItem(string instanceDir, (int W, int H)? display)
+    {
+        var set = GameDisplay.ReadResolution(GameDisplay.ProfilePrefs(instanceDir));
+        if (set is null) return new("Game resolution", HealthLevel.Warn, "Not set in the profile's Fallout4Prefs.ini.");
+        if (display is not { } d) return new("Game resolution", HealthLevel.Ok, $"{set.Value.W}x{set.Value.H}.");
+        return set.Value == d ? new("Game resolution", HealthLevel.Ok, $"{d.W}x{d.H}, the size of your main display.")
+            : new("Game resolution", HealthLevel.Warn, $"{set.Value.W}x{set.Value.H}. Your main display is {d.W}x{d.H}.");
     }
 
     private static HealthItem GameVersionItem(string gameDir)
