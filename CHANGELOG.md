@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A StoryWealth page: dropped the repeated mod count and download size (they are in the numbers row), and the ~ in front of the download and storage sizes.
 - A green dot next to Modlist when the base list has an update (the latest list differs from the one you installed), and next to Add-Ons when an installed add-on has one. The A StoryWealth page then offers Update.
 - Add-Ons: the redundant All filter is gone.
 - Play moved to the bottom of the left rail, with a short install summary above it, so Launch with F4SE and Open Mod Organizer 2 are on every page once the base list is installed.

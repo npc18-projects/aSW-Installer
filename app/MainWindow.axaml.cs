@@ -525,8 +525,8 @@ public partial class MainWindow : Window
         if (_manifest is null) return;
         var (mods, gb) = SelectionTotals();
         TxtStatMods.Text = mods.ToString("N0");
-        TxtStatSize.Text = $"~{gb:N0} GB";
-        TxtStatStorage.Text = $"~{gb * 2:N0} GB";
+        TxtStatSize.Text = $"{gb:N0} GB";
+        TxtStatStorage.Text = $"{gb * 2:N0} GB";
     }
 
     /// <summary>An unfinished install keeps the groups it started with; the boxes mirror them and are locked.</summary>
@@ -1017,7 +1017,8 @@ public partial class MainWindow : Window
         if (s.AdultContent) facts.Add("Adult content");
         // wide pages: two lines of facts; the narrow base-list column: four short lines
         return stacked
-            ? string.Join("\n", facts[0], $"{facts[1]}   ·   {facts[2]}", $"{facts[3]}   ·   {facts[4]}", string.Join("   ·   ", facts.Skip(5)))
+            // the base page shows the mod count and sizes in its own row, so only the Nexus numbers are listed here
+            ? string.Join("\n", facts[0], $"{facts[1]}   ·   {facts[2]}", string.Join("   ·   ", facts.Skip(5)))
             : string.Join("    ·    ", facts.Take(3)) + "\n" + string.Join("    ·    ", facts.Skip(3));
     }
 
