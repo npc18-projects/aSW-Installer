@@ -16,16 +16,22 @@ public sealed class NexusApiClient : IDisposable
     private readonly HttpClient _http;
     private readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
 
-    public NexusApiClient(string apiKey, string appVersion = "0.0.1-spike")
+    /// <summary>The running app's version, sent to Nexus with every request.</summary>
+    public static string AppVersion { get; } =
+        (System.Reflection.Assembly.GetEntryAssembly()?.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion ?? "0.0.0").Split('+')[0];
+
+    public NexusApiClient(string apiKey, string? appVersion = null)
     {
+        appVersion ??= AppVersion;
         _http = new HttpClient();
         _http.BaseAddress = new Uri(BaseUrl);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         _http.DefaultRequestHeaders.Add("apikey", apiKey);
         // Nexus requires identifying headers or returns 409
         _http.DefaultRequestHeaders.Add("Application-Version", appVersion);
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"AStoryWealthInstaller/{appVersion} (github.com/AStoryWealth)");
-        _http.DefaultRequestHeaders.Add("Application-Name", "AStoryWealth Installer");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"aSWInstaller/{appVersion} (+https://github.com/npc18-projects/aSW-Installer)");
+        _http.DefaultRequestHeaders.Add("Application-Name", "aSW Installer");
     }
 
     // ---------- User / account ----------
@@ -147,40 +153,42 @@ public sealed class NexusApiClient : IDisposable
             ChangelogDate: rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("collectionChangelog", out var cl2) && cl2.ValueKind == JsonValueKind.Object ? AsDate(cl2, "createdAt") : null);
     }
 
-    /// <summary>
-    /// Lists another user's collections via GraphQL: userByName for memberId, then
-    /// collectionsV2 filtered by userId+gameDomain. Used to auto-discover aSW add-ons.
-    /// </summary>
-    public async Task<List<UserCollection>> ListUserCollectionsAsync(string username, string domain = "fallout4", CancellationToken ct = default)
+    /// <summary>Nexus member id of one account (it never changes, so callers keep it).</summary>
+    public async Task<string> GetMemberIdAsync(string username, CancellationToken ct = default)
     {
-        var name = username.Replace("\"", ""); // header-safe, no quote injection
+        var name = username.Replace("\"", ""); // no quote injection
         var idQuery = JsonSerializer.Serialize(new { query = $"{{ userByName(name:\"{name}\") {{ memberId }} }}" }, _json);
-        string userId;
-        using (var content = new StringContent(idQuery, System.Text.Encoding.UTF8, "application/json"))
-        using (var resp = await _http.PostAsync("v2/graphql", content, ct))
-        {
-            await EnsureAsync(resp, $"GraphQL userByName({name})");
-            var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(_json, ct);
-            if (doc.TryGetProperty("errors", out var errors))
-                throw new HttpRequestException($"GraphQL error: {errors.GetRawText()}");
-            userId = doc.GetProperty("data").GetProperty("userByName").GetProperty("memberId").ToString();
-        }
+        using var content = new StringContent(idQuery, System.Text.Encoding.UTF8, "application/json");
+        using var resp = await _http.PostAsync("v2/graphql", content, ct);
+        await EnsureAsync(resp, $"GraphQL userByName({name})");
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(_json, ct);
+        if (doc.TryGetProperty("errors", out var errors))
+            throw new HttpRequestException($"GraphQL error: {errors.GetRawText()}");
+        return doc.GetProperty("data").GetProperty("userByName").GetProperty("memberId").ToString();
+    }
 
+    /// <summary>
+    /// Every published collection on a game domain owned by any of the given members, in one GraphQL call
+    /// (the nested filter with op:OR matches any of the users, the outer one keeps the game).
+    /// </summary>
+    public async Task<List<UserCollection>> ListCollectionsByUsersAsync(IEnumerable<string> memberIds, string domain = "fallout4", CancellationToken ct = default)
+    {
+        var users = memberIds.Select(id => new { value = id }).ToArray();
         var listQuery = new
         {
             query = """
-                query($userId:String!,$domain:String!){
-                  collectionsV2(filter:{userId:[{value:$userId}], gameDomain:[{value:$domain}]}, count:50){
+                query($users:[BaseFilterValue!],$domain:String!){
+                  collectionsV2(filter:{gameDomain:[{value:$domain}], filter:[{op:OR, userId:$users}]}, count:100){
                     nodes{ slug name summary tileImage{ url } headerImage{ url } latestPublishedRevision{ revisionNumber } user{ name } __STATS__ }
                   }
                 }
                 """.Replace("__STATS__", StatsFields),
-            variables = new { userId, domain }
+            variables = new { users, domain }
         };
         var body = JsonSerializer.Serialize(listQuery, _json);
         using var c2 = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
         using var r2 = await _http.PostAsync("v2/graphql", c2, ct);
-        await EnsureAsync(r2, $"GraphQL collectionsV2(userId:{userId})");
+        await EnsureAsync(r2, "GraphQL collectionsV2(users)");
         var doc2 = await r2.Content.ReadFromJsonAsync<JsonElement>(_json, ct);
         if (doc2.TryGetProperty("errors", out var errs))
             throw new HttpRequestException($"GraphQL error: {errs.GetRawText()}");

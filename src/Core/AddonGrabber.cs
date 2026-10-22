@@ -25,30 +25,51 @@ public static class AddonGrabber
     /// </summary>
     public sealed record GrabResult(int Added, int Removed, List<string> Slugs);
 
+    private sealed record ApiCache(Dictionary<string, string>? MemberIds = null, DateTime ListedAtUtc = default, List<NexusApiClient.UserCollection>? Listing = null);
+
+    private static readonly TimeSpan ListingAge = TimeSpan.FromHours(1);
+    private static string CachePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AStoryWealth", "nexus-cache.json");
+
+    private static ApiCache LoadCache()
+    {
+        try { return File.Exists(CachePath) ? JsonSerializer.Deserialize<ApiCache>(File.ReadAllText(CachePath)) ?? new ApiCache() : new ApiCache(); }
+        catch { return new ApiCache(); }
+    }
+
+    private static void SaveCache(ApiCache c)
+    {
+        try { Directory.CreateDirectory(Path.GetDirectoryName(CachePath)!); File.WriteAllText(CachePath, JsonSerializer.Serialize(c)); }
+        catch { /* a missing cache only costs a request next time */ }
+    }
+
     /// <summary>
-    /// Lists every team collection (base slug excluded) straight from GraphQL —
-    /// no archive downloads. Manifests are only fetched when an add-on installs.
+    /// Lists every team collection (base slug excluded) straight from GraphQL — no archive downloads.
+    /// One query for all team accounts; the member ids are looked up once and kept, and the listing itself is
+    /// reused for an hour so reopening the app doesn't ask Nexus again. Manifests are only fetched when an add-on installs.
     /// </summary>
-    public static async Task<List<NexusApiClient.UserCollection>> ListAsync(string apiKey, IProgress<string>? progress = null, CancellationToken ct = default)
+    public static async Task<List<NexusApiClient.UserCollection>> ListAsync(string apiKey, IProgress<string>? progress = null, CancellationToken ct = default, bool refresh = false)
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("addons", s); }
 
-        using var api = new NexusApiClient(apiKey);
-        var all = new List<NexusApiClient.UserCollection>();
-        foreach (var owner in OwnerNames)
+        var cache = LoadCache();
+        if (!refresh && cache.Listing is { Count: > 0 } && DateTime.UtcNow - cache.ListedAtUtc < ListingAge)
         {
-            try
-            {
-                var found = await api.ListUserCollectionsAsync(owner, ct: ct);
-                Report($"{owner}: {found.Count} collections.");
-                all.AddRange(found);
-            }
-            catch (Exception ex)
-            {
-                InstallLog.Info("addons", $"{owner}: {ex.Message}"); // one bad account must not kill the sweep
-            }
+            Report($"{cache.Listing.Count} collections (saved listing).");
+            return cache.Listing.Where(c => c.Slug != CollectionSync.BaseSlug).ToList();
         }
-        Report($"{all.Count} collections from {OwnerNames.Length} team accounts.");
+
+        using var api = new NexusApiClient(apiKey);
+        var ids = cache.MemberIds ?? new Dictionary<string, string>();
+        foreach (var owner in OwnerNames.Where(o => !ids.ContainsKey(o)))
+        {
+            try { ids[owner] = await api.GetMemberIdAsync(owner, ct); }
+            catch (Exception ex) { InstallLog.Info("addons", $"{owner}: {ex.Message}"); } // one bad account must not kill the sweep
+        }
+        var all = ids.Count > 0
+            ? await api.ListCollectionsByUsersAsync(OwnerNames.Where(ids.ContainsKey).Select(o => ids[o]), ct: ct)
+            : new List<NexusApiClient.UserCollection>();
+        Report($"{all.Count} collections from {ids.Count} team accounts.");
+        SaveCache(new ApiCache(ids, DateTime.UtcNow, all));
         return all.Where(c => c.Slug != CollectionSync.BaseSlug).ToList();
     }
 
@@ -56,24 +77,9 @@ public static class AddonGrabber
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("addons", s); }
 
-        using var api = new NexusApiClient(apiKey);
-        var collections = new List<NexusApiClient.UserCollection>();
+        var collections = await ListAsync(apiKey, progress, ct, refresh: true);
         var failedOwners = new List<string>();
-        foreach (var owner in OwnerNames)
-        {
-            try
-            {
-                var found = await api.ListUserCollectionsAsync(owner, ct: ct);
-                Report($"{owner}: {found.Count} collections.");
-                collections.AddRange(found);
-            }
-            catch (Exception ex)
-            {
-                InstallLog.Info("addons", $"{owner}: {ex.Message}"); // one bad account must not kill the sweep
-                failedOwners.Add(owner);
-            }
-        }
-        Report($"{collections.Count} collections from {OwnerNames.Length} team accounts.");
+        if (collections.Count == 0) failedOwners.Add("all"); // nothing came back: don't treat that as "every add-on was removed"
 
         var cacheDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         cacheDir = Path.Combine(cacheDir, "AStoryWealth", "Collections");
