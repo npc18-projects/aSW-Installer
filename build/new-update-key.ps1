@@ -7,6 +7,7 @@
   an update that every installed copy will accept. The public key is printed. Paste it into
   src/Core/Data/update.json as "PublicKey", next to "Repo".
 #>
+#Requires -Version 7.0
 param(
     [Parameter(Mandatory = $true)][string]$OutPrivate
 )

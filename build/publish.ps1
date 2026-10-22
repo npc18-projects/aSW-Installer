@@ -20,6 +20,7 @@
   -SigningKey <pem> signs the zip for the in-app updater and writes <zip>.sig next to it (make the key with
   build/new-update-key.ps1). Upload both files to the GitHub release. Without a signature the updater refuses the release.
 #>
+#Requires -Version 7.0
 param(
     [string]$Output = (Join-Path $PSScriptRoot '..\dist'),
     [string]$SevenZipDir,
