@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Nexus account: the API key box is gone. Sign in to Nexus opens the Nexus key page and takes the key in a small dialog; Sign out forgets it. Browser sign-in replaces the dialog once Nexus approves the app.
 - New app icon: the exe, the window and the taskbar use the aSW artwork.
 - Fewer Nexus requests: the add-on listing is one request instead of 16, the team's member ids are looked up once, and the listing is reused for an hour. Requests now carry the real app name, version and repository link.
 - Fixed: the Archives title was hidden behind the sort and filter boxes on a narrow window. The controls now sit under the title.

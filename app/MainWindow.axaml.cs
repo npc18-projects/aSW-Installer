@@ -1538,10 +1538,11 @@ public partial class MainWindow : Window
         {
             TxtAuthDetail.Text = "Not signed in yet.";
             TxtSettingsAuth.Text = TxtAuthDetail.Text;
-            TxtAuthNote.Text = "Paste your personal API key from Nexus (use Get my key, then Personal API Key). It's stored encrypted on this PC and only sent to Nexus.";
+            TxtAuthNote.Text = "Sign in to your Nexus Mods account to download the mods.";
             _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
+            UpdateSignInButtons();
             return;
         }
         BtnRefreshAuth.IsEnabled = false;
@@ -1573,6 +1574,7 @@ public partial class MainWindow : Window
         if (_apiKey != null) _ = LoadBaseImagesAsync();
         TxtSettingsAuth.Text = TxtAuthDetail.Text;
         BtnRefreshAuth.IsEnabled = true;
+        UpdateSignInButtons();
     }
 
     private async void OnRefreshAuth(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => await RefreshAuthAsync();
@@ -1668,33 +1670,67 @@ public partial class MainWindow : Window
     }
 
 
-    // Browser sign-in (Nexus SSO) needs a Nexus-verified application, so until then the user's personal API key is
-    // the way in. It is kept DPAPI-encrypted for this Windows user (SecretStore); ASW_NEXUS_KEY still overrides it.
+    // Browser sign-in (Nexus SSO) needs a Nexus-verified application. Until that is approved, Sign in opens the Nexus
+    // API key page and asks for the personal key in a small dialog. The key is kept DPAPI-encrypted for this Windows
+    // user (SecretStore); ASW_NEXUS_KEY still overrides it. When SSO is approved, only OnSignIn changes.
     private const string KeyName = "nexus-api-key";
     private const string KeyPageUrl = "https://www.nexusmods.com/settings/api-keys";
 
-    private async void OnSaveKey(object? sender, RoutedEventArgs e)
+    private async void OnSignIn(object? sender, RoutedEventArgs e)
     {
-        var box = (sender as Control)?.Tag as string == "settings" ? TxtApiKeySettings : TxtApiKey;
-        var key = (box.Text ?? "").Trim();
-        if (key.Length == 0) { TxtAuthNote.Text = "Paste your Nexus personal API key first."; return; }
+        try { Process.Start(new ProcessStartInfo(KeyPageUrl) { UseShellExecute = true }); } catch { }
+        var key = await AskForKeyAsync();
+        if (string.IsNullOrWhiteSpace(key)) return;
         try { SecretStore.Save(KeyName, key); }
         catch (Exception ex) { InstallLog.Error("ui", $"couldn't store the API key: {ex.Message}"); TxtAuthNote.Text = "Couldn't save the key on this PC."; return; }
         _apiKey = key;
-        TxtApiKey.Text = TxtApiKeySettings.Text = "";
         _addonGrabbed = false;
         await RefreshAuthAsync();
     }
 
-    private void OnForgetKey(object? sender, RoutedEventArgs e)
+    /// <summary>Small dialog for the personal API key (shown after the Nexus key page opens).</summary>
+    private async Task<string?> AskForKeyAsync()
+    {
+        var box = new TextBox { PasswordChar = '●', Watermark = "Paste your personal API key" };
+        var save = new Button { Content = "Sign in", IsDefault = true };
+        save.Classes.Add("primary");
+        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var dlg = new Window
+        {
+            Title = "Sign in to Nexus",
+            Width = 460, SizeToContent = SizeToContent.Height, CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.Parse("#1D2128")),
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20), Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "On the Nexus page that just opened, copy your Personal API Key and paste it here. It is stored encrypted on this PC and only sent to Nexus.", TextWrapping = TextWrapping.Wrap },
+                    box,
+                    new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 10, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Children = { cancel, save } },
+                }
+            }
+        };
+        save.Click += (_, _) => dlg.Close(box.Text?.Trim());
+        cancel.Click += (_, _) => dlg.Close(null);
+        return await dlg.ShowDialog<string?>(this);
+    }
+
+    private void OnSignOut(object? sender, RoutedEventArgs e)
     {
         try { SecretStore.Delete(KeyName); } catch { }
         _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY");
+        _addonGrabbed = false;
         _ = RefreshAuthAsync();
     }
 
-    private void OnOpenKeyPage(object? sender, RoutedEventArgs e)
-        => Process.Start(new ProcessStartInfo(KeyPageUrl) { UseShellExecute = true });
+    /// <summary>Sign in shows when signed out, Sign out when signed in (on both the Settings page and the Nexus page).</summary>
+    private void UpdateSignInButtons()
+    {
+        BtnSignIn.IsVisible = BtnSettingsSignIn.IsVisible = !_signedIn;
+        BtnSignOut.IsVisible = BtnSettingsSignOut.IsVisible = _signedIn;
+    }
 
     private void OnToInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {

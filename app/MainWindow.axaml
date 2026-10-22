@@ -369,17 +369,10 @@
                             <TextBlock Classes="h2">Nexus Mods account</TextBlock>
                             <TextBlock x:Name="TxtSettingsAuth" Classes="info" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Button x:Name="BtnSettingsCheck" Classes="primary" Click="OnRefreshAuth">Check again</Button>
-                                <Button Click="OnForgetKey">Forget saved key</Button>
+                                <Button x:Name="BtnSettingsSignIn" Classes="primary" Click="OnSignIn">Sign in to Nexus</Button>
+                                <Button x:Name="BtnSettingsSignOut" Classes="danger" Click="OnSignOut" IsVisible="False">Sign out</Button>
+                                <Button x:Name="BtnSettingsCheck" Click="OnRefreshAuth">Check again</Button>
                             </StackPanel>
-                            <TextBlock Classes="sub">Nexus personal API key</TextBlock>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBox x:Name="TxtApiKeySettings" PasswordChar="●"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
-                                <Button Tag="settings" Classes="primary" Click="OnSaveKey">Save key</Button>
-                                <Button Click="OnOpenKeyPage">Get my key</Button>
-                                </StackPanel>
-                            </Grid>
                         </StackPanel>
                     </Border>
                     <Border Classes="card">
@@ -616,16 +609,10 @@
                             <TextBlock Classes="h2">Account</TextBlock>
                             <TextBlock x:Name="TxtAuthDetail" Classes="info" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Button x:Name="BtnRefreshAuth" Classes="primary" Click="OnRefreshAuth">Check again</Button>
+                                <Button x:Name="BtnSignIn" Classes="primary" Click="OnSignIn">Sign in to Nexus</Button>
+                                <Button x:Name="BtnSignOut" Classes="danger" Click="OnSignOut" IsVisible="False">Sign out</Button>
+                                <Button x:Name="BtnRefreshAuth" Click="OnRefreshAuth">Check again</Button>
                             </StackPanel>
-                            <TextBlock Classes="sub">Nexus personal API key</TextBlock>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBox x:Name="TxtApiKey" PasswordChar="●"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
-                                <Button Tag="nexus" Classes="primary" Click="OnSaveKey">Save key</Button>
-                                <Button Click="OnOpenKeyPage">Get my key</Button>
-                                </StackPanel>
-                            </Grid>
                             <TextBlock x:Name="TxtAuthNote" Classes="sub" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
