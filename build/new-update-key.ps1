@@ -11,6 +11,10 @@ param(
     [Parameter(Mandatory = $true)][string]$OutPrivate
 )
 $ErrorActionPreference = 'Stop'
+$OutPrivate = $OutPrivate.Trim('<', '>', '"', ' ')                       # a pasted <placeholder> still works
+if ((Test-Path $OutPrivate -PathType Container) -or -not [IO.Path]::HasExtension($OutPrivate)) { $OutPrivate = Join-Path $OutPrivate 'asw-update-private-key.pem' }   # a folder (or a name with no extension) means: put the default file name inside it
+$parent = Split-Path $OutPrivate -Parent
+if ($parent -and -not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent | Out-Null }
 if (Test-Path $OutPrivate) { throw "$OutPrivate already exists. Pick another name, or delete it if you really want a new key." }
 $ec = [System.Security.Cryptography.ECDsa]::Create([System.Security.Cryptography.ECCurve]::CreateFromFriendlyName('nistP256'))
 Set-Content -Path $OutPrivate -Value $ec.ExportPkcs8PrivateKeyPem() -Encoding ascii
