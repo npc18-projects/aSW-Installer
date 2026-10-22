@@ -280,11 +280,16 @@ public static class SevenZip
 /// </summary>
 public static class InstallState
 {
+    private static string? _dirOverride;
+
+    /// <summary>Tests only: keep the state files in this folder instead of %LOCALAPPDATA%\AStoryWealth. Pass null to go back.</summary>
+    public static void UseDirectory(string? dir) => _dirOverride = dir;
+
     private static string StatePath
     {
         get
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AStoryWealth");
+            var dir = _dirOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AStoryWealth");
             Directory.CreateDirectory(dir);
             return Path.Combine(dir, "install.json");
         }
@@ -316,8 +321,9 @@ public static class InstallState
         }
     }
 
-    /// <summary>Atomic write: serialize to a temp file then File.Replace over the
-    /// target so a crash mid-write never leaves a half-written install.json.</summary>
+    /// <summary>Atomic write: serialize to a temp file, then move it over the target so a crash mid-write never
+    /// leaves a half-written install.json. File.Replace can't be used here: it fails when the target doesn't exist
+    /// yet, which is exactly the first write on a new machine.</summary>
     private static void WriteRecord(InstallRecord rec)
     {
         try
@@ -326,11 +332,12 @@ public static class InstallState
             Directory.CreateDirectory(dir);
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(rec));
-            File.Replace(tmp, StatePath, null);
+            File.Move(tmp, StatePath, overwrite: true);
         }
-        catch
+        catch (Exception ex)
         {
-            // state persistence must never throw into the install flow
+            // state persistence must never throw into the install flow, but a failure has to leave a trace
+            try { InstallLog.Warn("state", $"couldn't save install.json: {ex.Message}"); } catch { }
         }
     }
 

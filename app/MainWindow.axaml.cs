@@ -51,6 +51,7 @@ public partial class MainWindow : Window
         _resume = InstallState.GetResume();
         _ = RefreshAuthAsync();
         InitUpdates();
+        ShowExistingInstall();
         RefreshInstallCheck();
         var last = InstallState.GetLastPath();
         if (_resume is { } r)
@@ -98,6 +99,34 @@ public partial class MainWindow : Window
                 }
             }
         }
+    }
+
+    // ---------- existing install ----------
+
+    private void ShowExistingInstall()
+    {
+        var dir = InstallState.GetInstallDir();
+        TxtExistingInstall.Text = dir is null
+            ? "No install is recorded. If you've already installed A StoryWealth, choose its folder (the one with ModOrganizer.exe) and the app will pick it up."
+            : $"The app is using {dir}. Choose a different folder to switch to another install.";
+    }
+
+    private async void OnPickExistingInstall(object? sender, RoutedEventArgs e)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        { Title = "Choose your install folder (the one with ModOrganizer.exe)", AllowMultiple = false });
+        if (folders.Count == 0) return;
+        var dir = folders[0].Path.LocalPath.TrimEnd('\\', '/');
+        if (!File.Exists(Path.Combine(dir, "ModOrganizer.exe")))
+        {
+            TxtExistingInstall.Text = "That folder doesn't have ModOrganizer.exe in it. Choose the folder that does.";
+            return;
+        }
+        InstallState.SetInstallDir(dir);
+        _installedDir = dir;
+        TxtInstallDir.Text = dir;
+        RefreshInstallCheck();
+        ShowExistingInstall();
     }
 
     // ---------- updates (GitHub releases) ----------
@@ -1489,6 +1518,7 @@ public partial class MainWindow : Window
             ApplyResumeGroups();
             _installedDir = dir;
             InstallState.SetInstallDir(dir);
+            ShowExistingInstall();
             TxtDone.Text = job is not null
                 ? "The optional content you picked is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run."
                 : "All done! A StoryWealth is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run. The game has to start through F4SE.";

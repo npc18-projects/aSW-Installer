@@ -687,6 +687,27 @@ foreach (var sample in FindSamples())
     finally { try { Directory.Delete(root, true); } catch { } }
 }
 
+// ---- the install record on a machine that has never saved one (a fresh PC): it must be written and read back
+{
+    var state = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    var inst = Path.Combine(state, "instance");
+    try
+    {
+        Directory.CreateDirectory(inst);
+        File.WriteAllText(Path.Combine(inst, "ModOrganizer.exe"), "x");
+        InstallState.UseDirectory(Path.Combine(state, "appdata"));
+        Check("a new machine has no recorded install", InstallState.GetInstallDir() is null && InstallState.GetResume() is null);
+        InstallState.SetResume(new InstallState.ResumeInfo("c.json", "a-storywealth", inst, "game", true, null, null, [], [], false));
+        Check("the first checkpoint is saved (it used to be lost without a trace)", InstallState.GetResume() is { } r && r.InstallDir == inst);
+        InstallState.SetInstallDir(inst);
+        InstallState.ClearResume();
+        Check("a finished install is remembered, so the app knows it is installed", InstallState.GetInstallDir() == inst && InstallState.GetResume() is null, InstallState.GetInstallDir());
+        InstallState.SetLastPath(inst, null, null, true);
+        Check("later writes keep the install and the remembered paths", InstallState.GetInstallDir() == inst && InstallState.GetLastDir() == inst);
+    }
+    finally { InstallState.UseDirectory(null); try { Directory.Delete(state, true); } catch { } }
+}
+
 // ---- the update settings that ship in the exe
 {
     var shipped = UpdateConfig.Load();

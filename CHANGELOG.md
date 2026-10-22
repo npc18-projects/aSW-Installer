@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- Fixed: on a PC that had never saved the app's settings, a finished install wasn't recorded. After installing, the app acted as if nothing was installed (Add-Ons and Optional said "install the base list first"), and an interrupted install couldn't resume. The settings file is now written on the first run too, and a failed write is logged.
+- New: Settings has an "Existing install" card. If the app lost track of an install, choose its folder (the one with ModOrganizer.exe) and it picks it up again.
+
 ## 0.4.0
 
 - Add-ons install on top of the base list. Each gets its own section. Mods that have to load before a base mod are placed next to it. Cards show installed and update badges, and install is one click.

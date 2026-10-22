@@ -293,6 +293,15 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Existing install</TextBlock>
+                            <TextBlock x:Name="TxtExistingInstall" Classes="info" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button Click="OnPickExistingInstall">Choose install folder…</Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
                             <TextBlock Classes="h2">Updates</TextBlock>
                             <TextBlock x:Name="TxtUpdateStatus" Classes="info" TextWrapping="Wrap"/>
                             <CheckBox x:Name="ChkUpdateAuto" Click="OnUpdateAutoChanged">Look for updates when the app starts</CheckBox>
