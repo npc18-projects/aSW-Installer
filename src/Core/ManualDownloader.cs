@@ -53,7 +53,7 @@ public static class ManualDownloader
                     if (TempExt.Any(e => f.EndsWith(e, StringComparison.OrdinalIgnoreCase)) || rejected.Contains(f)) continue;
                     long len;
                     try { len = new FileInfo(f).Length; } catch { continue; }
-                    if (size > 0 && len != size) continue;
+                    if (!ManifestResolver.SizeClose(len, size)) continue;
                     // still being written? wait for the size to hold still
                     await Task.Delay(1200, ct);
                     try { if (new FileInfo(f).Length != len) continue; } catch { continue; }

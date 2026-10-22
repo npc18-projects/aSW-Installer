@@ -78,10 +78,16 @@ public sealed class ManifestResolver
     }
 
     /// <summary>Verify a downloaded archive against manifest size + md5 (free mode) or sha256 when known.</summary>
+    /// <summary>True when a file's size is the collection's size, or within a few bytes of it. Never the final word: the md5 is.</summary>
+    public static bool SizeClose(long actual, long expected) => expected <= 0 || Math.Abs(actual - expected) <= 64;
+
     public static async Task<(bool ok, string detail)> VerifyArchiveAsync(string path, ModEntry mod)
     {
         var fi = new FileInfo(path);
-        if (mod.Nexus?.FileSize is long expected && fi.Length != expected)
+        // The size in a collection can be a few bytes off the real file (Nexus reports 160646601 for a file a collection
+        // lists as 160646604), so a small difference isn't a failure: the md5 below decides. A big difference means a
+        // truncated or wrong file.
+        if (mod.Nexus?.FileSize is long expected && !SizeClose(fi.Length, expected))
             return (false, $"size mismatch: expected {expected}, got {fi.Length}");
 
         var md5 = mod.Nexus?.Md5;

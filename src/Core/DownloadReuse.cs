@@ -64,7 +64,7 @@ public static class DownloadReuse
         return null;
 
         bool SizeOk(string p) =>
-            size <= 0 || new FileInfo(p).Length == size;
+            ManifestResolver.SizeClose(new FileInfo(p).Length, size);
     }
 
     /// <summary>Parses the modId out of a download filename. The modId is a

@@ -708,6 +708,30 @@ foreach (var sample in FindSamples())
     finally { InstallState.UseDirectory(null); try { Directory.Delete(state, true); } catch { } }
 }
 
+// ---- a collection that lists a file a few bytes bigger than it really is (Nightmare Deathclaw redux, 3 bytes) still verifies
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        var bytes = Encoding.ASCII.GetBytes(new string('x', 1000));
+        var md5 = Convert.ToHexStringLower(MD5.HashData(bytes));
+        var f = Path.Combine(dir, "a.zip"); File.WriteAllBytes(f, bytes);
+        ModEntry M(long size, string hash) => new() { InstallAs = "m", Nexus = new NexusFileRef { ModId = 1, FileId = 1, Md5 = hash, FileSize = size } };
+        Check("a size a few bytes off still verifies when the md5 matches", (await ManifestResolver.VerifyArchiveAsync(f, M(1003, md5))).ok);
+        Check("an exact size verifies", (await ManifestResolver.VerifyArchiveAsync(f, M(1000, md5))).ok);
+        Check("a few bytes off with the wrong md5 still fails (the md5 decides)", !(await ManifestResolver.VerifyArchiveAsync(f, M(1003, "0123456789abcdef0123456789abcdef"))).ok);
+        Check("a truncated file (a big size gap) fails on size", (await ManifestResolver.VerifyArchiveAsync(f, M(1_000_000, md5))) is { ok: false, detail: var d } && d.StartsWith("size mismatch"));
+        // a free-account download whose size is 3 bytes off the collection's is still picked up from the browser folder
+        var watch = Path.Combine(dir, "browser"); Directory.CreateDirectory(watch);
+        File.Copy(f, Path.Combine(watch, "Nightmare Deathclaw redux V1.5-1-1.zip"));
+        var got = await ManualDownloader.FetchAsync(M(1003, md5), watch, n => Path.Combine(dir, "dl", n),
+            p => ManifestResolver.VerifyArchiveAsync(p, M(1003, md5)), _ => Check("no page should be opened for a file that is already there", false), CancellationToken.None);
+        Check("a manual download 3 bytes off the listed size is accepted", File.Exists(got));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- removing an add-on or one optional mod
 {
     var inst = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
