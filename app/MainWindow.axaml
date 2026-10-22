@@ -326,7 +326,6 @@
                                         <Button Grid.Column="1" Click="OnHomeRecheck">Check again</Button>
                                     </Grid>
                                     <StackPanel x:Name="PnlHealth" Spacing="8"/>
-                                    <Button x:Name="BtnHomeIni" HorizontalAlignment="Left" Click="OnHomeRecommendedIni">Use recommended INIs</Button>
                                     <TextBlock x:Name="TxtHomeIniStatus" Classes="info" FontSize="12" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>

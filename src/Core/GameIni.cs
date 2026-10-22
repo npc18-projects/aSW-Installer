@@ -105,3 +105,71 @@ public static class GameDisplay
 
     public static string ProfilePrefs(string instanceDir) => Path.Combine(InstallHealth.ProfileDir(instanceDir), "fallout4prefs.ini");
 }
+
+/// <summary>One setting that differs from the recommended file.</summary>
+public sealed record IniDifference(string File, string Section, string Key, string Recommended, string? Current);
+
+/// <summary>
+/// Compares a profile INI with the recommended one. Settings the game or the player change in normal use (volume, controls,
+/// window mode, the screen size, Pipboy colour, difficulty) are ignored, so what is left is a real change to the settings
+/// the list was tuned with. A setting missing from the profile counts; an extra one (added by a mod or a tool) doesn't.
+/// </summary>
+public static class IniCompare
+{
+    private static readonly HashSet<string> IgnoredSections = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AudioMenu", "Controls", "Pipboy", "GamePlay", "SaveGame", "Launcher", "Bethesda.net", "MAIN",
+    };
+
+    private static readonly HashSet<string> IgnoredKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "iSize W", "iSize H", "iLocation X", "iLocation Y", "bFull Screen", "bBorderless", "bMaximizeWindow", "bTopMostWindow",
+        "uPipboyTargetWidth", "uPipboyTargetHeight",
+    };
+
+    public static Dictionary<(string Section, string Key), string> Parse(string text)
+    {
+        var map = new Dictionary<(string, string), string>(new SectionKeyComparer());
+        var section = "";
+        foreach (var raw in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            var l = raw.Trim();
+            if (l.Length == 0 || l[0] is ';' or '#') continue;
+            if (l[0] == '[' && l[^1] == ']') { section = l[1..^1]; continue; }
+            var eq = l.IndexOf('=');
+            if (eq > 0) map[(section, l[..eq].Trim())] = l[(eq + 1)..].Trim();
+        }
+        return map;
+    }
+
+    private sealed class SectionKeyComparer : IEqualityComparer<(string, string)>
+    {
+        public bool Equals((string, string) a, (string, string) b) =>
+            a.Item1.Equals(b.Item1, StringComparison.OrdinalIgnoreCase) && a.Item2.Equals(b.Item2, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string, string) k) =>
+            HashCode.Combine(k.Item1.ToLowerInvariant(), k.Item2.ToLowerInvariant());
+    }
+
+    /// <summary>3000.0000 and 3000.0 are the same setting.</summary>
+    public static bool SameValue(string a, string b)
+    {
+        a = a.Trim().TrimEnd('f', 'F'); b = b.Trim().TrimEnd('f', 'F');
+        if (a.Equals(b, StringComparison.OrdinalIgnoreCase)) return true;
+        return double.TryParse(a, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x)
+            && double.TryParse(b, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y)
+            && Math.Abs(x - y) < 1e-6;
+    }
+
+    public static List<IniDifference> Diff(string fileName, string recommended, string current)
+    {
+        var rec = Parse(recommended); var cur = Parse(current);
+        var list = new List<IniDifference>();
+        foreach (var ((section, key), value) in rec)
+        {
+            if (IgnoredSections.Contains(section) || IgnoredKeys.Contains(key)) continue;
+            if (!cur.TryGetValue((section, key), out var now)) list.Add(new(fileName, section, key, value, null));
+            else if (!SameValue(value, now)) list.Add(new(fileName, section, key, value, now));
+        }
+        return list;
+    }
+}

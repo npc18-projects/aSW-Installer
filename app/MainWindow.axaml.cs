@@ -642,10 +642,10 @@ public partial class MainWindow : Window
             text.Children.Add(new TextBlock { Text = it.Detail, TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
-            if (it.Action == "match-resolution")
+            if (it.Action is "match-resolution" or "use-recommended")
             {
-                var fix = new Button { Content = "Match display", VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
-                fix.Click += OnHomeMatchRes;
+                var fix = new Button { Content = it.Action == "use-recommended" ? "Use recommended INIs" : "Match display", VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Margin = new Avalonia.Thickness(10, 0, 0, 0) };
+                fix.Click += it.Action == "use-recommended" ? OnHomeRecommendedIni : OnHomeMatchRes;
                 Grid.SetColumn(fix, 2);
                 row.Children.Add(fix);
             }
@@ -675,7 +675,8 @@ public partial class MainWindow : Window
     {
         if (InstallState.GetInstallDir() is not { } dir) return;
         if (IniBlocker() is { } why) { TxtHomeIniStatus.Text = why; return; }
-        if (!Arm("home-ini", BtnHomeIni, "Replace my INIs?", "Use recommended INIs"))
+        if (sender is not Button btn) return;
+        if (!Arm("home-ini", btn, "Replace my INIs?", "Use recommended INIs"))
         {
             TxtHomeIniStatus.Text = "This replaces your Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini with the recommended ones. Your current files are kept as .asw-backup. Click again to do it.";
             return;

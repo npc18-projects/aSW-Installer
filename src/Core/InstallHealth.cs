@@ -93,7 +93,7 @@ public static class InstallHealth
         var gameDir = Path.Combine(instanceDir, "Stock Game");
         items.Add(MissingMastersItem(instanceDir, mods, plugins, Directory.Exists(gameDir) ? gameDir : null));
         items.Add(GameVersionItem(gameDir));
-        items.Add(ResolutionItem(instanceDir, display));
+        items.Add(IniItem(instanceDir, display));
 
         var f4se = Mo2Launcher.FindF4seTitle(instanceDir);
         items.Add(f4se is null ? new("F4SE", HealthLevel.Fail, "Not in Mod Organizer 2's program list.")
@@ -122,13 +122,38 @@ public static class InstallHealth
         catch (Exception ex) { return new("Missing masters", HealthLevel.Warn, "Couldn't check: " + ex.Message); }
     }
 
-    private static HealthItem ResolutionItem(string instanceDir, (int W, int H)? display)
+    /// <summary>
+    /// The profile's INIs against the recommended ones shipped in the exe: which settings were changed, plus whether the game's
+    /// screen size is the main display's. Reading the files each time is what makes it track changes made later.
+    /// </summary>
+    private static HealthItem IniItem(string instanceDir, (int W, int H)? display)
     {
+        var profile = ProfileDir(instanceDir);
+        var diffs = new List<IniDifference>();
+        var missing = new List<string>();
+        var compared = 0;
+        foreach (var (profileName, shippedName) in new[] { ("fallout4.ini", "Fallout4.ini"), ("fallout4prefs.ini", "Fallout4Prefs.ini"), ("fallout4custom.ini", "Fallout4Custom.ini") })
+        {
+            if (Mo2InstanceWriter.ShippedIni(shippedName) is not { } recommended) continue;
+            compared++;
+            var path = Path.Combine(profile, profileName);
+            if (!File.Exists(path)) { missing.Add(shippedName); continue; }
+            diffs.AddRange(IniCompare.Diff(shippedName, recommended, File.ReadAllText(path)));
+        }
         var set = GameDisplay.ReadResolution(GameDisplay.ProfilePrefs(instanceDir));
-        if (set is null) return new("Game resolution", HealthLevel.Warn, "Not set in the profile's Fallout4Prefs.ini.");
-        if (display is not { } d) return new("Game resolution", HealthLevel.Ok, $"{set.Value.W}x{set.Value.H}.");
-        return set.Value == d ? new("Game resolution", HealthLevel.Ok, $"{d.W}x{d.H}, the size of your main display.")
-            : new("Game resolution", HealthLevel.Warn, $"{set.Value.W}x{set.Value.H}. Your main display is {d.W}x{d.H}.", "match-resolution");
+        var resolutionOff = display is { } d && set is { } r && r != d;
+        string res = set is null ? "" : resolutionOff ? $" The game is set to {set.Value.W}x{set.Value.H}; your main display is {display!.Value.W}x{display.Value.H}." : $" Resolution {set.Value.W}x{set.Value.H}.";
+
+        if (missing.Count > 0)
+            return new("INI settings", HealthLevel.Fail, $"{string.Join(", ", missing)} missing from the profile.", "use-recommended");
+        if (diffs.Count > 0)
+        {
+            string One(IniDifference x) => $"{x.Key} ({x.Current ?? "missing"}, recommended {x.Recommended})";
+            var shown = string.Join("; ", diffs.Take(4).Select(One)) + (diffs.Count > 4 ? $"; and {diffs.Count - 4} more" : "");
+            return new("INI settings", HealthLevel.Warn, $"{diffs.Count} setting{(diffs.Count == 1 ? "" : "s")} differ from the recommended: {shown}.{res}", "use-recommended");
+        }
+        if (resolutionOff) return new("INI settings", HealthLevel.Warn, $"Matches the recommended settings.{res}", "match-resolution");
+        return new("INI settings", HealthLevel.Ok, compared == 0 ? $"This build ships no recommended INIs.{res}" : $"Matches the recommended settings.{res}");
     }
 
     private static HealthItem GameVersionItem(string gameDir)

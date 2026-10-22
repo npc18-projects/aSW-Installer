@@ -600,6 +600,39 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- Home tab: INI settings are tracked against the recommended INIs
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var inst = Path.Combine(dir, "inst"); var game = Path.Combine(dir, "game");
+        Directory.CreateDirectory(game);
+        Mo2InstanceWriter.EnsureProfileFiles(inst, game, (2560, 1440));
+        var prof = Path.Combine(inst, "profiles", "A StoryWealth");
+        HealthItem Row((int, int)? display) => InstallHealth.Check(inst, display).First(h => h.Label == "INI settings");
+        Check("a fresh profile matches the recommended INIs", Row((2560, 1440)).Level == HealthLevel.Ok, Row((2560, 1440)).Detail);
+
+        var prefsPath = Path.Combine(prof, "fallout4prefs.ini");
+        var prefs = File.ReadAllText(prefsPath);
+        var shadowNow = IniEdit.GetValue(prefs, "Display", "fShadowDistance");
+        File.WriteAllText(prefsPath, IniEdit.SetValue(prefs, "AudioMenu", "fAudioMasterVolume", "0.1000"));
+        Check("volume and other normal in-game changes are ignored", Row((2560, 1440)).Level == HealthLevel.Ok);
+        File.WriteAllText(prefsPath, IniEdit.SetValue(File.ReadAllText(prefsPath), "Display", "fShadowDistance", "9999.0"));
+        var changed = Row((2560, 1440));
+        Check("a changed setting is named, with the recommended value", changed.Level == HealthLevel.Warn && changed.Detail.Contains("fShadowDistance") && changed.Detail.Contains("9999") && changed.Action == "use-recommended", changed.Detail);
+        File.WriteAllText(prefsPath, IniEdit.SetValue(File.ReadAllText(prefsPath), "Display", "fShadowDistance", (shadowNow ?? "3000.0000") + "00"));
+        Check("the same number written differently is not a change", Row((2560, 1440)).Level == HealthLevel.Ok, Row((2560, 1440)).Detail);
+
+        var res = Row((3840, 2160));
+        Check("only the screen size off gives the match-display action", res.Level == HealthLevel.Warn && res.Action == "match-resolution" && res.Detail.Contains("3840x2160"), res.Detail);
+        File.Delete(Path.Combine(prof, "fallout4custom.ini"));
+        Check("a missing INI is a failure", Row(null).Level == HealthLevel.Fail && Row(null).Detail.Contains("Fallout4Custom.ini"));
+        GameDisplay.UseRecommended(inst, (2560, 1440));
+        Check("using the recommended INIs makes it green again", Row((2560, 1440)).Level == HealthLevel.Ok, Row((2560, 1440)).Detail);
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- Home tab: install health
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
