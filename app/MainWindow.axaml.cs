@@ -348,7 +348,6 @@ public partial class MainWindow : Window
             TxtCollectionSummary.Text = "";
             PnlPickCollection.IsVisible = false;
             BtnToInstall.IsEnabled = _signedIn;
-            BtnToSetup.IsEnabled = true;
             BtnDetailInstall.IsEnabled = true;
             EnableNav(1);
             SetStatus("");
@@ -357,7 +356,6 @@ public partial class MainWindow : Window
         {
             TxtCollectionSummary.Text = "That file doesn't look like a valid collection. Details are in the log.";
             InstallLog.Error("ui", $"manifest load failed for {path}: {ex.Message}");
-            BtnToSetup.IsEnabled = false;
         }
     }
 
@@ -453,8 +451,9 @@ public partial class MainWindow : Window
             $"{s.ModCount:N0} mods", $"{SizeText(s.SizeBytes)} to download{sizeNote}", $"Last updated  {updated}",
         };
         if (s.AdultContent) facts.Add("Adult content");
-        // wide pages: two lines of facts; the narrow base-list column: one fact per line
-        return stacked ? string.Join("\n", facts)
+        // wide pages: two lines of facts; the narrow base-list column: four short lines
+        return stacked
+            ? string.Join("\n", facts[0], $"{facts[1]}   ·   {facts[2]}", $"{facts[3]}   ·   {facts[4]}", string.Join("   ·   ", facts.Skip(5)))
             : string.Join("    ·    ", facts.Take(3)) + "\n" + string.Join("    ·    ", facts.Skip(3));
     }
 
@@ -762,7 +761,7 @@ public partial class MainWindow : Window
         => ColArchives.IsVisible = !ColArchives.IsVisible;
 
     private void OnDetailInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        => ShowPage(1); // paths live on Setup now; the detail page is overview only
+        => OnToSetup(sender, e); // fills the install/downloads defaults, then opens Setup
 
     // ---------- page 1: setup ----------
 
@@ -1049,9 +1048,6 @@ public partial class MainWindow : Window
     {
         var dir = InstallState.GetInstallDir();
         RefreshAddons();
-        TxtInstallCheck.Text = dir is null
-            ? "A StoryWealth isn't installed yet. Install the base pack first, then add-on lists will appear here."
-            : $"A StoryWealth is installed ({dir}). Add-ons and optional content are in the menu on the left.";
         InstallLog.Info("ui", dir is null ? "install check: not installed" : $"install check: installed at {dir}");
     }
 

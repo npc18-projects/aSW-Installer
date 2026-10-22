@@ -144,9 +144,10 @@
                 <StackPanel Margin="36,28,36,28" Spacing="18">
                     <!-- Modlist gallery -->
                     <WrapPanel x:Name="GridModlists">
-                        <Border Classes="card" Width="340" Tapped="OnOpenDetail" Cursor="Hand">
+                        <!-- same shape as an add-on card: banner with the text on it; click opens the detail page (Install is there) -->
+                        <Border Classes="card" Width="380" Padding="0" ClipToBounds="True" Tapped="OnOpenDetail" Cursor="Hand">
                             <StackPanel>
-                                <Border Height="190" CornerRadius="6" Margin="-18,-18,-18,14" ClipToBounds="True">
+                                <Border Height="236" ClipToBounds="True">
                                     <Panel>
                                         <Image x:Name="ImgBaseCard" Stretch="UniformToFill" IsVisible="False"/>
                                         <Panel>
@@ -156,37 +157,20 @@
                                                     <GradientStop Color="#B3000000" Offset="1"/>
                                                 </LinearGradientBrush>
                                             </Panel.Background>
-                                            <StackPanel VerticalAlignment="Bottom" Margin="18,0,0,12">
-                                                <TextBlock Text="A STORYWEALTH" FontSize="22" FontWeight="Bold" Foreground="#FDF6EC"/>
+                                            <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,12">
+                                                <TextBlock Text="A STORYWEALTH" FontSize="17" FontWeight="Bold" Foreground="#FDF6EC"/>
                                                 <TextBlock Text="Vanilla Plus · Gameplay · Visuals" FontSize="12" Foreground="#D9CBA8"/>
+                                                <TextBlock x:Name="TxtBaseStats" FontSize="12" Foreground="#F2C48D" TextWrapping="Wrap"/>
+                                                <TextBlock x:Name="TxtCollectionSummary" FontSize="14" FontWeight="SemiBold" Foreground="#9FE0A8" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                             </StackPanel>
                                         </Panel>
                                     </Panel>
                                 </Border>
-                                <TextBlock Classes="sub" TextWrapping="Wrap" Margin="0,0,0,12" FontSize="12"
-                                    Text="A curated StoryWealth experience, played through Mod Organizer 2. Everything is downloaded and set up for you. No manual mod installation."/>
-                                <StackPanel Orientation="Horizontal" Spacing="22" Margin="0,0,0,14">
-                                    <StackPanel>
-                                        <TextBlock x:Name="TxtStatMods" Classes="stat">—</TextBlock>
-                                        <TextBlock Classes="sub" FontSize="11">Mods</TextBlock>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock x:Name="TxtStatSize" Classes="stat">—</TextBlock>
-                                        <TextBlock Classes="sub" FontSize="11">Download</TextBlock>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock x:Name="TxtStatStorage" Classes="stat">—</TextBlock>
-                                        <TextBlock Classes="sub" FontSize="11">Storage</TextBlock>
-                                    </StackPanel>
-                                </StackPanel>
-                                <TextBlock x:Name="TxtBaseStats" Classes="sub" FontSize="12" Margin="0,-4,0,12" TextWrapping="Wrap"/>
-                                <Button x:Name="BtnToSetup" Classes="primary" HorizontalAlignment="Stretch" Click="OnToSetup" IsEnabled="False">Install A StoryWealth →</Button>
-                                <TextBlock x:Name="TxtCollectionSummary" Classes="sub" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="12"/>
-                                <StackPanel x:Name="PnlPickCollection" Margin="0,6,0,0" Spacing="6" IsVisible="False">
+                                <!-- only shown when the collection list could not be fetched (free accounts) -->
+                                <StackPanel x:Name="PnlPickCollection" Margin="14,10,14,14" Spacing="6" IsVisible="False">
                                     <Button Click="OnOpenNexus">Open the collection page</Button>
                                     <Button Click="OnPickCollection">Choose the downloaded collection…</Button>
                                 </StackPanel>
-                                <TextBlock x:Name="TxtInstallCheck" Classes="sub" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"/>
                             </StackPanel>
                         </Border>
                     </WrapPanel>
@@ -330,11 +314,26 @@
                         <TextBlock Classes="sub" TextWrapping="Wrap"
                             Text="A curated StoryWealth experience, played through Mod Organizer 2. Everything is downloaded and set up for you. No manual mod installation."/>
                         <TextBlock x:Name="TxtBaseStatsDetail" Foreground="#F2C48D" FontSize="13" TextWrapping="Wrap" LineHeight="22"/>
+                        <!-- what the current optional-group choices will install -->
+                        <StackPanel Orientation="Horizontal" Spacing="22" Margin="0,4,0,4">
+                            <StackPanel>
+                                <TextBlock x:Name="TxtStatMods" Classes="stat">—</TextBlock>
+                                <TextBlock Classes="sub" FontSize="11">Mods to install</TextBlock>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock x:Name="TxtStatSize" Classes="stat">—</TextBlock>
+                                <TextBlock Classes="sub" FontSize="11">Download</TextBlock>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock x:Name="TxtStatStorage" Classes="stat">—</TextBlock>
+                                <TextBlock Classes="sub" FontSize="11">Storage</TextBlock>
+                            </StackPanel>
+                        </StackPanel>
                         <StackPanel Spacing="8">
+                            <Button x:Name="BtnDetailInstall" Classes="primary" HorizontalAlignment="Stretch" Click="OnDetailInstall" IsEnabled="False">Install A StoryWealth →</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnOpenNexus">View on Nexus Mods</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnOpenDiscord">Join the Discord</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnToggleArchives">Archives</Button>
-                            <Button x:Name="BtnDetailInstall" Classes="primary" HorizontalAlignment="Stretch" Click="OnDetailInstall" IsEnabled="False">Install A StoryWealth →</Button>
                         </StackPanel>
                         <Button Click="OnBackToModlist">← Back</Button>
                     </StackPanel>
