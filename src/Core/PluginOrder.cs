@@ -181,6 +181,33 @@ public static class PluginOrder
     private static bool IsMasterLike(Info i, string name) =>
         i.IsMaster;
 
+    /// <summary>
+    /// Enabled plugins that need a master which isn't there or isn't enabled (its mod is optional and wasn't installed, or
+    /// was switched off). The game would refuse to load them, so the caller turns them off. Repeats until nothing more
+    /// depends on a plugin that was just turned off. Returns (plugin, missing master) in load order.
+    /// </summary>
+    public static List<(string Plugin, string Master)> MissingMasters(
+        IReadOnlyList<string> order, IDictionary<string, bool> enabled, Func<string, Info?> info)
+    {
+        var on = new HashSet<string>(order.Where(n => enabled.TryGetValue(n, out var e) && e), StringComparer.OrdinalIgnoreCase);
+        var result = new List<(string, string)>();
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var n in order)
+            {
+                if (!on.Contains(n) || info(n) is not { } h) continue;
+                var missing = h.Masters.FirstOrDefault(m => !IsImplicit(m) && !on.Contains(m));
+                if (missing is null) continue;
+                on.Remove(n);
+                result.Add((n, missing));
+                changed = true;
+            }
+        } while (changed);
+        return result;
+    }
+
     private static bool IsImplicit(string master) =>
         Vanilla.Contains(master, StringComparer.OrdinalIgnoreCase)
         || master.StartsWith("cc", StringComparison.OrdinalIgnoreCase);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.5
+
+- Plugins whose master isn't installed (an optional mod, or the SS2 group left out) are now turned off, so MO2 no longer warns about missing masters. The log lists them.
+- Add-ons page: installed add-ons get a green border and an Installed badge.
+
 ## 0.4.4
 
 - Add-on mods are named after their add-on, without the A Storywealth / aSW prefix (for example "Atmosphere - Mod name"). Each add-on uses its own title. Folders from earlier versions are still recognised.

@@ -973,14 +973,36 @@ public partial class MainWindow : Window
             text.Children.Add(new TextBlock
             { Text = "Install the base list first", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
 
+        var panel = new Panel { Children = { banner, text } };
+        if (c.InstalledRev is not null)
+            panel.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.Parse(c.UpdateAvailable ? "#F2C48D" : "#3E9B54")),
+                CornerRadius = new Avalonia.CornerRadius(12),
+                Padding = new Avalonia.Thickness(10, 4),
+                Margin = new Avalonia.Thickness(0, 10, 10, 0),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                Child = new TextBlock
+                {
+                    Text = c.UpdateAvailable ? "Installed · update" : "✓ Installed",
+                    FontSize = 12, FontWeight = FontWeight.SemiBold,
+                    Foreground = new SolidColorBrush(Color.Parse(c.UpdateAvailable ? "#2B2113" : "#FFFFFF"))
+                }
+            });
         var card = new Border
         {
             Classes = { "card" },
             Width = 380,
             Padding = new Avalonia.Thickness(0),
             Tag = c.Slug,
-            Child = new Panel { Children = { banner, text } }
+            Child = panel
         };
+        if (c.InstalledRev is not null)
+        {
+            card.BorderBrush = new SolidColorBrush(Color.Parse(c.UpdateAvailable ? "#F2C48D" : "#3E9B54"));
+            card.BorderThickness = new Avalonia.Thickness(2);
+        }
         card.Tapped += (_, _) => ShowAddonDetail(c);
         return card;
     }

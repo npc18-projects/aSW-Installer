@@ -490,6 +490,25 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- plugins whose master isn't installed are turned off
+{
+    var infos = new Dictionary<string, PluginOrder.Info>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["SS2.esm"] = new(true, false, []),
+        ["IT_SS2.esp"] = new(false, false, ["SS2.esm", "Fallout4.esm"]),
+        ["IT_SS2_Patch.esp"] = new(false, false, ["IT_SS2.esp"]),
+        ["Plain.esp"] = new(false, false, ["Fallout4.esm", "DLCRobot.esm"]),
+        ["NeedsGone.esp"] = new(false, false, ["Gone.esp"]),
+    };
+    var order = new[] { "IT_SS2.esp", "IT_SS2_Patch.esp", "Plain.esp", "NeedsGone.esp" };
+    var en = order.ToDictionary(n => n, _ => true, StringComparer.OrdinalIgnoreCase);
+    var bad = PluginOrder.MissingMasters(order, en, n => infos.TryGetValue(n, out var i) ? i : null).Select(x => x.Plugin).ToList();
+    Check("a plugin missing its master is flagged, along with plugins that need it", bad.Order(StringComparer.Ordinal).SequenceEqual(new[] { "IT_SS2.esp", "IT_SS2_Patch.esp", "NeedsGone.esp" }.Order(StringComparer.Ordinal)), string.Join(",", bad));
+    Check("vanilla masters never count as missing", !bad.Contains("Plain.esp"));
+    en["IT_SS2.esp"] = true; var withSs2 = new[] { "SS2.esm", "IT_SS2.esp", "IT_SS2_Patch.esp" }; var en2 = withSs2.ToDictionary(n => n, _ => true, StringComparer.OrdinalIgnoreCase);
+    Check("nothing is flagged when the master is there and enabled", PluginOrder.MissingMasters(withSs2, en2, n => infos.TryGetValue(n, out var i) ? i : null).Count == 0);
+}
+
 // ---- hash-guided layout repair
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
