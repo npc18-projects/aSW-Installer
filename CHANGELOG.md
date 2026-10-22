@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- UI pass: files under 1 KB show as <1 KB, long archive names have a tooltip, the install progress bar is taller with a percentage, Remove buttons are red, the Optional page uses the card colour and its button shows the selection count, and Install health names what needs attention.
+- Layout: the Add-Ons cards fill the page width, the banners share one height, and Settings uses the full page width.
+- The Done page has a summary (mods, plugins, add-ons, time taken, log path) and a Go to Home button.
+- The Modlist tab opens the A StoryWealth page directly (no card to click first).
 - Archive list shows each mod's own name instead of the install folder name.
 - Modlist page: the archive list is always shown (the Archives button is gone).
 - Game settings: a new install sets the game's resolution to your main display. Install health has an INI settings line. It reads your Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini each time and names any setting that differs from the recommended one (volume, controls, window mode and similar are ignored). It also shows when the resolution differs from your display, with a Match display button.

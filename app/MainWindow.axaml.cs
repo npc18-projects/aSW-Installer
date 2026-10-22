@@ -443,6 +443,11 @@ public partial class MainWindow : Window
                     await Task.Delay(1500);
                 }
                 if (i == 3) { TxtPhase.Text = "Downloading mod 42 of 911"; TxtItem.Text = "Sample Mod"; TxtSpeed.Text = "12.4 MB/s"; TxtCounts.Text = "41/911"; PbOverall.Value = 4.5; OnLogLine("sample log line"); FlushLog(); }
+                if (i == 4)
+                {
+                    TxtDone.Text = "All done! A StoryWealth is installed.\nPlay from the Home tab with Launch with F4SE.";
+                    TxtDoneSummary.Text = "1,129 mods in your install (1,129 enabled)\n1,024 plugins (1,023 enabled)\n2 add-ons installed\nThis run took 38 min\nInstalled in D:\\Games\\Modlists\\Fallout 4\\A Storywealth\nLog: D:\\Games\\Modlists\\Fallout 4\\A Storywealth\\install.log";
+                }
                 if (i == 5) OnOpenDetail(null, new RoutedEventArgs());
                 ShowPage(i);
                 if (i == 10) await Task.Delay(12000);   // Home reads the whole install: health check and folder size
@@ -670,7 +675,8 @@ public partial class MainWindow : Window
         PnlHealth.Children.Add(new TextBlock
         {
             Margin = new Avalonia.Thickness(0, 6, 0, 0), FontSize = 12, TextWrapping = TextWrapping.Wrap,
-            Text = bad == 0 ? "Everything checks out." : "Something is wrong. Save a report from Settings and send it with a screenshot of this.",
+            Text = bad == 0 ? "Everything checks out."
+                : $"Needs attention: {string.Join(", ", items.Where(i => i.Level == HealthLevel.Fail).Select(i => i.Label))}. Save a report from Settings and send it with a screenshot of this.",
             Foreground = new SolidColorBrush(Color.Parse(bad == 0 ? "#6FCF83" : "#EB6B6B")),
         });
     }
@@ -917,10 +923,24 @@ public partial class MainWindow : Window
             ? (listing ? "" : "No add-ons are available yet.")
             : rows.Count == 0 ? "No add-ons match this filter." : "";
         foreach (var a in rows) GridAddons.Children.Add(BuildAddonCard(a, installed));
+        ResizeAddonCards();
     }
 
     private sealed record AddonCard(string Slug, string Name, string Author, string Version, bool UpdateAvailable, string HeaderImageUrl, string? InstalledRev = null,
         NexusApiClient.CollectionStats? Stats = null);
+
+    /// <summary>Cards share the page width: as many columns as fit at about 380 px, stretched to fill.</summary>
+    private void OnAddonsSizeChanged(object? sender, SizeChangedEventArgs e) => ResizeAddonCards();
+
+    private void ResizeAddonCards()
+    {
+        var avail = PageAddons.Bounds.Width - 72 - 20;   // page margins and the scroll bar
+        if (avail < 300) return;
+        const double gap = 20, wanted = 380;
+        var cols = Math.Max(1, (int)Math.Floor((avail + gap) / (wanted + gap)));
+        var width = Math.Floor((avail - gap * (cols - 1)) / cols);
+        foreach (var c in GridAddons.Children.OfType<Border>()) c.Width = width;
+    }
 
     private void OnAddonsSortChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -1243,6 +1263,8 @@ public partial class MainWindow : Window
     {
         >= 1_000_000_000 => $"{bytes / 1_000_000_000.0:F1} GB",
         >= 1_000_000 => $"{bytes / 1_000_000.0:F1} MB",
+        <= 0 => "unknown",
+        < 1_000 => "<1 KB",
         _ => $"{bytes / 1_000.0:F0} KB"
     };
 
@@ -1295,6 +1317,8 @@ public partial class MainWindow : Window
     }
 
     private void OnBackToModlist(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => ShowPage(0);
+
+    private void OnDoneHome(object? sender, RoutedEventArgs e) => ShowPage(10);
 
     private void OnDetailInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         => OnToSetup(sender, e); // fills the install/downloads defaults, then opens Setup
@@ -1770,7 +1794,7 @@ public partial class MainWindow : Window
                 {
                     // an installed option can be taken out again (two clicks: Remove, then Sure?)
                     var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-                    var rm = new Button { Content = "Remove", FontSize = 12, Padding = new Avalonia.Thickness(12, 3), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                    var rm = new Button { Content = "Remove", Classes = { "danger" }, FontSize = 12, Padding = new Avalonia.Thickness(12, 3), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
                     var item = it;
                     rm.Click += (_, _) => RemoveOptionalAsync(item, rm);
                     Grid.SetColumn(rm, 1);
@@ -1792,6 +1816,7 @@ public partial class MainWindow : Window
     {
         var ticked = _optRows.Where(r => r.Box.IsChecked == true && r.Item.State == OptionState.Available).Select(r => r.Item).ToList();
         BtnOptInstall.IsEnabled = ticked.Count > 0 && !_installing;
+        BtnOptInstall.Content = ticked.Count > 0 ? $"Install {ticked.Count} selected" : "Install selected";
         TxtOptSummary.Text = ticked.Count == 0 ? _optNote : $"{ticked.Count} selected  ·  {SizeText(ticked.Sum(i => i.Bytes))} to download";
     }
 
@@ -1817,6 +1842,7 @@ public partial class MainWindow : Window
     {
         if (_installing) return; // re-entrancy guard: no double installs, _cts stays valid
         _installing = true;
+        _runWatch = Stopwatch.StartNew();
         SetRunning(true);
         try
         {
@@ -1832,6 +1858,8 @@ public partial class MainWindow : Window
         }
         finally { _installing = false; SetRunning(false); }
     }
+
+    private Stopwatch _runWatch = new();
 
     private async Task RunInstallAsync()
     {
@@ -1909,8 +1937,17 @@ public partial class MainWindow : Window
             InstallState.SetInstallDir(dir);
             ShowExistingInstall();
             TxtDone.Text = job is not null
-                ? "The optional content you picked is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run."
-                : "All done! A StoryWealth is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run. The game has to start through F4SE.";
+                ? "The optional content you picked is installed.\nPlay from the Home tab with Launch with F4SE."
+                : "All done! A StoryWealth is installed.\nPlay from the Home tab with Launch with F4SE. The game has to start through F4SE.";
+            try
+            {
+                var sum = InstallHealth.Summary(dir);
+                var took = _runWatch.Elapsed;
+                var tookText = took.TotalHours >= 1 ? $"{(int)took.TotalHours} h {took.Minutes} min" : took.TotalMinutes >= 1 ? $"{(int)took.TotalMinutes} min" : "under a minute";
+                TxtDoneSummary.Text = $"{sum.Mods:N0} mods in your install ({sum.EnabledMods:N0} enabled)\n{sum.Plugins:N0} plugins ({sum.EnabledPlugins:N0} enabled)\n"
+                    + $"{sum.AddOns} add-on{(sum.AddOns == 1 ? "" : "s")} installed\nThis run took {tookText}\nInstalled in {dir}\nLog: {Path.Combine(dir, "install.log")}";
+            }
+            catch { TxtDoneSummary.Text = $"Installed in {dir}"; }
             EnableNav(3);
             UpdateHomeTab();
             _runOk = true;

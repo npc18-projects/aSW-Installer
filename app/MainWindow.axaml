@@ -41,6 +41,26 @@
         <Style Selector="Button.primary:pointer /template/ ContentPresenter">
             <Setter Property="Background" Value="#3D86C8"/>
         </Style>
+        <Style Selector="Button.danger">
+            <Setter Property="Foreground" Value="#EB8B8B"/>
+            <Setter Property="Background" Value="#2A1A1D"/>
+            <Setter Property="BorderBrush" Value="#7A3A3A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3A2024"/>
+            <Setter Property="Foreground" Value="#FFB0B0"/>
+        </Style>
+        <Style Selector="Expander">
+            <Setter Property="Background" Value="#1D2128"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+        <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
+            <Setter Property="Background" Value="#1D2128"/>
+        </Style>
+        <Style Selector="Expander /template/ Border#ExpanderContent">
+            <Setter Property="Background" Value="#1D2128"/>
+        </Style>
         <Style Selector="Button.cta">
             <Setter Property="MinWidth" Value="240"/>
             <Setter Property="MinHeight" Value="48"/>
@@ -191,7 +211,7 @@
             </ScrollViewer>
 
             <!-- PAGE 6: Add-ons -->
-            <ScrollViewer x:Name="PageAddons" Background="#121519" IsVisible="False">
+            <ScrollViewer x:Name="PageAddons" Background="#121519" IsVisible="False" SizeChanged="OnAddonsSizeChanged">
                 <StackPanel Margin="36,28,36,28" Spacing="18">
                 <StackPanel Orientation="Horizontal" Spacing="14">
                     <TextBlock Classes="h1">Add-Ons</TextBlock>
@@ -217,8 +237,8 @@
 
             <!-- PAGE 8: Add-on detail -->
             <ScrollViewer x:Name="PageAddonDetail" Background="#121519" IsVisible="False">
-                <StackPanel Margin="36,28,36,28" Spacing="14" MaxWidth="860" HorizontalAlignment="Left">
-                    <Border Height="240" CornerRadius="6" ClipToBounds="True">
+                <StackPanel Margin="36,28,36,28" Spacing="14" MaxWidth="1180" HorizontalAlignment="Stretch">
+                    <Border Height="200" CornerRadius="6" ClipToBounds="True">
                         <Panel>
                             <Image x:Name="ImgAddDet" Stretch="UniformToFill" IsVisible="False"/>
                             <StackPanel VerticalAlignment="Bottom" Margin="18,0,0,12">
@@ -232,7 +252,7 @@
                     <TextBlock x:Name="TxtAddDetStatus" Classes="sub" FontSize="12" Foreground="#B8BEC9"/>
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <Button x:Name="BtnAddDetInstall" Classes="primary" Click="OnAddDetInstall">Install</Button>
-                        <Button x:Name="BtnAddDetRemove" Click="OnAddDetRemove" IsVisible="False">Remove</Button>
+                        <Button x:Name="BtnAddDetRemove" Classes="danger" Click="OnAddDetRemove" IsVisible="False">Remove</Button>
                         <Button Click="OnAddDetBack">Back</Button>
                     </StackPanel>
                     <StackPanel x:Name="PnlAddDetManual" Orientation="Horizontal" Spacing="12" IsVisible="False">
@@ -269,7 +289,7 @@
             <!-- PAGE 7: Settings -->
             <ScrollViewer x:Name="PageHome" Background="#121519" IsVisible="False">
                 <StackPanel Margin="36,28,36,28" Spacing="18" MaxWidth="1180" HorizontalAlignment="Stretch">
-                    <Border Height="190" CornerRadius="6" ClipToBounds="True">
+                    <Border Height="200" CornerRadius="6" ClipToBounds="True">
                         <Panel>
                             <Image x:Name="ImgHomeBanner" Stretch="UniformToFill" IsVisible="False"/>
                             <Border>
@@ -340,7 +360,7 @@
                 </StackPanel>
             </ScrollViewer>
             <ScrollViewer x:Name="PageSettings" Background="#121519" IsVisible="False">
-                <StackPanel Margin="36,28,36,28" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
+                <StackPanel Margin="36,28,36,28" Spacing="20" MaxWidth="1180" HorizontalAlignment="Stretch">
                     <TextBlock Classes="h1">Settings</TextBlock>
                     <Border Classes="card">
                         <StackPanel Spacing="10">
@@ -411,7 +431,7 @@
                   ColumnDefinitions="360,*" Margin="36,28,36,28">
                 <ScrollViewer Grid.Column="0" Margin="0,0,24,0">
                     <StackPanel Spacing="14">
-                        <Border Height="240" CornerRadius="6" ClipToBounds="True">
+                        <Border Height="200" CornerRadius="6" ClipToBounds="True">
                             <Panel>
                                 <Image x:Name="ImgDetailBanner" Stretch="UniformToFill" IsVisible="False"/>
                                 <Panel>
@@ -477,7 +497,7 @@
                                     <DataTemplate x:DataType="local:ArchiveRow">
                                         <Border Background="#171A20" CornerRadius="4" Padding="10,6" Margin="0,0,0,4">
                                             <Grid ColumnDefinitions="*,120">
-                                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="#DDE2EA" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="0" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" Foreground="#DDE2EA" FontSize="13" TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Grid.Column="1" Text="{Binding Size}" Foreground="#9AA3AE" FontSize="12" HorizontalAlignment="Right"/>
                                             </Grid>
                                         </Border>
@@ -645,7 +665,7 @@
                             <TextBlock x:Name="TxtPhase" Classes="info" FontSize="15"/>
                             <TextBlock x:Name="TxtCounts" Grid.Column="1" Classes="sub"/>
                         </Grid>
-                        <ProgressBar x:Name="PbOverall" Height="10" Minimum="0" Maximum="100"/>
+                        <ProgressBar x:Name="PbOverall" Height="20" Minimum="0" Maximum="100" ShowProgressText="True"/>
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock x:Name="TxtItem" Classes="sub" TextTrimming="CharacterEllipsis"/>
                             <TextBlock x:Name="TxtSpeed" Grid.Column="1" Classes="sub" Foreground="#F2C48D"/>
@@ -664,13 +684,19 @@
 
             <!-- PAGE 4: Done -->
             <Panel x:Name="PageDone" Background="#121519" IsVisible="False">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="640">
                     <TextBlock Classes="h1" HorizontalAlignment="Center" FontSize="34">Install complete</TextBlock>
-                    <TextBlock x:Name="TxtDone" Classes="sub" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" TextAlignment="Center"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,10,0,0">
-                        <Button x:Name="BtnLaunchMo2" Classes="primary" Click="OnLaunchMo2">Launch Mod Organizer 2</Button>
+                    <TextBlock x:Name="TxtDone" Classes="sub" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                    <Border Classes="card">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="h2">Summary</TextBlock>
+                            <TextBlock x:Name="TxtDoneSummary" Classes="info" TextWrapping="Wrap" LineHeight="22"/>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,6,0,0">
+                        <Button x:Name="BtnDoneHome" Classes="primary" Click="OnDoneHome">Go to Home</Button>
+                        <Button x:Name="BtnLaunchMo2" Click="OnLaunchMo2">Launch Mod Organizer 2</Button>
                         <Button x:Name="BtnOpenFolder" Click="OnOpenFolder">Open install folder</Button>
-                        <Button Click="OnBackToModlist">Back to modlists</Button>
                     </StackPanel>
                 </StackPanel>
             </Panel>
