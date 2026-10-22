@@ -142,7 +142,7 @@ public static class InstallHealth
         }
         var set = GameDisplay.ReadResolution(GameDisplay.ProfilePrefs(instanceDir));
         var resolutionOff = display is { } d && set is { } r && r != d;
-        string res = set is null ? "" : resolutionOff ? $" The game is set to {set.Value.W}x{set.Value.H}; your main display is {display!.Value.W}x{display.Value.H}." : $" Resolution {set.Value.W}x{set.Value.H}.";
+        string res = resolutionOff ? $" The game is set to {set!.Value.W}x{set.Value.H}; your main display is {display!.Value.W}x{display.Value.H}." : "";
 
         if (missing.Count > 0)
             return new("INI settings", HealthLevel.Fail, $"{string.Join(", ", missing)} missing from the profile.", "use-recommended");
