@@ -81,5 +81,27 @@ public static class GameDisplay
         return true;
     }
 
+    /// <summary>
+    /// Replaces the profile's Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini with the ones shipped in the exe, then sets
+    /// the resolution to <paramref name="display"/>. Each replaced file is first copied to "&lt;name&gt;.asw-backup" (an existing
+    /// backup is kept, so it always holds the oldest version). Returns the file names it replaced.
+    /// </summary>
+    public static List<string> UseRecommended(string instanceDir, (int W, int H)? display)
+    {
+        var profile = InstallHealth.ProfileDir(instanceDir);
+        Directory.CreateDirectory(profile);
+        var replaced = new List<string>();
+        foreach (var (profileName, shippedName) in new[] { ("fallout4.ini", "Fallout4.ini"), ("fallout4prefs.ini", "Fallout4Prefs.ini"), ("fallout4custom.ini", "Fallout4Custom.ini") })
+        {
+            if (Mo2InstanceWriter.ShippedIni(shippedName) is not { } text) continue;
+            var path = Path.Combine(profile, profileName);
+            if (File.Exists(path) && !File.Exists(path + BackupSuffix)) File.Copy(path, path + BackupSuffix);
+            File.WriteAllText(path, text, new UTF8Encoding(false));
+            replaced.Add(profileName);
+        }
+        if (display is { } d && replaced.Contains("fallout4prefs.ini")) ApplyResolution(Path.Combine(profile, "fallout4prefs.ini"), d.W, d.H);
+        return replaced;
+    }
+
     public static string ProfilePrefs(string instanceDir) => Path.Combine(InstallHealth.ProfileDir(instanceDir), "fallout4prefs.ini");
 }

@@ -4,7 +4,7 @@ namespace AStoryWealth.Core;
 
 public enum HealthLevel { Ok, Warn, Fail }
 
-public sealed record HealthItem(string Label, HealthLevel Level, string Detail);
+public sealed record HealthItem(string Label, HealthLevel Level, string Detail, string? Action = null);
 
 public sealed record InstallSummary(int Mods, int EnabledMods, int Plugins, int EnabledPlugins, int AddOns, string Groups);
 
@@ -128,7 +128,7 @@ public static class InstallHealth
         if (set is null) return new("Game resolution", HealthLevel.Warn, "Not set in the profile's Fallout4Prefs.ini.");
         if (display is not { } d) return new("Game resolution", HealthLevel.Ok, $"{set.Value.W}x{set.Value.H}.");
         return set.Value == d ? new("Game resolution", HealthLevel.Ok, $"{d.W}x{d.H}, the size of your main display.")
-            : new("Game resolution", HealthLevel.Warn, $"{set.Value.W}x{set.Value.H}. Your main display is {d.W}x{d.H}.");
+            : new("Game resolution", HealthLevel.Warn, $"{set.Value.W}x{set.Value.H}. Your main display is {d.W}x{d.H}.", "match-resolution");
     }
 
     private static HealthItem GameVersionItem(string gameDir)

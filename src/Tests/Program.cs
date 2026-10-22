@@ -586,6 +586,16 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
         Check("the shipped Fallout4.ini is used", Read("fallout4.ini").Contains("uGridsToLoad"), Read("fallout4.ini").Length.ToString());
         Check("the shipped Fallout4Prefs.ini is used and gets this display's size", GameDisplay.ReadResolution(Path.Combine(prof, "fallout4prefs.ini")) == (2560, 1440) && Read("fallout4prefs.ini").Contains("[Display]") && Read("fallout4prefs.ini").Length > 1000);
         Check("the shipped Fallout4Custom.ini keeps MO2's local saves line", Read("fallout4custom.ini").Contains("sLocalSavePath=__MO_Saves"));
+
+        // "Use recommended INIs": a person's edited files are replaced, the oldest copy is kept, and the display size is applied
+        File.WriteAllText(Path.Combine(prof, "fallout4.ini"), "[General]\nmine=1\n");
+        var replaced = GameDisplay.UseRecommended(inst, (1920, 1080));
+        Check("the recommended INIs replace the profile's own", replaced.Count == 3 && Read("fallout4.ini").Contains("uGridsToLoad") && !Read("fallout4.ini").Contains("mine=1"));
+        Check("the replaced file is kept as a backup", File.ReadAllText(Path.Combine(prof, "fallout4.ini" + GameDisplay.BackupSuffix)).Contains("mine=1"));
+        Check("and the resolution is the display's", GameDisplay.ReadResolution(Path.Combine(prof, "fallout4prefs.ini")) == (1920, 1080));
+        File.WriteAllText(Path.Combine(prof, "fallout4.ini"), "[General]\nsecond=1\n");
+        GameDisplay.UseRecommended(inst, null);
+        Check("a second replacement keeps the oldest backup", File.ReadAllText(Path.Combine(prof, "fallout4.ini" + GameDisplay.BackupSuffix)).Contains("mine=1"));
     }
     finally { try { Directory.Delete(dir, true); } catch { } }
 }

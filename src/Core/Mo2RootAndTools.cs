@@ -273,7 +273,7 @@ public static partial class Mo2InstanceWriter
     }
 
     /// <summary>An INI embedded from Data/ini, or null when the build ships none of that name.</summary>
-    private static string? ShippedIni(string fileName)
+    public static string? ShippedIni(string fileName)
     {
         var asm = typeof(Mo2InstanceWriter).Assembly;
         var res = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("." + fileName, StringComparison.OrdinalIgnoreCase));

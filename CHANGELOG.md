@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Game settings: a new install sets the game's resolution to your main display. Home has a button to do it again later (the old file is kept) and a health line that shows when they differ.
+- Game settings: a new install sets the game's resolution to your main display. Install health shows when the game's resolution differs from your display, with a Match display button (the old file is kept).
+- Install health: Use recommended INIs replaces your Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini with the recommended ones and sets the resolution. Your old files are kept as .asw-backup.
 - A new install gets the recommended Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini (tuned in BethINI). A profile that already has its own is never overwritten.
 - Home tab: banner with the base list's revision and stats, an install health check (disabled mods or plugins, missing masters, game version, F4SE), an install summary, and links to the Nexus page and the install, mods, downloads and logs folders.
 - Settings > Updates > Include test builds: testers get pre-release builds (such as 0.5.0-beta.1) automatically. Off by default.

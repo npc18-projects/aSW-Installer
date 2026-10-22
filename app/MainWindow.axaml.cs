@@ -603,8 +603,6 @@ public partial class MainWindow : Window
         if (dir is null || !Mo2Launcher.IsInstalled(dir)) return;
         var run = ++_homeRun;
         var display = MainDisplay();
-        BtnHomeRes.Content = display is { } dd ? $"Match the game's resolution to my display ({dd.W}x{dd.H})" : "Match the game's resolution to my display";
-        BtnHomeRes.IsEnabled = display is not null;
 
         // numbers first (quick), then the folder size and the health check, which read a lot of files
         InstallSummary sum;
@@ -637,13 +635,20 @@ public partial class MainWindow : Window
             {
                 HealthLevel.Ok => ("✓", "#6FCF83"), HealthLevel.Warn => ("!", "#F2C48D"), _ => ("✗", "#EB6B6B"),
             };
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*") };
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*,Auto") };
             row.Children.Add(new TextBlock { Text = glyph, FontSize = 16, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse(color)) });
             var text = new StackPanel { Spacing = 1 };
             text.Children.Add(new TextBlock { Text = it.Label, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(Color.Parse("#FDF6EC")) });
             text.Children.Add(new TextBlock { Text = it.Detail, TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
+            if (it.Action == "match-resolution")
+            {
+                var fix = new Button { Content = "Match display", VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                fix.Click += OnHomeMatchRes;
+                Grid.SetColumn(fix, 2);
+                row.Children.Add(fix);
+            }
             PnlHealth.Children.Add(row);
         }
         var bad = items.Count(i => i.Level == HealthLevel.Fail);
@@ -659,9 +664,37 @@ public partial class MainWindow : Window
     private (int W, int H)? MainDisplay() =>
         Screens.Primary is { } sc && sc.Bounds.Width >= 640 && sc.Bounds.Height >= 480 ? (sc.Bounds.Width, sc.Bounds.Height) : null;
 
+    /// <summary>The game rewrites its INIs when it closes, so changing them while it or MO2 runs would be undone.</summary>
+    private string? IniBlocker() =>
+        _installing ? "Wait for the current install to finish."
+        : Process.GetProcesses().Any(p => p.ProcessName.StartsWith("ModOrganizer", StringComparison.OrdinalIgnoreCase) || p.ProcessName.StartsWith("Fallout4", StringComparison.OrdinalIgnoreCase))
+            ? "Close Mod Organizer 2 and Fallout 4 first. The game rewrites these files when it closes and would undo the change."
+        : null;
+
+    private void OnHomeRecommendedIni(object? sender, RoutedEventArgs e)
+    {
+        if (InstallState.GetInstallDir() is not { } dir) return;
+        if (IniBlocker() is { } why) { TxtHomeIniStatus.Text = why; return; }
+        if (!Arm("home-ini", BtnHomeIni, "Replace my INIs?", "Use recommended INIs"))
+        {
+            TxtHomeIniStatus.Text = "This replaces your Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini with the recommended ones. Your current files are kept as .asw-backup. Click again to do it.";
+            return;
+        }
+        try
+        {
+            var done = GameDisplay.UseRecommended(dir, MainDisplay());
+            TxtHomeIniStatus.Text = done.Count == 0 ? "This build has no recommended INIs to apply."
+                : $"Done: {string.Join(", ", done)} replaced, and the resolution set to your display. Your old files are kept next to them as .asw-backup.";
+            if (done.Count > 0) InstallLog.Info("config", $"recommended INIs applied: {string.Join(", ", done)}");
+        }
+        catch (Exception ex) { InstallLog.Warn("home", ex.Message); TxtHomeIniStatus.Text = $"Couldn't replace them: {ex.Message}"; }
+        RefreshHome();
+    }
+
     private void OnHomeMatchRes(object? sender, RoutedEventArgs e)
     {
         if (InstallState.GetInstallDir() is not { } dir || MainDisplay() is not { } d) return;
+        if (IniBlocker() is { } why) { TxtHomeStatus.Text = why; return; }
         try
         {
             var ok = GameDisplay.ApplyResolution(GameDisplay.ProfilePrefs(dir), d.W, d.H);
