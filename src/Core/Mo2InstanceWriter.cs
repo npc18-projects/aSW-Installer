@@ -272,9 +272,16 @@ public static partial class Mo2InstanceWriter
         var (loadOrder, notes) = PluginOrder.Arrange(desired, Header, rules);
         foreach (var n in notes.Where(n => !n.Contains("needs master")).Take(25)) InstallLog.Warn("mo2", $"load order: {n}");
         // A plugin whose master isn't installed (an optional mod, or the SS2 group left out) would stop the game loading.
+        var reg = AddonRegistry.Load(instanceDir);
+        foreach (var n in loadOrder.Where(n => reg.AutoDisabled.Contains(n, StringComparer.OrdinalIgnoreCase)))
+            enabled[n] = true;   // turned off by an earlier run; stays on if its master has turned up since
         var noMaster = PluginOrder.MissingMasters(loadOrder, enabled, Header);
         foreach (var (plugin, master) in noMaster)
             enabled[plugin] = false;
+        var autoNow = reg.AutoDisabled.Where(n => !loadOrder.Contains(n, StringComparer.OrdinalIgnoreCase))
+            .Concat(noMaster.Select(x => x.Plugin)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (!autoNow.SequenceEqual(reg.AutoDisabled, StringComparer.OrdinalIgnoreCase))
+        { reg.AutoDisabled = autoNow; AddonRegistry.Save(instanceDir, reg); }
         if (noMaster.Count > 0)
             InstallLog.Warn("mo2", $"turned off {noMaster.Count} plugin(s) whose master isn't installed: " +
                 string.Join("; ", noMaster.Take(12).Select(x => $"{x.Plugin} (needs {x.Master})")) + (noMaster.Count > 12 ? "; …" : ""));

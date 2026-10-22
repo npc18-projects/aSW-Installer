@@ -35,6 +35,8 @@ public sealed class AddonRegistryFile
     public List<string>? BaseGroups { get; set; }
     /// <summary>md5 of the base list's optional mods the user picked.</summary>
     public List<string> BaseOptional { get; set; } = [];
+    /// <summary>Plugins the installer turned off because a master was missing; turned back on when the master appears.</summary>
+    public List<string> AutoDisabled { get; set; } = [];
 }
 
 public static class AddonRegistry
