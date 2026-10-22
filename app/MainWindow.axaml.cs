@@ -1203,21 +1203,24 @@ public partial class MainWindow : Window
     private void OnOpenDetail(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (_manifest is null) return;
-        const string prefix = "aSW AStorywealth";
+        FillDetail();
+        ShowPage(5);
+    }
+
+    /// <summary>Builds the archive list shown on the A StoryWealth page from the loaded collection.</summary>
+    private void FillDetail()
+    {
+        if (_manifest is null) return;
         _archiveRows = _manifest.Mods
             .Select(m =>
             {
-                var name = m.InstallAs;
-                name = name.StartsWith(prefix + " - ", StringComparison.OrdinalIgnoreCase) ? name[(prefix.Length + 3)..]
-                     : name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? name[prefix.Length..].TrimStart(' ', '-')
-                     : name;
+                var name = string.IsNullOrWhiteSpace(m.DisplayName) ? m.InstallAs : m.DisplayName;
                 return new ArchiveRow(name, m.Nexus?.FileSize is long b && b > 0 ? SizeText(b) : "?",
                     m.Nexus?.FileSize ?? 0);
             })
             .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         RefreshArchives();
-        ShowPage(5);
     }
 
     private static string SizeText(long bytes) => bytes switch
