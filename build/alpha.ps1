@@ -55,7 +55,26 @@ Get-ChildItem $Output -Directory | Where-Object Name -like 'AStoryWealth-Install
     Sort-Object LastWriteTime -Descending | Select-Object -Skip $Keep |
     ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 
-$exe = Join-Path (Resolve-Path $Output).Path "AStoryWealth-Installer-$version-win-x64\AStoryWealth.Installer.exe"
+$outFull = (Resolve-Path $Output).Path
+$built = Join-Path $outFull "AStoryWealth-Installer-$version-win-x64"
+
+# dist-alpha\latest is the one path to open: it always holds the newest alpha. A copy that is running can't be replaced,
+# so it is left alone (all or nothing, never half old and half new) and the new build stays in its own folder.
+$latest = Join-Path $outFull 'latest'
+$latestExe = Join-Path $latest 'AStoryWealth.Installer.exe'
+$locked = $false
+if (Test-Path $latestExe) {
+    try { [IO.File]::Open($latestExe, 'Open', 'ReadWrite', 'None').Dispose() } catch { $locked = $true }
+}
 Write-Host ""
 Write-Host "Alpha $version"
-Write-Host $exe
+if ($locked) {
+    Write-Warning "dist-alpha\latest is running, so it was not updated. Close it and run build/alpha.ps1 again, or open the new build directly:"
+    Write-Host (Join-Path $built 'AStoryWealth.Installer.exe')
+}
+else {
+    robocopy $built $latest /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw "Updating dist-alpha\latest failed (robocopy $LASTEXITCODE)." }
+    Set-Content (Join-Path $latest 'alpha-version.txt') $version
+    Write-Host $latestExe
+}
