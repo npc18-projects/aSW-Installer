@@ -153,7 +153,7 @@
             <Panel Margin="0">
 
             <!-- PAGE 0: Modlist gallery -->
-            <ScrollViewer x:Name="PageModlist" Background="#121519">
+            <ScrollViewer x:Name="PageModlist" Background="#121519" IsVisible="False">
                 <StackPanel Margin="36,28,36,28" Spacing="18">
                     <!-- Modlist gallery -->
                     <WrapPanel x:Name="GridModlists">
@@ -407,7 +407,7 @@
             </ScrollViewer>
 
             <!-- PAGE 5: Mod list detail -->
-            <Grid x:Name="PageDetail" Background="#121519" IsVisible="False"
+            <Grid x:Name="PageDetail" Background="#121519"
                   ColumnDefinitions="360,*" Margin="36,28,36,28">
                 <ScrollViewer Grid.Column="0" Margin="0,0,24,0">
                     <StackPanel Spacing="14">
@@ -446,12 +446,16 @@
                                 <TextBlock Classes="sub" FontSize="11">Storage</TextBlock>
                             </StackPanel>
                         </StackPanel>
+                        <TextBlock x:Name="TxtDetailSummary" FontSize="13" FontWeight="SemiBold" Foreground="#9FE0A8" TextWrapping="Wrap"/>
+                        <StackPanel x:Name="PnlDetailPick" Spacing="6" IsVisible="False">
+                            <Button HorizontalAlignment="Stretch" Click="OnOpenNexus">Open the collection page</Button>
+                            <Button HorizontalAlignment="Stretch" Click="OnPickCollection">Choose the downloaded collection…</Button>
+                        </StackPanel>
                         <StackPanel Spacing="8">
                             <Button x:Name="BtnDetailInstall" Classes="primary" HorizontalAlignment="Stretch" Click="OnDetailInstall" IsEnabled="False">Install A StoryWealth →</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnOpenNexus">View on Nexus Mods</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnOpenDiscord">Join the Discord</Button>
                         </StackPanel>
-                        <Button Click="OnBackToModlist">← Back</Button>
                     </StackPanel>
                 </ScrollViewer>
                     <Grid x:Name="ColArchives" Grid.Column="1" RowDefinitions="Auto,*,Auto"

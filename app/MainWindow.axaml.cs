@@ -52,6 +52,8 @@ public partial class MainWindow : Window
         NudExtractThreads.Value = threads.Extract;
         _resume = InstallState.GetResume();
         _ = RefreshAuthAsync();
+        TxtCollectionSummary.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty) TxtDetailSummary.Text = TxtCollectionSummary.Text; };
+        PnlPickCollection.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) PnlDetailPick.IsVisible = PnlPickCollection.IsVisible; };
         InitUpdates();
         ShowExistingInstall();
         RefreshInstallCheck();
@@ -563,6 +565,7 @@ public partial class MainWindow : Window
 
     private void ShowPage(int page)
     {
+        if (page == 0) page = 5;   // the Modlist tab opens the A StoryWealth page directly
         Control[] pages = [PageModlist, PageSetup, PageNexus, PageInstall, PageDone, PageDetail, PageAddons, PageSettings, PageAddonDetail, PageOptionalTab, PageHome];
         for (var i = 0; i < pages.Length; i++) pages[i].IsVisible = i == page;
 
@@ -579,7 +582,19 @@ public partial class MainWindow : Window
         for (var i = 0; i < steps.Length; i++) steps[i].IsChecked = i == step;
         if (page == 6) { StartAddonGrab(); RefreshAddons(); }
         if (page == 9) RefreshOptionalTab();
+        if (page == 5) RefreshDetailHeader();
         if (page == 10) RefreshHome();
+    }
+
+    // ---------- A StoryWealth page ----------
+
+    /// <summary>Install button wording and the status line, which depend on whether the list is already installed.</summary>
+    private void RefreshDetailHeader()
+    {
+        var installed = Mo2Launcher.IsInstalled(InstallState.GetInstallDir());
+        BtnDetailInstall.Content = installed ? "Reinstall / repair →" : "Install A StoryWealth →";
+        TxtDetailSummary.Text = TxtCollectionSummary.Text;
+        PnlDetailPick.IsVisible = PnlPickCollection.IsVisible;
     }
 
     // ---------- home ----------
@@ -831,6 +846,7 @@ public partial class MainWindow : Window
             _manifest = manifest;
             UpdateOptionalLabels();
             UpdateStats();
+            FillDetail();
             TxtCollectionSummary.Text = "";
             PnlPickCollection.IsVisible = false;
             BtnToInstall.IsEnabled = _signedIn;
