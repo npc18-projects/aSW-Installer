@@ -4,9 +4,13 @@
     pwsh build/publish.ps1                 # dist/AStoryWealth-Installer-<version>-win-x64/ and a .zip next to it
     pwsh build/publish.ps1 -SkipTests      # skip the tests
     pwsh build/publish.ps1 -Output D:\out  # different output folder
+    pwsh build/publish.ps1 -Loose          # old layout: the exe plus 220+ separate files
 
   The tests run first. If one fails, the build stops. Nothing is signed, so sign
   dist\...\AStoryWealth.Installer.exe yourself if you have a certificate.
+
+  The app is one exe with the .NET runtime and Avalonia inside it. A few native parts unpack to a
+  temp folder the first time it starts.
 
   7-Zip gets bundled: 7z.exe, 7z.dll and its licence are copied next to the exe, where the
   installer looks first. The script finds them in -SevenZipDir, then the folder of ASW_7Z,
@@ -17,6 +21,7 @@ param(
     [string]$Output = (Join-Path $PSScriptRoot '..\dist'),
     [string]$SevenZipDir,
     [switch]$NoSevenZip,
+    [switch]$Loose,
     [switch]$SkipTests
 )
 
@@ -32,7 +37,9 @@ function Find-SevenZipDir {
     }
     return $null
 }
+
 $ErrorActionPreference = 'Stop'
+$single = if ($Loose) { 'false' } else { 'true' }
 $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 Push-Location $root
 try {
@@ -46,8 +53,12 @@ try {
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
 
     dotnet publish app/AStoryWealth.Installer.csproj -c Release -r win-x64 --self-contained true `
-        -p:PublishSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o $dir
+        -p:PublishSingleFile=$single -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
+        -p:DebugType=none -p:DebugSymbols=false -o $dir
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
+
+    # Files next to the exe that nobody needs: native debug symbols and the crash-dump helper.
+    Get-ChildItem $dir -File | Where-Object { $_.Extension -eq '.pdb' -or $_.Name -eq 'createdump.exe' } | Remove-Item -Force
 
     # The shipped data is embedded in the exe. A file in <exe folder>\order\ overrides it (docs/formats.md),
     # so none is copied here. A stale override would hide newer embedded data after an in-place update.
@@ -66,7 +77,7 @@ try {
     $zip = "$dir.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $dir '*') -DestinationPath $zip
-    Write-Host "Built $dir"
+    Write-Host "Built $dir ($((Get-ChildItem $dir -File | Measure-Object).Count) files)"
     Write-Host "Zip   $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
 }
 finally { Pop-Location }

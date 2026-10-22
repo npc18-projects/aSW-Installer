@@ -35,7 +35,7 @@ dotnet run --project app
 pwsh build/publish.ps1
 ```
 
-`build/publish.ps1` runs the tests, then makes a self-contained win-x64 build and a zip in `dist/`.
+`build/publish.ps1` runs the tests, then makes a self-contained win-x64 build and a zip in `dist/`. The app is a single exe (the .NET runtime is inside it) next to 7-Zip and the docs. Add `-Loose` for the old layout with 200+ files.
 
 The tests also check against `samples/base-r284.collection.json` if it's there. It isn't in the repository, so that check is skipped without it.
 
