@@ -1617,7 +1617,8 @@ public partial class MainWindow : Window
         _currentJob = null;
         // Audit H1: refresh the checkpoint from disk — it advances during a run,
         // and Retry must pick up the runner's latest state, not a stale capture.
-        _resume = job is null ? InstallState.GetResume() : null;
+        // A new add-on or optional install starts fresh; only Resume/Retry of the same run picks up the checkpoint.
+        _resume = job is null && !_addonInstall ? InstallState.GetResume() : null;
         var resuming = _resume is not null;
         if (resuming) { _resumeJsonPath = _resume!.JsonPath; _resumeAddonId = _resume.AddonId; }
         var dir = TxtInstallDir.Text!;
