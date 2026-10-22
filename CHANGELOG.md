@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Play moved to the bottom of the left rail, with a short install summary above it, so Launch with F4SE and Open Mod Organizer 2 are on every page once the base list is installed.
+- Home: What's new is at the top right; the Nexus link button is now just Nexus page.
 - UI pass: files under 1 KB show as <1 KB, long archive names have a tooltip, the install progress bar is taller with a percentage, Remove buttons are red, the Optional page uses the card colour and its button shows the selection count, and Install health names what needs attention.
 - Layout: the Add-Ons cards fill the page width, the banners share one height, and Settings uses the full page width.
 - The Done page has a summary (mods, plugins, add-ons, time taken, log path) and a Go to Home button.

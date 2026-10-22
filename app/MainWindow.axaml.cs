@@ -608,7 +608,36 @@ public partial class MainWindow : Window
     private void UpdateHomeTab()
     {
         var dir = InstallState.GetInstallDir();
-        NavItemHome.IsVisible = Mo2Launcher.IsInstalled(dir);
+        var installed = Mo2Launcher.IsInstalled(dir);
+        NavItemHome.IsVisible = installed;
+        CardHomePlay.IsVisible = installed;
+        if (installed) RefreshRail(dir!);
+    }
+
+    private string _railSize = "…";
+    private bool _railSizeBusy;
+
+    /// <summary>The Play block in the left rail: the launch buttons and a few numbers about the install, on every page.</summary>
+    private void RefreshRail(string dir)
+    {
+        var title = Mo2Launcher.FindF4seTitle(dir);
+        BtnHomeF4se.IsEnabled = title is not null;
+        BtnHomeF4se.Content = title is null ? "F4SE not found" : "Launch with F4SE";
+        void Show()
+        {
+            try
+            {
+                var sum = InstallHealth.Summary(dir);
+                TxtHomeSummary.Text = $"{sum.Mods:N0} mods ({sum.EnabledMods:N0} enabled)\n{sum.Plugins:N0} plugins ({sum.EnabledPlugins:N0} enabled)\n"
+                    + $"{sum.AddOns} add-on{(sum.AddOns == 1 ? "" : "s")}  ·  {_railSize}";
+            }
+            catch { TxtHomeSummary.Text = ""; }
+        }
+        Show();
+        if (_railSizeBusy) return;
+        _railSizeBusy = true;
+        _ = Task.Run(() => InstallHealth.FolderSize(Path.Combine(dir, "mods"))).ContinueWith(t =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => { _railSizeBusy = false; if (t.IsCompletedSuccessfully) { _railSize = SizeText(t.Result); Show(); } }));
     }
 
     private int _homeRun;
@@ -616,31 +645,18 @@ public partial class MainWindow : Window
     private void RefreshHome()
     {
         var dir = InstallState.GetInstallDir();
-        TxtHomeDir.Text = dir is null ? "" : $"Installed in {dir}";
-        var title = dir is null ? null : Mo2Launcher.FindF4seTitle(dir);
-        BtnHomeF4se.IsEnabled = title is not null;
-        BtnHomeF4se.Content = title is null ? "F4SE not found in Mod Organizer 2" : "Launch with F4SE";
         if (dir is null || !Mo2Launcher.IsInstalled(dir)) return;
+        RefreshRail(dir);
         var run = ++_homeRun;
         var display = MainDisplay();
-
-        // numbers first (quick), then the folder size and the health check, which read a lot of files
-        InstallSummary sum;
-        try { sum = InstallHealth.Summary(dir); } catch { return; }
-        string Summary(string size) =>
-            $"{sum.Mods:N0} mods ({sum.EnabledMods:N0} enabled)\n{sum.Plugins:N0} plugins ({sum.EnabledPlugins:N0} enabled)\n"
-            + $"{sum.AddOns} add-on{(sum.AddOns == 1 ? "" : "s")} installed\nOptional groups: {sum.Groups}\nSize on disk: {size}";
-        TxtHomeSummary.Text = Summary("calculating…");
         PnlHealth.Children.Clear();
         PnlHealth.Children.Add(new TextBlock { Text = "Checking…", Foreground = new SolidColorBrush(Color.Parse("#B8BEC9")) });
         _ = Task.Run(() =>
         {
             var health = InstallHealth.Check(dir, display);
-            var size = InstallHealth.FolderSize(Path.Combine(dir, "mods"));
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 if (run != _homeRun) return;   // the page was refreshed again meanwhile
-                TxtHomeSummary.Text = Summary(SizeText(size));
                 ShowHealth(health);
             });
         });

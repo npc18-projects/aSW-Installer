@@ -128,22 +128,32 @@
 
         <!-- ===== LEFT RAIL ===== -->
         <Border Background="#171A20">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="16,18,16,20" Spacing="2">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Row="0" Margin="16,18,16,20" Spacing="2">
                     <TextBlock Text="A STORYWEALTH" FontSize="16" FontWeight="Bold" Foreground="#F2C48D"/>
                     <TextBlock x:Name="TxtVersion" Text="Installer" FontSize="11" Foreground="#7A828E"/>
                 </StackPanel>
-                <ListBox x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged">
+                <ListBox Grid.Row="1" x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged" VerticalAlignment="Top">
                     <ListBoxItem x:Name="NavItemHome" Classes="navItem" Tag="10" IsVisible="False">Home</ListBoxItem>
                     <ListBoxItem Classes="navItem" Tag="0" IsSelected="True">Modlist</ListBoxItem>
                     <ListBoxItem x:Name="NavItemAddons" Classes="navItem" Tag="6" IsEnabled="False">Add-Ons</ListBoxItem>
                     <ListBoxItem x:Name="NavItemOptional" Classes="navItem" Tag="9">Optional</ListBoxItem>
                     <ListBoxItem Classes="navItem" Tag="7">Settings</ListBoxItem>
                 </ListBox>
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,16" Spacing="4">
-                    <TextBlock x:Name="TxtNavStatus" FontSize="11" Foreground="#7A828E" TextWrapping="Wrap"/>
+                <StackPanel Grid.Row="2" Spacing="8">
+                    <TextBlock x:Name="TxtNavStatus" Margin="16,0,16,0" FontSize="11" Foreground="#7A828E" TextWrapping="Wrap"/>
+                    <!-- always there once the base list is installed -->
+                    <Border x:Name="CardHomePlay" Background="#1D2128" CornerRadius="8" Padding="12" Margin="10,0,10,12" IsVisible="False">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="YOUR INSTALL" FontSize="10" FontWeight="SemiBold" Foreground="#7A828E"/>
+                            <TextBlock x:Name="TxtHomeSummary" FontSize="12" Foreground="#B8BEC9" TextWrapping="Wrap" LineHeight="18"/>
+                            <Button x:Name="BtnHomeF4se" Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,9" Click="OnHomeF4se">Launch with F4SE</Button>
+                            <Button x:Name="BtnHomeMo2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="OnHomeMo2">Open Mod Organizer 2</Button>
+                            <TextBlock x:Name="TxtHomeStatus" FontSize="11" Foreground="#7A828E" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
-            </DockPanel>
+            </Grid>
         </Border>
 
         <!-- ===== CONTENT ===== -->
@@ -310,26 +320,19 @@
                         <StackPanel Grid.Column="0" Spacing="18">
                             <Border Classes="card">
                                 <StackPanel Spacing="10">
-                                    <TextBlock Classes="h2">Play</TextBlock>
-                                    <TextBlock x:Name="TxtHomeDir" Classes="info" TextWrapping="Wrap"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <Button x:Name="BtnHomeF4se" Classes="primary" Click="OnHomeF4se">Launch with F4SE</Button>
-                                        <Button x:Name="BtnHomeMo2" Click="OnHomeMo2">Open Mod Organizer 2</Button>
-                                    </StackPanel>
-                                    <TextBlock x:Name="TxtHomeStatus" Classes="info" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Classes="card">
-                                <StackPanel Spacing="8">
-                                    <TextBlock Classes="h2">Your install</TextBlock>
-                                    <TextBlock x:Name="TxtHomeSummary" Classes="info" TextWrapping="Wrap" LineHeight="22"/>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="h2">Install health</TextBlock>
+                                        <Button Grid.Column="1" Click="OnHomeRecheck">Check again</Button>
+                                    </Grid>
+                                    <StackPanel x:Name="PnlHealth" Spacing="8"/>
+                                    <TextBlock x:Name="TxtHomeIniStatus" Classes="info" FontSize="12" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                             <Border Classes="card">
                                 <StackPanel Spacing="10">
                                     <TextBlock Classes="h2">Links and folders</TextBlock>
                                     <WrapPanel>
-                                        <Button Margin="0,0,8,8" Click="OnHomeNexus">Collection page on Nexus</Button>
+                                        <Button Margin="0,0,8,8" Click="OnHomeNexus">Nexus page</Button>
                                         <Button Margin="0,0,8,8" Click="OnHomeFolderInstall">Install folder</Button>
                                         <Button Margin="0,0,8,8" Click="OnHomeFolderMods">Mods folder</Button>
                                         <Button Margin="0,0,8,8" Click="OnHomeFolderDownloads">Downloads folder</Button>
@@ -339,16 +342,6 @@
                             </Border>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Spacing="18">
-                            <Border Classes="card">
-                                <StackPanel Spacing="10">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Classes="h2">Install health</TextBlock>
-                                        <Button Grid.Column="1" Click="OnHomeRecheck">Check again</Button>
-                                    </Grid>
-                                    <StackPanel x:Name="PnlHealth" Spacing="8"/>
-                                    <TextBlock x:Name="TxtHomeIniStatus" Classes="info" FontSize="12" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
                             <Border x:Name="CardHomeChanges" Classes="card" IsVisible="False">
                                 <StackPanel Spacing="8">
                                     <TextBlock x:Name="TxtHomeChangesTitle" Classes="h2"/>
