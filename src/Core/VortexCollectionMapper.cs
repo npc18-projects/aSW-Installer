@@ -62,7 +62,9 @@ public static class VortexCollectionMapper
             // strips the prefix for display)
             var modName = SanitizeFolder(m.TryGetProperty("logicalFilename", out var lf) && lf.ValueKind == JsonValueKind.String
                 ? lf.GetString()! : m.GetProperty("name").GetString()!);
-            entry.InstallAs = $"A Storywealth - {modName}";
+            // The folder on disk goes through SafeName (it turns ".." into "_"). The name used everywhere else has to be that
+            // same name, or modlist.txt lists a mod MO2 can't find and the real folder shows up disabled at the top.
+            entry.InstallAs = Mo2InstanceWriter.SafeName($"A Storywealth - {modName}", "installAs");
             entry.DisplayName = m.TryGetProperty("name", out var dn) && dn.ValueKind == JsonValueKind.String ? dn.GetString()! : modName;
             if (m.TryGetProperty("instructions", out var ins) && ins.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(ins.GetString()))
                 entry.Instructions = ins.GetString()!.Trim();

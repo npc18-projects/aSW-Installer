@@ -437,6 +437,26 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- the install name is the folder name (a name with ".." used to differ, so MO2 never saw the mod in modlist.txt)
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        var json = Path.Combine(dir, "c.json");
+        File.WriteAllText(json, """
+            {"info":{"name":"X"},"mods":[
+              {"name":"Tumbajamba's Raider Power Armor - The A... flamer","version":"1","optional":false,"domainName":"fallout4","phase":0,
+               "source":{"type":"nexus","modId":1,"fileId":1,"md5":"a","fileSize":1,"logicalFilename":"Tumbajamba's Raider Power Armor - The A... flamer"}},
+              {"name":"Plain Mod","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":2,"fileId":2,"md5":"b","fileSize":1}}]}
+            """);
+        var mods = VortexCollectionMapper.Map(json, "t").Mods;
+        Check("every install name already is its own folder name", mods.All(m => m.InstallAs == Mo2InstanceWriter.SafeName(m.InstallAs, "x")), J(mods.Select(m => m.InstallAs)));
+        Check("a name with '...' keeps working: modlist name = folder name", mods[0].InstallAs.EndsWith("The A_. flamer"), mods[0].InstallAs);
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- hash-guided layout repair
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
