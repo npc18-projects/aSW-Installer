@@ -1112,6 +1112,7 @@ public partial class MainWindow : Window
     private OptionalJob? _currentJob;
     private bool _runOk;
     private readonly List<(CheckBox Box, OptionalItem Item)> _optRows = [];
+    private readonly HashSet<string> _optFolded = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>collection.json of an installed add-on: the copy kept in the instance, else the app's cache.</summary>
     private string? AddonCollectionFile(InstalledAddon a)
@@ -1153,9 +1154,22 @@ public partial class MainWindow : Window
         var grey = new SolidColorBrush(Color.Parse("#7A828E"));
         foreach (var src in items.GroupBy(i => i.SourceId))
         {
-            var head = new TextBlock { Text = src.First().SourceName, Margin = new Avalonia.Thickness(0, 16, 0, 4) };
+            // one drop-down per source; click the heading to fold it away (remembered while the app runs)
+            var head = new TextBlock { Text = $"{src.First().SourceName}  ·  {src.Count()}", VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
             head.Classes.Add("h2");
-            PanelOptTab.Children.Add(head);
+            var body = new StackPanel { Margin = new Avalonia.Thickness(4, 4, 0, 4) };
+            var sourceId = src.Key;
+            var expander = new Expander
+            {
+                Header = head, Content = body, IsExpanded = !_optFolded.Contains(sourceId),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, Margin = new Avalonia.Thickness(0, 8, 0, 0),
+            };
+            expander.PropertyChanged += (_, e) =>
+            {
+                if (e.Property != Expander.IsExpandedProperty) return;
+                if (expander.IsExpanded) _optFolded.Remove(sourceId); else _optFolded.Add(sourceId);
+            };
+            PanelOptTab.Children.Add(expander);
             foreach (var it in src)
             {
                 var label = it.GroupId.Length > 0 ? $"{it.Name}  ·  {it.ModCount} mods, {SizeText(it.Bytes)}"
@@ -1168,7 +1182,7 @@ public partial class MainWindow : Window
                 row.Children.Add(box);
                 if (note.Length > 0)
                     row.Children.Add(new TextBlock { Text = note, FontSize = 12, Foreground = grey, TextWrapping = TextWrapping.Wrap, Margin = new Avalonia.Thickness(28, -2, 0, 8) });
-                PanelOptTab.Children.Add(row);
+                body.Children.Add(row);
                 _optRows.Add((box, it));
             }
         }

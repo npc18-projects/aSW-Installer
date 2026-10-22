@@ -103,7 +103,8 @@ public static class OptionalCatalog
             foreach (var m in VortexCollectionMapper.Map(json, a.Id).Mods.Where(m => m.IsOptional))
                 items.Add(Row(a.Id, a.Name.Trim(), json, m));
         }
-        return items;
+        // sources in install order (base first), each source A–Z
+        return items.GroupBy(i => i.SourceId).SelectMany(g => g.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)).ToList();
     }
 
     /// <summary>The runs needed to install the ticked rows: the base list first (its groups and optional mods), then each add-on.</summary>
