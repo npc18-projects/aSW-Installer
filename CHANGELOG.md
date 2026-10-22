@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (in development)
+## 0.4.0
 
 - Add-ons install on top of the base list. Each gets its own section. Mods that have to load before a base mod are placed next to it. Cards show installed and update badges, and install is one click.
 - New Optional tab for optional mods and groups, A–Z in a drop-down per source. Options that need a missing add-on are greyed out. The collection authors' notes show next to each option, and your picks are remembered.

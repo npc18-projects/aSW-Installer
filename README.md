@@ -50,6 +50,7 @@ The tests also check against `samples/base-r284.collection.json` if it's there. 
 | `src/Tests/` | Test runner |
 | `docs/` | [How it works](docs/how-it-works.md) and [data formats](docs/formats.md) |
 | `build/` | Publish script (it bundles 7-Zip) |
+| `version.txt` | The version number. Edit it here and everything else follows. |
 
 ## Status
 

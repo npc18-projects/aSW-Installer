@@ -40,8 +40,7 @@ try {
         dotnet run --project src/Tests
         if ($LASTEXITCODE -ne 0) { throw 'Tests failed; not publishing.' }
     }
-    $props = [xml](Get-Content (Join-Path $root 'Directory.Build.props'))
-    $version = $props.Project.PropertyGroup.Version | Select-Object -First 1
+    $version = (Get-Content (Join-Path $root 'version.txt') -Raw).Trim()
     $name = "AStoryWealth-Installer-$version-win-x64"
     $dir = Join-Path $Output $name
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }

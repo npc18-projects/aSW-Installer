@@ -1,8 +1,7 @@
 <Project>
-  <!-- One place for the version shown in the app and stamped on every assembly. -->
+  <!-- The version lives in version.txt. The assemblies, the app's version label and the publish script all read it from there. -->
   <PropertyGroup>
-    <Version>0.3.0</Version>
-    <InformationalVersion>0.3.0-dev</InformationalVersion>
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)version.txt').Trim())</Version>
     <Product>A StoryWealth Installer</Product>
   </PropertyGroup>
 
