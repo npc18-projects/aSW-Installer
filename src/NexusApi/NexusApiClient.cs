@@ -101,7 +101,46 @@ public sealed class NexusApiClient : IDisposable
     }
 
     /// <summary>All published collections on a game domain owned by one user (resolved by name).</summary>
-    public sealed record UserCollection(string Slug, string Name, string Author, int LatestRevision, string Summary, string TileImageUrl, string HeaderImageUrl);
+    public sealed record UserCollection(string Slug, string Name, string Author, int LatestRevision, string Summary, string TileImageUrl, string HeaderImageUrl,
+        CollectionStats? Stats = null);
+
+    /// <summary>What Nexus publishes about a collection: popularity of the collection and size/mod count of its latest revision.</summary>
+    public sealed record CollectionStats(long Endorsements, long TotalDownloads, long UniqueDownloads, double RatingPercent, long RatingCount,
+        DateTime? LastPublished, DateTime? FirstPublished, int ModCount, long SizeBytes, bool AdultContent);
+
+    private const string StatsFields =
+        "endorsements totalDownloads uniqueDownloads overallRating overallRatingCount lastPublishedAt firstPublishedAt "
+        + "latestPublishedRevision{ revisionNumber modCount totalSize adultContent }";
+
+    private static long AsLong(JsonElement e) => e.ValueKind switch
+    {
+        JsonValueKind.Number => e.TryGetInt64(out var l) ? l : (long)e.GetDouble(),
+        JsonValueKind.String => long.TryParse(e.GetString(), out var l) ? l : 0,
+        _ => 0,
+    };
+
+    private static double AsDouble(JsonElement e) => e.ValueKind switch
+    {
+        JsonValueKind.Number => e.GetDouble(),
+        JsonValueKind.String => double.TryParse(e.GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0,
+        _ => 0,
+    };
+
+    private static DateTime? AsDate(JsonElement c, string name) =>
+        c.TryGetProperty(name, out var e) && e.ValueKind == JsonValueKind.String && DateTime.TryParse(e.GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind, out var d) ? d : null;
+
+    /// <summary>Reads the fields of <see cref="StatsFields"/> from a collection node; zeros for anything Nexus left out.</summary>
+    public static CollectionStats ParseStats(JsonElement c)
+    {
+        long L(string n) => c.TryGetProperty(n, out var e) ? AsLong(e) : 0;
+        var rev = c.TryGetProperty("latestPublishedRevision", out var r) && r.ValueKind == JsonValueKind.Object ? r : default;
+        return new CollectionStats(L("endorsements"), L("totalDownloads"), L("uniqueDownloads"),
+            c.TryGetProperty("overallRating", out var rt) ? AsDouble(rt) : 0, L("overallRatingCount"),
+            AsDate(c, "lastPublishedAt"), AsDate(c, "firstPublishedAt"),
+            rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("modCount", out var mc) ? (int)AsLong(mc) : 0,
+            rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("totalSize", out var ts) ? AsLong(ts) : 0,
+            rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("adultContent", out var ad) && ad.ValueKind == JsonValueKind.True);
+    }
 
     /// <summary>
     /// Lists another user's collections via GraphQL: userByName for memberId, then
@@ -127,10 +166,10 @@ public sealed class NexusApiClient : IDisposable
             query = """
                 query($userId:String!,$domain:String!){
                   collectionsV2(filter:{userId:[{value:$userId}], gameDomain:[{value:$domain}]}, count:50){
-                    nodes{ slug name summary tileImage{ url } headerImage{ url } latestPublishedRevision{ revisionNumber } user{ name } }
+                    nodes{ slug name summary tileImage{ url } headerImage{ url } latestPublishedRevision{ revisionNumber } user{ name } __STATS__ }
                   }
                 }
-                """,
+                """.Replace("__STATS__", StatsFields),
             variables = new { userId, domain }
         };
         var body = JsonSerializer.Serialize(listQuery, _json);
@@ -150,13 +189,14 @@ public sealed class NexusApiClient : IDisposable
                 n.GetProperty("latestPublishedRevision").GetProperty("revisionNumber").GetInt32(),
                 n.TryGetProperty("summary", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() ?? "" : "",
                 n.TryGetProperty("tileImage", out var ti) && ti.ValueKind == JsonValueKind.Object && ti.TryGetProperty("url", out var tu) ? tu.GetString() ?? "" : "",
-                n.TryGetProperty("headerImage", out var hi) && hi.ValueKind == JsonValueKind.Object && hi.TryGetProperty("url", out var u) ? u.GetString() ?? "" : ""));
+                n.TryGetProperty("headerImage", out var hi) && hi.ValueKind == JsonValueKind.Object && hi.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
+                ParseStats(n)));
         }
         return list;
     }
 
     /// <summary>Name, summary and header image of one collection (used for the base banner).</summary>
-    public sealed record CollectionInfo(string Name, string Summary, string HeaderImageUrl);
+    public sealed record CollectionInfo(string Name, string Summary, string HeaderImageUrl, CollectionStats? Stats = null);
 
     public async Task<CollectionInfo> GetCollectionInfoAsync(string slug, string domain = "fallout4", CancellationToken ct = default)
     {
@@ -164,9 +204,9 @@ public sealed class NexusApiClient : IDisposable
         {
             query = """
                 query($slug:String!,$domainName:String){
-                  collection(slug:$slug, domainName:$domainName){ name summary headerImage{ url } }
+                  collection(slug:$slug, domainName:$domainName){ name summary headerImage{ url } __STATS__ }
                 }
-                """,
+                """.Replace("__STATS__", StatsFields),
             variables = new { slug, domainName = domain }
         }, _json);
         using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
@@ -179,7 +219,8 @@ public sealed class NexusApiClient : IDisposable
         return new CollectionInfo(
             c.GetProperty("name").GetString() ?? "",
             c.TryGetProperty("summary", out var s) ? s.GetString() ?? "" : "",
-            c.TryGetProperty("headerImage", out var hi) && hi.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "");
+            c.TryGetProperty("headerImage", out var hi) && hi.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
+            ParseStats(c));
     }
 
     /// <summary>

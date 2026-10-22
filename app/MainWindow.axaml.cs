@@ -124,7 +124,7 @@ public partial class MainWindow : Window
                 if (i == 8)
                 {
                     var c0 = _liveAddons?.FirstOrDefault(c => c.Slug == "vq4q7d") ?? _liveAddons?.FirstOrDefault();
-                    if (c0 is not null) ShowAddonDetail(new AddonCard(c0.Slug, c0.Name, c0.Author, $"r{c0.LatestRevision}", false, c0.HeaderImageUrl, null));
+                    if (c0 is not null) ShowAddonDetail(new AddonCard(c0.Slug, c0.Name, c0.Author, $"r{c0.LatestRevision}", false, c0.HeaderImageUrl, null, c0.Stats));
                     await Task.Delay(1500);
                 }
                 if (i == 3) { TxtPhase.Text = "Downloading mod 42 of 911"; TxtItem.Text = "Sample Mod"; TxtSpeed.Text = "12.4 MB/s"; TxtCounts.Text = "41/911"; PbOverall.Value = 4.5; OnLogLine("sample log line"); FlushLog(); }
@@ -378,7 +378,7 @@ public partial class MainWindow : Window
                 have.TryGetValue(c.Slug, out var haveRev);
                 var update = haveRev is { Length: > 0 } && int.TryParse(haveRev.TrimStart('r'), out var hr) && hr < c.LatestRevision;
                 return new AddonCard(c.Slug, c.Name, c.Author, $"r{c.LatestRevision}", update, string.IsNullOrWhiteSpace(c.HeaderImageUrl) ? c.TileImageUrl : c.HeaderImageUrl,
-                    have.ContainsKey(c.Slug) ? (haveRev is { Length: > 0 } ? haveRev : "installed") : null);
+                    have.ContainsKey(c.Slug) ? (haveRev is { Length: > 0 } ? haveRev : "installed") : null, c.Stats);
             }).ToList();
         }
         else
@@ -387,7 +387,13 @@ public partial class MainWindow : Window
                 .Select(a => new AddonCard(Path.GetFileNameWithoutExtension(a.Path), a.Manifest.Name, a.Manifest.Author, a.Manifest.Version, a.UpdateAvailable, ""))
                 .ToList();
         }
-        cards = cards.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        cards = (CmbAddonsSort.SelectedIndex switch
+        {
+            1 => cards.OrderByDescending(c => c.Stats?.TotalDownloads ?? 0),
+            2 => cards.OrderByDescending(c => c.Stats?.Endorsements ?? 0),
+            3 => cards.OrderByDescending(c => c.Stats?.LastPublished ?? DateTime.MinValue),
+            _ => cards.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
+        }).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
         // author filter dropdown: All + one entry per author, keep current selection
         var authors = cards.Select(c => c.Author).Where(a => !string.IsNullOrWhiteSpace(a))
@@ -410,7 +416,44 @@ public partial class MainWindow : Window
         foreach (var a in rows) GridAddons.Children.Add(BuildAddonCard(a, installed));
     }
 
-    private sealed record AddonCard(string Slug, string Name, string Author, string Version, bool UpdateAvailable, string HeaderImageUrl, string? InstalledRev = null);
+    private sealed record AddonCard(string Slug, string Name, string Author, string Version, bool UpdateAvailable, string HeaderImageUrl, string? InstalledRev = null,
+        NexusApiClient.CollectionStats? Stats = null);
+
+    private void OnAddonsSortChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (GridAddons is null) return;   // fired while the window is still being built
+        RefreshAddons();
+    }
+
+    /// <summary>1,234 -> "1.2k", 1,061,268 -> "1.06M".</summary>
+    private static string Compact(long n) => n switch
+    {
+        >= 10_000_000 => $"{n / 1_000_000.0:F1}M",
+        >= 1_000_000 => $"{n / 1_000_000.0:F2}M",
+        >= 10_000 => $"{n / 1_000.0:F0}k",
+        >= 1_000 => $"{n / 1_000.0:F1}k",
+        _ => n.ToString("N0"),
+    };
+
+    /// <summary>One short line for a card: downloads, endorsements, mod count and download size.</summary>
+    private static string StatsLine(NexusApiClient.CollectionStats s, bool withSize = true) =>
+        $"⬇ {Compact(s.TotalDownloads)}   ♥ {Compact(s.Endorsements)}   {s.ModCount:N0} mods" + (withSize ? $"   {SizeText(s.SizeBytes)}" : "");
+
+    /// <summary>The longer description for a detail page.</summary>
+    private static string StatsDetail(NexusApiClient.CollectionStats s, string sizeNote = "", bool stacked = false)
+    {
+        var rating = s.RatingCount > 0 ? $"{s.RatingPercent:F1}% positive ({s.RatingCount:N0} ratings)" : "no ratings yet";
+        var updated = s.LastPublished is { } d ? d.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) : "?";
+        var facts = new List<string>
+        {
+            $"Downloads  {s.TotalDownloads:N0} ({s.UniqueDownloads:N0} unique)", $"Endorsements  {s.Endorsements:N0}", $"Rating  {rating}",
+            $"{s.ModCount:N0} mods", $"{SizeText(s.SizeBytes)} to download{sizeNote}", $"Last updated  {updated}",
+        };
+        if (s.AdultContent) facts.Add("Adult content");
+        // wide pages: two lines of facts; the narrow base-list column: one fact per line
+        return stacked ? string.Join("\n", facts)
+            : string.Join("    ·    ", facts.Take(3)) + "\n" + string.Join("    ·    ", facts.Skip(3));
+    }
 
     private void OnAddonsAuthorChanged(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -424,6 +467,7 @@ public partial class MainWindow : Window
         TxtAddDetName.Text = c.Name;
         TxtAddDetBy.Text = $"By {c.Author} - Revision {c.Version}";
         TxtAddDetSummary.Text = _liveSummary.GetValueOrDefault(c.Slug, "");
+        TxtAddDetStats.Text = c.Stats is { } stats ? StatsDetail(stats) : "";
         _addonJsonPath = null;           // belongs to whichever add-on was last fetched
         PnlAddDetManual.IsVisible = false;
         var baseInstalled = InstallState.GetInstallDir() is not null;
@@ -566,6 +610,11 @@ public partial class MainWindow : Window
         {
             using var api = new NexusApiClient(_apiKey);
             var info = await api.GetCollectionInfoAsync(CollectionSync.BaseSlug);
+            if (info.Stats is { } bs)
+            {
+                TxtBaseStats.Text = StatsLine(bs, withSize: false);
+                TxtBaseStatsDetail.Text = StatsDetail(bs, " (everything, including optional files)", stacked: true);
+            }
             await LoadImageAsync(ImgBaseCard, info.HeaderImageUrl, "base");
             await LoadImageAsync(ImgDetailBanner, info.HeaderImageUrl, "base");
         }
@@ -601,6 +650,9 @@ public partial class MainWindow : Window
         { Text = c.Name, FontSize = 17, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse("#FDF6EC")), TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock
         { Text = $"By {c.Author} - Revision {c.Version}", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#D9CBA8")), TextWrapping = TextWrapping.Wrap });
+        if (c.Stats is { } st)
+            text.Children.Add(new TextBlock
+            { Text = StatsLine(st), FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F2C48D")), TextWrapping = TextWrapping.Wrap });
         if (c.UpdateAvailable)
             text.Children.Add(new TextBlock
             { Text = $"Installed ({c.InstalledRev}) · update available", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F2C48D")) });
