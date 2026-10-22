@@ -10,5 +10,6 @@
 - Structured MO2 order: separators, patches and BodySlide sets after the mods they need, A–Z inside each group, and an "Added mods" section for your own mods.
 - Mod Organizer 2 (2.5.2) and Root Builder (5.1.1) are pinned. Root Builder places F4SE and other root mods. Standalone tools go in `<instance>/Tools`. The Downgrader step runs natively.
 - Setup checks your paths, game folder and free disk space before you continue. Stopped installs offer Resume and Back. The install log is buffered. You can browse for the game folder (Steam, Bethesda launcher and GOG are detected).
+- The app can update itself from GitHub releases (off until a repository and signing key are set up, see docs/releasing.md). Updates are signed, checked, and installed on a restart.
 - Release builds include 7-Zip. `build/publish.ps1` copies it from a local install.
 - Sign in with a Nexus personal API key, stored encrypted for your Windows user, until Nexus verifies the app for browser sign-in.

@@ -41,6 +41,7 @@ public partial class MainWindow : Window
             Opened += (_, _) => RunScreenshotTour(shotDir);
         var version = typeof(MainWindow).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion?.Split('+')[0];
+        _version = string.IsNullOrEmpty(version) ? "0.0.0" : version;
         TxtVersion.Text = string.IsNullOrEmpty(version) ? "Installer" : $"Installer  v{version}";
         TxtWatchDir.Text = ManualDownloader.DefaultWatchDir();
         TxtGameDir.Text = FindFallout4Path();
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
         NudExtractThreads.Value = threads.Extract;
         _resume = InstallState.GetResume();
         _ = RefreshAuthAsync();
+        InitUpdates();
         RefreshInstallCheck();
         var last = InstallState.GetLastPath();
         if (_resume is { } r)
@@ -95,6 +97,123 @@ public partial class MainWindow : Window
                     if (vortexDefault is not null) TxtReuseDir.Text = vortexDefault;
                 }
             }
+        }
+    }
+
+    // ---------- updates (GitHub releases) ----------
+
+    private static readonly UpdateConfig UpdateCfg = UpdateConfig.Load();
+    private string _version = "0.0.0";
+    private GitHubUpdater? _updater;
+    private UpdateInfo? _updateInfo;
+    private string? _stagedUpdate;
+    private bool _updateBusy;
+    private Avalonia.Threading.DispatcherTimer? _updateTimer;
+    private int _updateCountdown;
+
+    private void InitUpdates()
+    {
+        var settings = UpdateSettings.Load();
+        ChkUpdateAuto.IsChecked = settings.CheckAtStartup;
+        if (!UpdateCfg.Enabled)
+        {
+            TxtUpdateStatus.Text = $"You're on version {_version}. Updates aren't set up in this build.";
+            ChkUpdateAuto.IsEnabled = BtnUpdateCheck.IsEnabled = false;
+            return;
+        }
+        TxtUpdateStatus.Text = $"You're on version {_version}.";
+        _ = Task.Run(() => { try { foreach (var d in Directory.GetDirectories(GitHubUpdater.DefaultStagingRoot())) Directory.Delete(d, true); } catch { } });   // leftovers of an earlier update
+        if (settings.CheckAtStartup) _ = Task.Run(async () => { await Task.Delay(4000); await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => CheckForUpdateAsync(false)); });
+    }
+
+    private void OnUpdateAutoChanged(object? sender, RoutedEventArgs e) => new UpdateSettings { CheckAtStartup = ChkUpdateAuto.IsChecked == true }.Save();
+
+    private async void OnCheckUpdateNow(object? sender, RoutedEventArgs e) => await CheckForUpdateAsync(true);
+
+    /// <summary>Looks for a newer release, downloads and checks it, then offers (and after a short countdown does) the restart.</summary>
+    private async Task CheckForUpdateAsync(bool manual)
+    {
+        if (_updateBusy || !UpdateCfg.Enabled || _stagedUpdate is not null) return;
+        _updateBusy = true;
+        BtnUpdateCheck.IsEnabled = false;
+        try
+        {
+            _updater ??= new GitHubUpdater(UpdateCfg);
+            if (manual) TxtUpdateStatus.Text = "Checking…";
+            var info = await _updater.CheckAsync(_version);
+            if (info is null)
+            {
+                if (manual) TxtUpdateStatus.Text = $"You're on the latest version ({_version}).";
+                return;
+            }
+            TxtUpdateStatus.Text = $"Version {info.Version} is available. Downloading…";
+            var progress = new Progress<double>(p => TxtUpdateStatus.Text = $"Downloading version {info.Version}… {p:F0}%");
+            _stagedUpdate = await _updater.DownloadAndVerifyAsync(info, _version, progress);
+            _updateInfo = info;
+            TxtUpdateStatus.Text = $"Version {info.Version} is downloaded and checked. Restart to install it.";
+            ShowUpdateBar();
+        }
+        catch (Exception ex)
+        {
+            InstallLog.Warn("update", ex.Message);
+            TxtUpdateStatus.Text = manual ? $"Couldn't check for updates: {ex.Message}" : $"You're on version {_version}.";
+        }
+        finally { _updateBusy = false; BtnUpdateCheck.IsEnabled = true; }
+    }
+
+    private void ShowUpdateBar()
+    {
+        if (_updateInfo is null) return;
+        UpdateBar.IsVisible = true;
+        _updateCountdown = 20;
+        TxtUpdateBar.Text = $"Version {_updateInfo.Version} is ready. Restarting in {_updateCountdown} s to install it.";
+        _updateTimer?.Stop();
+        _updateTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _updateTimer.Tick += (_, _) =>
+        {
+            if (_installing)   // never restart in the middle of an install
+            {
+                _updateCountdown = 20;
+                TxtUpdateBar.Text = $"Version {_updateInfo.Version} is ready. It installs once your current install is done.";
+                return;
+            }
+            if (--_updateCountdown <= 0) { ApplyUpdate(); return; }
+            TxtUpdateBar.Text = $"Version {_updateInfo.Version} is ready. Restarting in {_updateCountdown} s to install it.";
+        };
+        _updateTimer.Start();
+    }
+
+    private void OnUpdateNow(object? sender, RoutedEventArgs e) => ApplyUpdate();
+
+    private void OnUpdateLater(object? sender, RoutedEventArgs e)
+    {
+        _updateTimer?.Stop();
+        UpdateBar.IsVisible = false;
+        TxtUpdateStatus.Text = $"Version {_updateInfo?.Version} is downloaded. It will be offered again next time the app starts.";
+        _stagedUpdate = null;   // the staged copy is cleaned up at the next start
+    }
+
+    private void ApplyUpdate()
+    {
+        if (_installing || _stagedUpdate is null) return;
+        _updateTimer?.Stop();
+        var appDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
+        if (!UpdateApplier.CanWrite(appDir))
+        {
+            UpdateBar.IsVisible = true;
+            TxtUpdateBar.Text = "This folder is read-only, so the app can't update itself here. Download the new version from GitHub instead.";
+            BtnUpdateNow.IsVisible = false;
+            return;
+        }
+        try
+        {
+            UpdateApplier.LaunchHelper(_stagedUpdate, appDir);
+            Close();
+        }
+        catch (Exception ex)
+        {
+            InstallLog.Warn("update", ex.Message);
+            TxtUpdateBar.Text = $"Couldn't start the update: {ex.Message}";
         }
     }
 

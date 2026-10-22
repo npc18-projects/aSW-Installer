@@ -11,6 +11,7 @@ Installs the A StoryWealth Fallout 4 collection from Nexus Mods, plus its add-on
 - Has an Optional tab for optional mods and groups (Sim Settlements 2, HD textures and so on). Options that need an add-on you don't have are greyed out.
 - Downloads automatically with Premium. With a free account it opens each mod's page, waits for your download, checks the file and moves on.
 - If you're coming from Vortex, it checks your Vortex downloads first and only fetches what's missing.
+- Can update itself from GitHub releases once a repository and signing key are set up ([how](docs/releasing.md)).
 
 ## Using it
 
@@ -48,7 +49,7 @@ The tests also check against `samples/base-r284.collection.json` if it's there. 
 | `src/NexusApi/` | Nexus API client |
 | `src/OrderTool/` | Generates the shipped order and optional-group files |
 | `src/Tests/` | Test runner |
-| `docs/` | [How it works](docs/how-it-works.md) and [data formats](docs/formats.md) |
+| `docs/` | [How it works](docs/how-it-works.md), [data formats](docs/formats.md) and [releasing](docs/releasing.md) |
 | `build/` | Publish script (it bundles 7-Zip) |
 | `version.txt` | The version number. Edit it here and everything else follows. |
 

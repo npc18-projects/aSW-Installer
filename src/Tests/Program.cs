@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using AStoryWealth.Core;
 
@@ -590,6 +592,101 @@ foreach (var sample in FindSamples())
     foreach (var n in notes.Take(8)) Console.WriteLine("      " + n);
 }
 
+// ---- self-update from GitHub releases (no network: a fake HTTP handler serves the release, zip and signature)
+{
+    var root = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(root);
+        Check("versions compare numerically, a pre-release is never offered",
+            GitHubUpdater.IsNewer("v0.4.1", "0.4.0") && GitHubUpdater.IsNewer("0.10.0", "0.9.9") && !GitHubUpdater.IsNewer("0.4.0", "0.4.0")
+            && !GitHubUpdater.IsNewer("0.5.0-beta", "0.4.0") && !GitHubUpdater.IsNewer("nonsense", "0.4.0") && GitHubUpdater.IsNewer("0.5.0", "0.4.0+abc123"));
+
+        using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var pub = Convert.ToBase64String(ecdsa.ExportSubjectPublicKeyInfo());
+        using var other = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var cfg = new UpdateConfig { Repo = "team/asw-installer", PublicKey = pub };
+        Check("the updater is off without a repository or a key",
+            !new UpdateConfig { Repo = "", PublicKey = pub }.Enabled && !new UpdateConfig { Repo = "team/x", PublicKey = "" }.Enabled
+            && !new UpdateConfig { Repo = "nonsense", PublicKey = pub }.Enabled && cfg.Enabled);
+
+        // a release zip (the exe is a stand-in; the version it reports is injected below)
+        var zipBytes = new MemoryStream();
+        using (var z = new ZipArchive(zipBytes, ZipArchiveMode.Create, true))
+        {
+            void Add(string n, string c) { using var w = new StreamWriter(z.CreateEntry(n).Open()); w.Write(c); }
+            Add("AStoryWealth.Installer.exe", "new exe"); Add("7z.exe", "7z"); Add("README.md", "readme");
+        }
+        var zip = zipBytes.ToArray();
+        byte[] Sign(ECDsa k, byte[] data) => k.SignData(data, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence);
+        var zipName = "AStoryWealth-Installer-0.5.0-win-x64.zip";
+        string Release(string tag, bool pre = false, bool withSig = true, string host = "github.com") => $$"""
+            {"tag_name":"{{tag}}","draft":false,"prerelease":{{(pre ? "true" : "false")}},"html_url":"https://github.com/team/asw-installer/releases/{{tag}}","body":"notes",
+             "assets":[{"name":"{{zipName}}","size":{{zip.Length}},"browser_download_url":"https://{{host}}/team/asw-installer/releases/download/{{tag}}/{{zipName}}"}
+                       {{(withSig ? $$""",{"name":"{{zipName}}.sig","size":96,"browser_download_url":"https://{{host}}/team/asw-installer/releases/download/{{tag}}/{{zipName}}.sig"}""" : "")}}]}
+            """;
+        HttpResponseMessage Ok(HttpRequestMessage rq, HttpContent c) => new(System.Net.HttpStatusCode.OK) { Content = c, RequestMessage = rq };
+        int calls = 0;
+        GitHubUpdater Updater(string releaseJson, ECDsa signer, UpdateConfig? c = null, string? exeVersion = "0.5.0+abc") => new(c ?? cfg,
+            new HttpClient(new FakeHandler(rq =>
+            {
+                calls++;
+                var u = rq.RequestUri!.ToString();
+                if (u.EndsWith("/releases/latest")) return Ok(rq, new StringContent(releaseJson));
+                if (u.EndsWith(".zip")) return Ok(rq, new ByteArrayContent(zip));
+                if (u.EndsWith(".sig")) return Ok(rq, new StringContent(Convert.ToBase64String(Sign(signer, zip))));
+                return new(System.Net.HttpStatusCode.NotFound) { RequestMessage = rq };
+            })), Path.Combine(root, "staging"), _ => exeVersion);
+
+        var info = await Updater(Release("v0.5.0"), ecdsa).CheckAsync("0.4.0");
+        Check("a newer signed release is found", info is not null && info.Version == "0.5.0" && info.ZipName == zipName && info.Notes == "notes", info?.Version);
+        Check("the same or an older version is not offered", await Updater(Release("v0.4.0"), ecdsa).CheckAsync("0.4.0") is null && await Updater(Release("v0.3.9"), ecdsa).CheckAsync("0.4.0") is null);
+        Check("a pre-release is ignored", await Updater(Release("v0.5.0", pre: true), ecdsa).CheckAsync("0.4.0") is null);
+        Check("a release without a signature is ignored", await Updater(Release("v0.5.0", withSig: false), ecdsa).CheckAsync("0.4.0") is null);
+        Check("assets hosted somewhere else are ignored", await Updater(Release("v0.5.0", host: "evil.example.com"), ecdsa).CheckAsync("0.4.0") is null);
+        calls = 0;
+        Check("a build with no repository or key makes no request", await Updater(Release("v0.5.0"), ecdsa, new UpdateConfig()).CheckAsync("0.4.0") is null && calls == 0);
+
+        Check("signature check: right key passes, wrong key and tampered data fail",
+            GitHubUpdater.VerifySignature(new MemoryStream(zip), Sign(ecdsa, zip), pub)
+            && !GitHubUpdater.VerifySignature(new MemoryStream(zip), Sign(other, zip), pub)
+            && !GitHubUpdater.VerifySignature(new MemoryStream([.. zip, 0]), Sign(ecdsa, zip), pub));
+
+        var good = Updater(Release("v0.5.0"), ecdsa);
+        var staged = await good.DownloadAndVerifyAsync(info!, "0.4.0");
+        Check("a verified update is unpacked and ready", File.Exists(Path.Combine(staged, "AStoryWealth.Installer.exe")) && File.Exists(Path.Combine(staged, "7z.exe")));
+        var forged = Updater(Release("v0.5.0"), other);
+        var forgedThrew = false;
+        try { await forged.DownloadAndVerifyAsync(info!, "0.4.0"); } catch (InvalidOperationException) { forgedThrew = true; }
+        Check("an update signed with another key is refused and nothing is left behind", forgedThrew && !Directory.Exists(Path.Combine(root, "staging", "0.5.0")));
+        var replayThrew = false;
+        try { await Updater(Release("v0.5.0"), ecdsa, exeVersion: "0.4.9").DownloadAndVerifyAsync(info!, "0.4.0"); } catch (InvalidOperationException) { replayThrew = true; }
+        Check("an old signed build under a new tag is refused (the exe's own version must match)", replayThrew);
+
+        // applying: files replaced, the user's order\ overrides kept, and a failure puts everything back
+        var app = Path.Combine(root, "app"); var stage = Path.Combine(root, "stage");
+        Directory.CreateDirectory(Path.Combine(app, "order")); Directory.CreateDirectory(Path.Combine(stage, "order")); Directory.CreateDirectory(stage);
+        File.WriteAllText(Path.Combine(app, "AStoryWealth.Installer.exe"), "old exe"); File.WriteAllText(Path.Combine(app, "7z.exe"), "old 7z");
+        File.WriteAllText(Path.Combine(app, "order", "mine.json"), "mine");
+        File.WriteAllText(Path.Combine(stage, "AStoryWealth.Installer.exe"), "new exe"); File.WriteAllText(Path.Combine(stage, "7z.exe"), "new 7z");
+        File.WriteAllText(Path.Combine(stage, "NEW.txt"), "added"); File.WriteAllText(Path.Combine(stage, "order", "mine.json"), "shipped");
+        var applied = UpdateApplier.Apply(stage, app, waitForPid: 0, restart: false);
+        Check("apply replaces and adds files and leaves order\\ alone",
+            applied && File.ReadAllText(Path.Combine(app, "AStoryWealth.Installer.exe")) == "new exe" && File.ReadAllText(Path.Combine(app, "NEW.txt")) == "added"
+            && File.ReadAllText(Path.Combine(app, "order", "mine.json")) == "mine");
+        // failure: a staged file whose target is a directory
+        var app2 = Path.Combine(root, "app2"); var stage2 = Path.Combine(root, "stage2");
+        Directory.CreateDirectory(app2); Directory.CreateDirectory(stage2); Directory.CreateDirectory(Path.Combine(app2, "blocked.txt"));
+        File.WriteAllText(Path.Combine(app2, "AStoryWealth.Installer.exe"), "old exe");
+        File.WriteAllText(Path.Combine(stage2, "AStoryWealth.Installer.exe"), "new exe"); File.WriteAllText(Path.Combine(stage2, "ZZ-blocked.txt"), "x");
+        Directory.Move(Path.Combine(app2, "blocked.txt"), Path.Combine(app2, "ZZ-blocked.txt"));
+        var failedApply = UpdateApplier.Apply(stage2, app2, waitForPid: 0, restart: false);
+        Check("a failed apply puts the old files back", !failedApply && File.ReadAllText(Path.Combine(app2, "AStoryWealth.Installer.exe")) == "old exe");
+        Check("a read-only install folder is detected", UpdateApplier.CanWrite(app) && !UpdateApplier.CanWrite(Path.Combine(root, "no-such-folder")));
+    }
+    finally { try { Directory.Delete(root, true); } catch { } }
+}
+
 Console.WriteLine(failed == 0 ? "\nall passed" : $"\n{failed} FAILED");
 return failed == 0 ? 0 : 1;
 
@@ -601,4 +698,9 @@ static IEnumerable<string> FindSamples()
         if (Directory.Exists(s)) return Directory.GetFiles(s, "*.collection.json");
     }
     return [];
+}
+
+sealed class FakeHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(respond(request));
 }

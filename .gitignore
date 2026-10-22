@@ -8,3 +8,4 @@ test-instance/
 *.user
 .vs/
 samples/
+*.pem

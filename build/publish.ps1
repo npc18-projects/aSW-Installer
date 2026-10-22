@@ -16,12 +16,16 @@
   installer looks first. The script finds them in -SevenZipDir, then the folder of ASW_7Z,
   then Program Files\7-Zip, then the folder of 7z.exe on PATH. They aren't kept in the repo.
   If 7-Zip isn't found the build stops. Pass -NoSevenZip to build without it.
+
+  -SigningKey <pem> signs the zip for the in-app updater and writes <zip>.sig next to it (make the key with
+  build/new-update-key.ps1). Upload both files to the GitHub release. Without a signature the updater refuses the release.
 #>
 param(
     [string]$Output = (Join-Path $PSScriptRoot '..\dist'),
     [string]$SevenZipDir,
     [switch]$NoSevenZip,
     [switch]$Loose,
+    [string]$SigningKey,
     [switch]$SkipTests
 )
 
@@ -77,6 +81,14 @@ try {
     $zip = "$dir.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $dir '*') -DestinationPath $zip
+    if ($SigningKey) {
+        $ec = [System.Security.Cryptography.ECDsa]::Create()
+        $ec.ImportFromPem((Get-Content $SigningKey -Raw))
+        $sig = $ec.SignData([IO.File]::ReadAllBytes($zip), [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.DSASignatureFormat]::Rfc3279DerSequence)
+        [IO.File]::WriteAllText("$zip.sig", [Convert]::ToBase64String($sig))
+        Write-Host "Signed $zip.sig"
+    }
+    else { Write-Warning 'Not signed: the in-app updater will refuse this release. Pass -SigningKey.' }
     Write-Host "Built $dir ($((Get-ChildItem $dir -File | Measure-Object).Count) files)"
     Write-Host "Zip   $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
 }

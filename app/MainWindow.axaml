@@ -127,6 +127,17 @@
         <!-- ===== CONTENT ===== -->
         <DockPanel Grid.Column="1" Margin="0">
 
+            <!-- Shown when a newer version has been downloaded and checked -->
+            <Border x:Name="UpdateBar" DockPanel.Dock="Top" Background="#2A3140" Padding="36,8" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock x:Name="TxtUpdateBar" Foreground="#F2C48D" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="BtnUpdateNow" Classes="primary" Click="OnUpdateNow">Restart and update</Button>
+                        <Button x:Name="BtnUpdateLater" Click="OnUpdateLater">Later</Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Wizard step bar, shown once an install flow starts -->
             <Border x:Name="WizBar" DockPanel.Dock="Top" Background="#171A20" IsVisible="False" Padding="36,8">
                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -277,6 +288,16 @@
                                 <NumericUpDown x:Name="NudDownloadThreads" Minimum="1" Maximum="32" Increment="1" Width="110" ValueChanged="OnThreadsChanged"/>
                                 <TextBlock VerticalAlignment="Center">Extract threads</TextBlock>
                                 <NumericUpDown x:Name="NudExtractThreads" Minimum="1" Maximum="16" Increment="1" Width="110" ValueChanged="OnThreadsChanged"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Updates</TextBlock>
+                            <TextBlock x:Name="TxtUpdateStatus" Classes="info" TextWrapping="Wrap"/>
+                            <CheckBox x:Name="ChkUpdateAuto" Click="OnUpdateAutoChanged">Look for updates when the app starts</CheckBox>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="BtnUpdateCheck" Classes="primary" Click="OnCheckUpdateNow">Check now</Button>
                             </StackPanel>
                         </StackPanel>
                     </Border>
