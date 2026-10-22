@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed: plugins inside installed mods that the collection's plugin list leaves out (for example KCI.esp) were added by MO2 switched off. They are now switched on.
 - Plugins turned off for a missing master are turned back on on a later run once the master is there.
 - Fixed: FOMOD configs saved as UTF-16 (Strong Power Armor) failed to read, so their plugins went missing.
 - Fixed: mods with a folder inside a wrapper folder (Simple Esp Replacer) installed one level too deep, so their plugin was missing.

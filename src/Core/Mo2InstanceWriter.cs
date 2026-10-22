@@ -262,6 +262,15 @@ public static partial class Mo2InstanceWriter
             desired = desired.Where(paths.ContainsKey).ToList();
             InstallLog.Info("mo2", $"left {absent.Count} plugin(s) out of the load order (no file on disk — optional/uninstalled mods): {string.Join(", ", absent.Take(8))}{(absent.Count > 8 ? ", …" : "")}");
         }
+        // A plugin that sits in an installed mod but that no list mentions (the collection's plugin list leaves some out) is
+        // switched on. Left out, MO2 adds it itself the first time it starts, and adds it switched off.
+        var dataDir = gameDir is null ? null : Path.GetFullPath(Path.Combine(gameDir, "Data")) + Path.DirectorySeparatorChar;
+        var unlisted = paths.Where(kv => !enabled.ContainsKey(kv.Key)
+                && (dataDir is null || !Path.GetFullPath(kv.Value).StartsWith(dataDir, StringComparison.OrdinalIgnoreCase)))
+            .Select(kv => kv.Key).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        foreach (var n in unlisted) { enabled[n] = true; desired.Add(n); }
+        if (unlisted.Count > 0)
+            InstallLog.Info("mo2", $"{unlisted.Count} plugin(s) in installed mods weren't in any list; switched on: {string.Join(", ", unlisted.Take(8))}{(unlisted.Count > 8 ? ", …" : "")}");
         var headers =new Dictionary<string, PluginOrder.Info?>(StringComparer.OrdinalIgnoreCase);
         PluginOrder.Info? Header(string name)
         {
