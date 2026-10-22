@@ -1,92 +1,72 @@
 # A StoryWealth Installer
 
-External installer for the A StoryWealth Fallout 4 collection and its official
-addon collections. Targets a portable Mod Organizer 2 instance. Avalonia UI
-(Windows first; Linux / Steam Deck are targets).
+An installer for the **A StoryWealth** Fallout 4 collection on Nexus Mods and its official add-on collections. It sets up a
+portable **Mod Organizer 2** instance: downloads and verifies every mod, builds a private copy of the game, and writes a
+structured mod order and load order, in the spirit of Wabbajack and the Nolvus launcher. Windows, built with Avalonia
+(.NET 10).
 
-## What it does today
+## What you get
 
-- Syncs the base collection (`CollectionSync.BaseSlug`) from Nexus and tracks revisions.
-- Auto-discovers addon collections from the team's Nexus accounts (`AddonGrabber`).
-- Maps each Vortex `collection.json` to an addon manifest (`VortexCollectionMapper`).
-- Premium path: downloads every archive (parallel, resumable, md5/size verified),
-  reusing archives already present in a downloads or Vortex folder.
-- Optionally builds a private "Stock Game" copy and runs the collection's
-  Downgrader (or patches the real install in place).
-- Extracts into MO2 mod folders, replays collection FOMOD choices, installs F4SE
-  into the game root, and routes `dinput` mods through Root Builder.
-- Verifies installed content against the collection's per-file hashes and plugin CRCs.
-- Writes `modlist.txt` / `plugins.txt` (ordered from the collection's `modRules`),
-  custom executables, and a resumable checkpoint.
+- **A ready-to-play MO2 instance** with Root Builder (F4SE and other root mods), your tools in a `Tools` folder, and a
+  profile with MO2 separators, patches and BodySlide sets next to the mods they need, mods A–Z inside each group, and an
+  empty **Added mods** section on top for your own mods.
+- **Stock Game mode:** the vanilla game is copied into the instance; your Steam install is only read from. A next-gen game
+  is downgraded with the collection's own Downgrader.
+- **Add-ons:** install any of the team's add-on collections on top. Each gets its own section; mods that have to load
+  before a base mod are placed beside it.
+- **Optional tab:** optional mods and groups (Sim Settlements 2, HD textures, …) of the base list and of the add-ons you
+  installed, with the authors' notes. Options that need an add-on you don't have are greyed out.
+- **Premium or free:** Premium accounts download automatically. Free accounts download each mod in the browser, one at a
+  time; the installer opens the right file page, watches your download folder and verifies the file.
+- **Coming from Vortex:** point the installer at your Vortex downloads and only what is missing is downloaded.
+- **Collection stats** (downloads, endorsements, rating, size) on the base list and every add-on.
 
-## Not implemented yet
+## Using it
 
-- Layered addon manifests (conflict declarations, `loadAfter`, install-priority
-  resolution across addons) — see `spec/`.
-- Free-account browser-assist downloads (premium only today).
-- ESL flagging, ini tweaks from manifests, optional-mod selection UI.
-- Verifying deploy/load order against a real Vortex install (logic is in place, see below).
+1. Start the app and paste your Nexus **personal API key** on the Nexus page (or in Settings). Get it at
+   `nexusmods.com/settings/api-keys`. It is stored encrypted for your Windows user. Browser sign-in will replace this once
+   Nexus has verified the application.
+2. Choose the install folder, downloads folder and game folder, tick the optional groups you want, and press Continue.
+3. After the install, open Mod Organizer 2, pick **F4SE** in the drop-down at the top right and press Run. The game has to
+   start through F4SE.
 
-## Layout
-
-- `app/` — `AStoryWealth.Installer`, the Avalonia desktop app (net10.0)
-- `src/Core/` — manifest model, collection sync, resolver, MO2 writer, install runner
-- `src/NexusApi/` — Nexus API client (GraphQL, file links, resumable download)
-- `src/Spike/` — console spike for the Nexus download leg
-- `spec/` — addon manifest spec and JSON Schema (draft v0.2; ahead of the code)
-- `examples/` — example addon manifests
+An interrupted install resumes where it stopped (Resume on the install page, or start it again).
 
 ## Requirements
 
-- .NET 10 SDK
-- 7-Zip. Located via the `ASW_7Z` env var, a `7z.exe` next to the installer, `PATH`,
-  or the standard install folders.
+- Windows 10/11, a legitimate Fallout 4 install (Steam, Bethesda launcher or GOG)
+- 7-Zip (`7z.exe` on PATH, in Program Files, next to the installer, or its path in `ASW_7Z`)
+- About 150 GB free for the full list (less without HD textures and Sim Settlements 2)
 
-## Build
-
-```
-cd app
-dotnet build
-```
-
-## Spike
+## Building
 
 ```
-cd src/Spike
-export ASW_NEXUS_KEY=<your Nexus personal API key>   # premium for direct downloads
-dotnet run -- fallout4 <collection-slug> [revision] [testModId testFileId]
+dotnet build AStoryWealth.slnx            # everything
+dotnet run --project src/Tests            # test suite (dependency-free runner)
+dotnet run --project app                  # start the app
+pwsh build/publish.ps1                    # tests, then a self-contained win-x64 build + zip in dist/
 ```
 
-## Deploy order and load order
+The test suite reads `samples/base-r284.collection.json` when present (a real collection list; not in the repository) and
+skips that check otherwise.
 
-Vortex collections ship no final order, only per-mod install `phase` plus
-`before`/`after` `modRules` (and a plugin list). The installer derives the order:
+## Repository layout
 
-- **Deploy order** (`DeployOrder`): phase, then collection array order, then
-  before/after rules (matched by md5, logical file name, or file expression) as a
-  stable topological sort. Unresolved rules and broken cycles are logged.
-  Computed in ascending priority (last wins); `modlist.txt` is written
-  highest-priority-first, as MO2 expects. Headerless `modlist.txt` files from
-  older builds are read as ascending and migrated on the next write.
-- **Load order** (`PluginOrder`): the collection's plugin list, adjusted only
-  where the engine requires it (ESM before non-masters, masters before
-  dependents, `pluginRules` load-after). Writes `plugins.txt` and `loadorder.txt`.
+| Path | What |
+|---|---|
+| `app/` | the Avalonia desktop app |
+| `src/Core/` | install pipeline, MO2 writer, ordering, add-ons, optional content, metadata (`Data/`) |
+| `src/NexusApi/` | Nexus API client (GraphQL, file links, resumable downloads, SSO client) |
+| `src/OrderTool/` | maintainer tool that generates the shipped order and optional-group files |
+| `src/Tests/` | test runner |
+| `docs/` | [how it works](docs/how-it-works.md) and [data formats](docs/formats.md) |
+| `build/` | publish script |
 
-## Tests
+## Status
 
-```
-dotnet run --project src/Tests
-```
+Verified on real installs: the full list (915 mods), add-ons, optional picks, free-account file pickup (with a test file),
+MO2 and F4SE launching with the profile intact. **Not yet tested:** a downgrade of a real next-gen game copy, the HD
+textures group end to end, and the free-account flow against live Nexus. Not built yet: removing an add-on or optional mod,
+remote metadata updates and a Curator section (see [how it works](docs/how-it-works.md)).
 
-## Instance layout
-
-- `Stock Game/` — private vanilla copy of the game (your Steam install is only read from).
-  If it is next-gen, the collection's Downgrader (`FO4Down.exe -patch-files`) swaps the
-  executables for 1.10.163 here before anything else is installed; success is judged by the
-  resulting `Fallout4.exe` version. (Untested against a real next-gen copy so far.)
-- `mods/` — one folder per collection mod. Root mods (F4SE, preloader hooks, BAT files) are split:
-  game-folder files in `Root/`, the archive's Data content at the mod root — the layout Root
-  Builder (latest 5.x, installed automatically) expects.
-- `Tools/` — FO4Edit, Bethini and other tool mods (anything staged under `Tools\` by the
-  collection). They stay out of the mod list; MO2 executables point here.
-- `profiles/A StoryWealth/` — `modlist.txt`, `plugins.txt`, `loadorder.txt`, local INIs.
+Changes are listed in [CHANGELOG.md](CHANGELOG.md).

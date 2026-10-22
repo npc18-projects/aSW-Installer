@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/Core/AStoryWealth.Core.csproj" />
+  <Project Path="src/NexusApi/AStoryWealth.NexusApi.csproj" />
+  <Project Path="src/Tests/AStoryWealth.Tests.csproj" />
+  <Project Path="src/OrderTool/AStoryWealth.OrderTool.csproj" />
+  <Project Path="app/AStoryWealth.Installer.csproj" />
+</Solution>

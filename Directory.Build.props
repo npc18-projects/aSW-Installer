@@ -1,0 +1,15 @@
+<Project>
+  <!-- One place for the version shown in the app and stamped on every assembly. -->
+  <PropertyGroup>
+    <Version>0.3.0</Version>
+    <InformationalVersion>0.3.0-dev</InformationalVersion>
+    <Product>A StoryWealth Installer</Product>
+  </PropertyGroup>
+
+  <!-- The installer is Windows-only today (DPAPI key store, registry game discovery, Mod Organizer 2). -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.Versioning.SupportedOSPlatformAttribute">
+      <_Parameter1>windows</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+</Project>

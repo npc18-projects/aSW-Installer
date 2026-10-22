@@ -110,7 +110,7 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="16,18,16,20" Spacing="2">
                     <TextBlock Text="A STORYWEALTH" FontSize="16" FontWeight="Bold" Foreground="#F2C48D"/>
-                    <TextBlock Text="Installer  v0.3-dev" FontSize="11" Foreground="#7A828E"/>
+                    <TextBlock x:Name="TxtVersion" Text="Installer" FontSize="11" Foreground="#7A828E"/>
                 </StackPanel>
                 <ListBox x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged">
                     <ListBoxItem Classes="navItem" IsSelected="True">Modlist</ListBoxItem>

@@ -39,6 +39,9 @@ public partial class MainWindow : Window
         RbVortex.IsCheckedChanged += (_, _) => OnSourceChanged();
         if (Environment.GetEnvironmentVariable("ASW_UI_SHOT") is { Length: > 0 } shotDir)
             Opened += (_, _) => RunScreenshotTour(shotDir);
+        var version = typeof(MainWindow).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion?.Split('+')[0];
+        TxtVersion.Text = string.IsNullOrEmpty(version) ? "Installer" : $"Installer  v{version}";
         TxtWatchDir.Text = ManualDownloader.DefaultWatchDir();
         TxtGameDir.Text = FindFallout4Path();
         var threads = InstallState.GetThreads();
@@ -115,7 +118,7 @@ public partial class MainWindow : Window
                 var size = new Avalonia.PixelSize((int)Bounds.Width, (int)Bounds.Height);
                 using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
                 bmp.Render(this);
-                bmp.Save(Path.Combine(dir, name + ".png"));
+                bmp.Save(Path.Combine(dir, name + ".png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
             }
             string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail", "optional"];
             for (var i = 0; i < names.Length; i++)
@@ -1048,7 +1051,7 @@ public partial class MainWindow : Window
         RefreshAddons();
         TxtInstallCheck.Text = dir is null
             ? "A StoryWealth isn't installed yet. Install the base pack first, then add-on lists will appear here."
-            : $"A StoryWealth is installed ({dir}). Add-on lists will appear here once the base pack is set up.";
+            : $"A StoryWealth is installed ({dir}). Add-ons and optional content are in the menu on the left.";
         InstallLog.Info("ui", dir is null ? "install check: not installed" : $"install check: installed at {dir}");
     }
 
