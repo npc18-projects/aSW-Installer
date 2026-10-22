@@ -55,6 +55,7 @@ public partial class MainWindow : Window
         InitUpdates();
         ShowExistingInstall();
         RefreshInstallCheck();
+        UpdateHomeTab();
         var last = InstallState.GetLastPath();
         if (_resume is { } r)
         {
@@ -219,6 +220,7 @@ public partial class MainWindow : Window
         TxtInstallDir.Text = dir;
         RefreshInstallCheck();
         ShowExistingInstall();
+        UpdateHomeTab();
     }
 
     // ---------- updates (GitHub releases) ----------
@@ -420,7 +422,7 @@ public partial class MainWindow : Window
                 bmp.Render(this);
                 bmp.Save(Path.Combine(dir, name + ".png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
             }
-            string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail", "optional"];
+            string[] names = ["modlist", "setup", "nexus", "install", "done", "detail", "addons", "settings", "addon-detail", "optional", "home"];
             for (var i = 0; i < names.Length; i++)
             {
                 if (i == 6) { StartAddonGrab(); for (var tries = 0; tries < 60 && _liveAddons is null; tries++) await Task.Delay(500); await Task.Delay(1500); }
@@ -552,12 +554,13 @@ public partial class MainWindow : Window
 
     private void ShowPage(int page)
     {
-        Control[] pages = [PageModlist, PageSetup, PageNexus, PageInstall, PageDone, PageDetail, PageAddons, PageSettings, PageAddonDetail, PageOptionalTab];
+        Control[] pages = [PageModlist, PageSetup, PageNexus, PageInstall, PageDone, PageDetail, PageAddons, PageSettings, PageAddonDetail, PageOptionalTab, PageHome];
         for (var i = 0; i < pages.Length; i++) pages[i].IsVisible = i == page;
 
         // left rail: Modlist(0) / Add-Ons(6) / Settings(7)
         Nav.SelectionChanged -= OnNavChanged;
-        Nav.SelectedIndex = page is 6 or 8 ? 1 : page == 9 ? 2 : page == 7 ? 3 : 0;
+        var navTag = page is 6 or 8 ? 6 : page is 9 or 7 or 10 ? page : 0;
+        Nav.SelectedItem = Nav.Items.OfType<ListBoxItem>().FirstOrDefault(i => i.Tag as string == navTag.ToString());
         Nav.SelectionChanged += OnNavChanged;
 
         // wizard step bar only during an install flow.
@@ -567,6 +570,39 @@ public partial class MainWindow : Window
         for (var i = 0; i < steps.Length; i++) steps[i].IsChecked = i == step;
         if (page == 6) { StartAddonGrab(); RefreshAddons(); }
         if (page == 9) RefreshOptionalTab();
+        if (page == 10) RefreshHome();
+    }
+
+    // ---------- home ----------
+
+    /// <summary>The Home tab shows once the base list is installed.</summary>
+    private void UpdateHomeTab()
+    {
+        var dir = InstallState.GetInstallDir();
+        NavItemHome.IsVisible = Mo2Launcher.IsInstalled(dir);
+    }
+
+    private void RefreshHome()
+    {
+        var dir = InstallState.GetInstallDir();
+        TxtHomeDir.Text = dir is null ? "" : $"Installed in {dir}";
+        var title = dir is null ? null : Mo2Launcher.FindF4seTitle(dir);
+        BtnHomeF4se.IsEnabled = title is not null;
+        BtnHomeF4se.Content = title is null ? "F4SE not found in Mod Organizer 2" : "Launch with F4SE";
+    }
+
+    private void OnHomeMo2(object? sender, RoutedEventArgs e)
+    {
+        if (InstallState.GetInstallDir() is not { } dir || !Mo2Launcher.IsInstalled(dir)) return;
+        try { Mo2Launcher.StartMo2(dir); TxtHomeStatus.Text = "Opening Mod Organizer 2."; }
+        catch (Exception ex) { InstallLog.Warn("home", ex.Message); TxtHomeStatus.Text = $"Couldn't open Mod Organizer 2: {ex.Message}"; }
+    }
+
+    private void OnHomeF4se(object? sender, RoutedEventArgs e)
+    {
+        if (InstallState.GetInstallDir() is not { } dir || Mo2Launcher.FindF4seTitle(dir) is not { } title) return;
+        try { Mo2Launcher.StartF4se(dir, title); TxtHomeStatus.Text = $"Starting {title} through Mod Organizer 2."; }
+        catch (Exception ex) { InstallLog.Warn("home", ex.Message); TxtHomeStatus.Text = $"Couldn't start F4SE: {ex.Message}"; }
     }
 
     /// <summary>Auto-discovers add-on collections (GraphQL listing only, no archive downloads).</summary>
@@ -600,7 +636,7 @@ public partial class MainWindow : Window
     private void OnNavChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (PageModlist is null) return; // still in InitializeComponent
-        ShowPage(Nav.SelectedIndex switch { 1 => 6, 2 => 9, 3 => 7, _ => 0 });
+        ShowPage(int.TryParse((Nav.SelectedItem as ListBoxItem)?.Tag as string, out var t) ? t : 0);
     }
 
     private void EnableNav(int upTo)
@@ -1712,6 +1748,7 @@ public partial class MainWindow : Window
                 ? "The optional content you picked is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run."
                 : "All done! A StoryWealth is installed.\nTo play, open Mod Organizer 2, pick F4SE in the drop-down at the top right and press Run. The game has to start through F4SE.";
             EnableNav(3);
+            UpdateHomeTab();
             _runOk = true;
             if (_jobQueue.Count == 0) ShowPage(4);
         }

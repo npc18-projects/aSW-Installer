@@ -114,10 +114,11 @@
                     <TextBlock x:Name="TxtVersion" Text="Installer" FontSize="11" Foreground="#7A828E"/>
                 </StackPanel>
                 <ListBox x:Name="Nav" Classes="nav" SelectionChanged="OnNavChanged">
-                    <ListBoxItem Classes="navItem" IsSelected="True">Modlist</ListBoxItem>
-                    <ListBoxItem x:Name="NavItemAddons" Classes="navItem" IsEnabled="False">Add-Ons</ListBoxItem>
-                    <ListBoxItem x:Name="NavItemOptional" Classes="navItem">Optional</ListBoxItem>
-                    <ListBoxItem Classes="navItem">Settings</ListBoxItem>
+                    <ListBoxItem x:Name="NavItemHome" Classes="navItem" Tag="10" IsVisible="False">Home</ListBoxItem>
+                    <ListBoxItem Classes="navItem" Tag="0" IsSelected="True">Modlist</ListBoxItem>
+                    <ListBoxItem x:Name="NavItemAddons" Classes="navItem" Tag="6" IsEnabled="False">Add-Ons</ListBoxItem>
+                    <ListBoxItem x:Name="NavItemOptional" Classes="navItem" Tag="9">Optional</ListBoxItem>
+                    <ListBoxItem Classes="navItem" Tag="7">Settings</ListBoxItem>
                 </ListBox>
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,16" Spacing="4">
                     <TextBlock x:Name="TxtNavStatus" FontSize="11" Foreground="#7A828E" TextWrapping="Wrap"/>
@@ -260,6 +261,22 @@
             </Grid>
 
             <!-- PAGE 7: Settings -->
+            <ScrollViewer x:Name="PageHome" Background="#121519" IsVisible="False">
+                <StackPanel Margin="36,28,36,28" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
+                    <TextBlock Classes="h1">Home</TextBlock>
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="h2">Play</TextBlock>
+                            <TextBlock x:Name="TxtHomeDir" Classes="info" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="BtnHomeF4se" Classes="primary" Click="OnHomeF4se">Launch with F4SE</Button>
+                                <Button x:Name="BtnHomeMo2" Click="OnHomeMo2">Open Mod Organizer 2</Button>
+                            </StackPanel>
+                            <TextBlock x:Name="TxtHomeStatus" Classes="info" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
             <ScrollViewer x:Name="PageSettings" Background="#121519" IsVisible="False">
                 <StackPanel Margin="36,28,36,28" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
                     <TextBlock Classes="h1">Settings</TextBlock>

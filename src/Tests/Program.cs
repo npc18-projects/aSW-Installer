@@ -531,6 +531,16 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- Home tab: finding the F4SE program in MO2's list
+{
+    var ini = new[] { "[General]", "x=1", "[customExecutables]", "size=3",
+        @"1\title=Fallout 4", @"1\binary=D:/G/Stock Game/Fallout4.exe",
+        @"2\title=A StoryWealth (F4SE)", @"2\binary=D:/G/mods/F4SE/Root/f4se_loader.exe",
+        @"3\title=Other", @"3\binary=D:/G/Tools/x.exe", "[Settings]", @"4\title=Nope" };
+    Check("the F4SE program is found by its file", Mo2Launcher.FindF4seTitleInIni(ini) == "A StoryWealth (F4SE)", Mo2Launcher.FindF4seTitleInIni(ini));
+    Check("no F4SE program gives null", Mo2Launcher.FindF4seTitleInIni(ini.Where(l => !l.Contains("f4se")).ToArray()) is null);
+}
+
 // ---- plugins whose master isn't installed are turned off
 {
     var infos = new Dictionary<string, PluginOrder.Info>(StringComparer.OrdinalIgnoreCase)
