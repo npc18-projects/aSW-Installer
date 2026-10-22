@@ -573,6 +573,23 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- the INIs shipped inside the exe
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var inst = Path.Combine(dir, "inst"); var game = Path.Combine(dir, "game");
+        Directory.CreateDirectory(game);   // no game INIs at all: whatever is in the profile came from the exe
+        Mo2InstanceWriter.EnsureProfileFiles(inst, game, (2560, 1440));
+        var prof = Path.Combine(inst, "profiles", "A StoryWealth");
+        string Read(string n) => File.ReadAllText(Path.Combine(prof, n));
+        Check("the shipped Fallout4.ini is used", Read("fallout4.ini").Contains("uGridsToLoad"), Read("fallout4.ini").Length.ToString());
+        Check("the shipped Fallout4Prefs.ini is used and gets this display's size", GameDisplay.ReadResolution(Path.Combine(prof, "fallout4prefs.ini")) == (2560, 1440) && Read("fallout4prefs.ini").Contains("[Display]") && Read("fallout4prefs.ini").Length > 1000);
+        Check("the shipped Fallout4Custom.ini keeps MO2's local saves line", Read("fallout4custom.ini").Contains("sLocalSavePath=__MO_Saves"));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- Home tab: install health
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
