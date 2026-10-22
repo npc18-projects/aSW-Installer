@@ -5,7 +5,7 @@
     {
       "Id": "ss2",
       "Name": "Sim Settlements 2",
-      "Description": "SS2, its chapters, add-on packs and compatibility patches (53 mods, about 9 GB). Untick to play without it.",
+      "Description": "SS2, its chapters, add-on packs and compatibility patches. Untick it to play without Sim Settlements.",
       "DefaultOn": true,
       "FromOptionalFlag": false,
       "Source": "A StoryWealth - DeSimulated 2 filter collection (nexus 4rfeex) \u002B mods that need an SS2 plugin as a master",
@@ -280,7 +280,7 @@
     {
       "Id": "hd-textures",
       "Name": "Optional HD textures",
-      "Description": "21 high-resolution texture packs (about 51 GB). Recommended with 6 GB\u002B of VRAM.",
+      "Description": "High-resolution texture packs. Recommended with 6 GB+ of VRAM.",
       "DefaultOn": false,
       "FromOptionalFlag": true,
       "Source": "the collection\u0027s own optional mods",

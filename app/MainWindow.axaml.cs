@@ -134,6 +134,7 @@ public partial class MainWindow : Window
                 if (i == 5) OnOpenDetail(null, new RoutedEventArgs());
                 ShowPage(i);
                 await Shot(names[i]);
+                if (i == 1 && PageSetup.Children.OfType<ScrollViewer>().FirstOrDefault() is { } sv) { sv.ScrollToEnd(); await Shot("setup-bottom"); }
             }
             // install page, free-account wait state and a stopped run
             ShowPage(3);
@@ -175,14 +176,19 @@ public partial class MainWindow : Window
         {
             var g = groups.FirstOrDefault(x => x.Id == (string)box.Tag!);
             if (g is null) continue;
-            var text = string.IsNullOrWhiteSpace(g.Description) ? g.Name : $"{g.Name}. {g.Description}";
+            // first line: name and how much it adds (computed from the list); second line: what it is
+            var title = g.Name;
             if (_manifest is not null)
             {
                 var only = AStoryWealth.Core.OptionalGroups.Excluded(_manifest.Mods, groups, groups.Where(x => x.Id != g.Id).Select(x => x.Id).ToList());
                 var bytes = _manifest.Mods.Where(m => only.Contains(m.InstallAs)).Sum(m => m.Nexus?.FileSize ?? 0);
-                text += $"  ({only.Count} mods, {bytes / 1_000_000_000.0:N1} GB)";
+                title += $"  ·  {only.Count} mods, {SizeText(bytes)}";
             }
-            box.Content = text;
+            var panel = new StackPanel { Spacing = 2 };
+            panel.Children.Add(new TextBlock { Text = title });
+            if (!string.IsNullOrWhiteSpace(g.Description))
+                panel.Children.Add(new TextBlock { Text = g.Description, FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#9AA3AE")), TextWrapping = TextWrapping.Wrap });
+            box.Content = panel;
         }
     }
 
@@ -748,6 +754,12 @@ public partial class MainWindow : Window
             TxtInstallDir.Text = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "AStoryWealth", "Instance");
+        // a fresh visit starts from the defaults (Sim Settlements 2 on, HD textures off); only an unfinished install keeps its own choices
+        if (_resume?.OptionalGroups is null && !_installing)
+        {
+            var defaults = AStoryWealth.Core.OptionalGroups.Load(AddonId).ToDictionary(g => g.Id, g => g.DefaultOn);
+            foreach (var box in OptionalBoxes) box.IsChecked = defaults.GetValueOrDefault((string)box.Tag!, false);
+        }
         // the downloads box must never hold a relative default (".\Downloads" from before an install folder existed)
         var dl = (TxtDownloadsDir.Text ?? "").Trim();
         if (dl.Length == 0 || !Path.IsPathRooted(dl))

@@ -89,7 +89,7 @@ public static class OptionalCatalog
             {
                 SourceId = BaseId, SourceName = "A StoryWealth", SourceJson = baseJson, Name = g.Name, GroupId = g.Id,
                 Bytes = members.Sum(m => m.Nexus?.FileSize ?? 0), ModCount = members.Count,
-                Instruction = g.Description.Replace(" Untick to play without it.", "", StringComparison.OrdinalIgnoreCase).Trim(),
+                Instruction = g.Description.Replace(" Untick it to play without Sim Settlements.", "", StringComparison.OrdinalIgnoreCase).Trim(),
                 State = baseGroups.Contains(g.Id, StringComparer.OrdinalIgnoreCase) ? OptionState.Installed : OptionState.Available,
             });
         }

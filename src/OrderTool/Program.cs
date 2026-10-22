@@ -36,14 +36,14 @@ if (args.Length >= 1 && args[0] == "optional")
             new OptionalGroup
             {
                 Id = "ss2", Name = "Sim Settlements 2", DefaultOn = true,
-                Description = $"SS2, its chapters, add-on packs and compatibility patches ({ss2.Count} mods, about {Gb(ss2):F0} GB). Untick to play without it.",
+                Description = "SS2, its chapters, add-on packs and compatibility patches. Untick it to play without Sim Settlements.",
                 Source = "A StoryWealth - DeSimulated 2 filter collection (nexus 4rfeex) + mods that need an SS2 plugin as a master",
                 Mods = ss2.Select(m => new OrderedMod { Md5 = m.Nexus?.Md5 ?? "", Name = m.InstallAs }).ToList(),
             },
             new OptionalGroup
             {
                 Id = "hd-textures", Name = "Optional HD textures", DefaultOn = false, FromOptionalFlag = true,
-                Description = $"{hd.Count} high-resolution texture packs (about {Gb(hd):F0} GB). Recommended with 6 GB+ of VRAM.",
+                Description = "High-resolution texture packs. Recommended with 6 GB+ of VRAM.",
                 Source = "the collection's own optional mods",
             },
         ],
