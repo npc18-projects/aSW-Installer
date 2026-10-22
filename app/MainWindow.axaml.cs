@@ -1277,9 +1277,6 @@ public partial class MainWindow : Window
 
     private void OnBackToModlist(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => ShowPage(0);
 
-    private void OnToggleArchives(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        => ColArchives.IsVisible = !ColArchives.IsVisible;
-
     private void OnDetailInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         => OnToSetup(sender, e); // fills the install/downloads defaults, then opens Setup
 

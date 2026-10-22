@@ -450,13 +450,12 @@
                             <Button x:Name="BtnDetailInstall" Classes="primary" HorizontalAlignment="Stretch" Click="OnDetailInstall" IsEnabled="False">Install A StoryWealth →</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnOpenNexus">View on Nexus Mods</Button>
                             <Button HorizontalAlignment="Stretch" Click="OnOpenDiscord">Join the Discord</Button>
-                            <Button HorizontalAlignment="Stretch" Click="OnToggleArchives">Archives</Button>
                         </StackPanel>
                         <Button Click="OnBackToModlist">← Back</Button>
                     </StackPanel>
                 </ScrollViewer>
                     <Grid x:Name="ColArchives" Grid.Column="1" RowDefinitions="Auto,*,Auto"
-                          Margin="24,0,0,0" IsVisible="False">
+                          Margin="24,0,0,0">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                             <TextBlock Classes="h2" VerticalAlignment="Center">Archives</TextBlock>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">

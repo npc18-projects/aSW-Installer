@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Modlist page: the archive list is always shown (the Archives button is gone).
 - Game settings: a new install sets the game's resolution to your main display. Install health has an INI settings line. It reads your Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini each time and names any setting that differs from the recommended one (volume, controls, window mode and similar are ignored). It also shows when the resolution differs from your display, with a Match display button.
 - Install health: Use recommended INIs replaces those three files with the recommended ones and sets the resolution. Your old files are kept as .asw-backup.
 - A new install gets the recommended Fallout4.ini, Fallout4Prefs.ini and Fallout4Custom.ini (tuned in BethINI). A profile that already has its own is never overwritten.
