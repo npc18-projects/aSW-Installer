@@ -687,6 +687,13 @@ foreach (var sample in FindSamples())
     finally { try { Directory.Delete(root, true); } catch { } }
 }
 
+// ---- the update settings that ship in the exe
+{
+    var shipped = UpdateConfig.Load();
+    bool KeyParses() { try { using var k = ECDsa.Create(); k.ImportSubjectPublicKeyInfo(Convert.FromBase64String(shipped.PublicKey), out _); return k.KeySize == 256; } catch { return false; } }
+    Check("the shipped update settings name a repository and a valid P-256 public key", shipped.Enabled && shipped.Repo == "npc18-projects/aSW-Installer" && KeyParses(), shipped.Repo);
+}
+
 Console.WriteLine(failed == 0 ? "\nall passed" : $"\n{failed} FAILED");
 return failed == 0 ? 0 : 1;
 
