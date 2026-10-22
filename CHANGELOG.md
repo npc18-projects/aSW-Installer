@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: FOMOD configs saved as UTF-16 (Strong Power Armor) failed to read, so their plugins went missing.
+- Fixed: mods with a folder inside a wrapper folder (Simple Esp Replacer) installed one level too deep, so their plugin was missing.
+
 ## 0.4.6
 
 - Faction add-on: the SS2 mods (IT_SS2, SS2 and ITOv2 Integration Patch, RGE Concord SS2 Patch) are optional. They install when the SS2 group is installed, and otherwise show greyed out on the Optional tab.
