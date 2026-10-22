@@ -69,7 +69,12 @@ public static class VortexCollectionMapper
             entry.DisplayName = m.TryGetProperty("name", out var dn) && dn.ValueKind == JsonValueKind.String ? dn.GetString()! : modName;
             if (m.TryGetProperty("instructions", out var ins) && ins.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(ins.GetString()))
                 entry.Instructions = ins.GetString()!.Trim();
-            if (prefix != BasePrefix) entry.LegacyInstallAs.Add(Mo2InstanceWriter.SafeName($"{BasePrefix} - {modName}", "installAs"));
+            if (prefix != BasePrefix)
+            {
+                var v043 = PrefixV043(manifest.Name);
+                if (v043 != BasePrefix) entry.LegacyInstallAs.Add(Mo2InstanceWriter.SafeName($"{v043} - {modName}", "installAs"));
+                entry.LegacyInstallAs.Add(Mo2InstanceWriter.SafeName($"{BasePrefix} - {modName}", "installAs"));
+            }
             entry.LegacyInstallAs.Add($"aSW AStorywealth - {modName}");
             entry.LegacyInstallAs.Add($"aSW {Pascalize(addonId)} - {modName}");
             if (m.TryGetProperty("details", out var det2) && det2.ValueKind == JsonValueKind.Object
@@ -143,11 +148,22 @@ public static class VortexCollectionMapper
 
     public const string BasePrefix = "A Storywealth";
 
+    private static readonly System.Text.RegularExpressions.Regex BrandRx =
+        new(@"^\s*(A\s*Story\s*Wealth|aSW)\s*[-:–—]*\s*", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
     /// <summary>
-    /// Folder-name prefix for a collection's mods: the base list uses "A Storywealth", an add-on its own title
-    /// ("A Storywealth - Atmosphere"), so a mod's folder says which collection it came from.
+    /// Folder-name prefix for a collection's mods: the base list uses "A Storywealth"; an add-on uses its own title
+    /// without the "A Storywealth" / "aSW" brand ("Atmosphere"), so a mod's folder says which collection it came from.
     /// </summary>
     public static string FolderPrefix(string collectionName)
+    {
+        var n = SanitizeFolder(collectionName ?? "").Trim();
+        var rest = BrandRx.Replace(n, "").Trim();
+        return rest.Length == 0 ? BasePrefix : rest;
+    }
+
+    /// <summary>The prefix 0.4.3 used for add-ons ("A Storywealth - Atmosphere"), kept so those folders are still found.</summary>
+    private static string PrefixV043(string collectionName)
     {
         var n = SanitizeFolder(collectionName ?? "").Trim();
         if (n.Length == 0 || n.Equals(BasePrefix, StringComparison.OrdinalIgnoreCase)) return BasePrefix;

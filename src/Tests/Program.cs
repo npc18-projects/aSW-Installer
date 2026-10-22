@@ -468,8 +468,8 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
         string Coll(string name) => "{\"info\":{\"name\":\"" + name + "\"},\"mods\":[{\"name\":\"Cool Mod\",\"version\":\"1\",\"optional\":false,\"domainName\":\"fallout4\",\"phase\":0,\"source\":{\"type\":\"nexus\",\"modId\":5,\"fileId\":6,\"md5\":\"c\",\"fileSize\":1}}]}";
         string Map1(string name) { var f = Path.Combine(dir, "c.json"); File.WriteAllText(f, Coll(name)); return VortexCollectionMapper.Map(f, "x").Mods[0].InstallAs; }
         Check("base keeps the plain prefix", Map1("A StoryWealth") == "A Storywealth - Cool Mod", Map1("A StoryWealth"));
-        Check("add-on title is the prefix", Map1("A Storywealth - Atmosphere") == "A Storywealth - Atmosphere - Cool Mod", Map1("A Storywealth - Atmosphere"));
-        Check("a title without the base name gets it added", Map1("Thuggyverse") == "A Storywealth - Thuggyverse - Cool Mod", Map1("Thuggyverse"));
+        Check("add-on title is the prefix", Map1("A Storywealth - Atmosphere") == "Atmosphere - Cool Mod", Map1("A Storywealth - Atmosphere"));
+        Check("aSW / A Storywealth is dropped from an add-on title", Map1("aSW - Thuggyverse") == "Thuggyverse - Cool Mod" && Map1("Thuggyverse") == "Thuggyverse - Cool Mod", Map1("aSW - Thuggyverse"));
 
         var f2 = Path.Combine(dir, "c.json"); File.WriteAllText(f2, Coll("A Storywealth - Atmosphere"));
         var addon = VortexCollectionMapper.Map(f2, "vq4q7d");
@@ -480,7 +480,12 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
         Check("an add-on installed under the old name keeps its folder", addon.Mods[0].InstallAs == "A Storywealth - Cool Mod", addon.Mods[0].InstallAs);
         var other = VortexCollectionMapper.Map(f2, "vq4q7d");
         AddonPlacement.KeepExistingFolders(other, new AddonRegistryFile(), inst);
-        Check("a folder the add-on doesn't own is not taken", other.Mods[0].InstallAs == "A Storywealth - Atmosphere - Cool Mod", other.Mods[0].InstallAs);
+        var mid = VortexCollectionMapper.Map(f2, "vq4q7d");
+        Directory.CreateDirectory(Path.Combine(inst, "mods", "A Storywealth - Atmosphere - Cool Mod"));
+        var reg3 = new AddonRegistryFile { Addons = [new InstalledAddon { Id = "vq4q7d", Mods = [new InstalledAddonMod { Name = "A Storywealth - Atmosphere - Cool Mod", Md5 = "c" }] }] };
+        AddonPlacement.KeepExistingFolders(mid, reg3, inst);
+        Check("a 0.4.3 folder (A Storywealth - Atmosphere - Mod) is kept too", mid.Mods[0].InstallAs == "A Storywealth - Atmosphere - Cool Mod", mid.Mods[0].InstallAs);
+        Check("a folder the add-on doesn't own is not taken", other.Mods[0].InstallAs == "Atmosphere - Cool Mod", other.Mods[0].InstallAs);
     }
     finally { try { Directory.Delete(dir, true); } catch { } }
 }

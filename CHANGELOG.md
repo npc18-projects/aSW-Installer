@@ -1,12 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add-on mods are named "Atmosphere - Mod name" (the add-on's title without the A Storywealth / aSW prefix), instead of "A Storywealth - Atmosphere - Mod name". Folders from earlier versions are still recognised.
+
 ## 0.4.3
 
 - Settings > Save report: one zip with the install logs, mod list and basic PC details to send when something goes wrong. Your Nexus key is left out.
 - Remove an add-on (Add-Ons page) or an installed optional mod (Optional tab). Mods another add-on needs are kept.
 - App icon
 - Fixed: installing a new add-on after a failed one resumed the failed install instead.
-- Add-on mods are named after their add-on ("A Storywealth - Atmosphere - Mod name"). Add-ons already installed keep their current folders.
+- Add-on mods are named after their add-on. Add-ons already installed keep their current folders.
 - Fixed: a download failed verification when a collection listed the file a few bytes off its real size (Nightmare Deathclaw redux in Creature Madness). The md5 now decides.
 
 ## 0.4.1
