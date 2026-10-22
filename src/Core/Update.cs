@@ -38,6 +38,8 @@ public sealed class UpdateConfig
 public sealed class UpdateSettings
 {
     public bool CheckAtStartup { get; set; } = true;
+    /// <summary>Also offer test builds (GitHub pre-releases such as 0.5.0-beta.1). Off unless a tester turns it on.</summary>
+    public bool IncludeTestBuilds { get; set; }
 
     private static string PathFor() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AStoryWealth", "update-settings.json");
@@ -105,32 +107,80 @@ public sealed class GitHubUpdater
         return true;
     }
 
-    public static bool IsNewer(string candidate, string current)
+    /// <summary>Splits "v0.5.0-beta.1+abc" into 0.5.0 and "beta.1" (null for a full release).</summary>
+    private static bool TryParseFull(string? s, out Version v, out string? pre)
     {
-        if (!TryParse(candidate, out var c, out var cPre) || cPre) return false;       // never offer a pre-release
-        if (!TryParse(current, out var cur, out _)) return false;
-        return c > cur;
+        pre = null;
+        if (!TryParse(s, out v, out var isPre)) return false;
+        if (isPre)
+        {
+            var t = s!.Trim().TrimStart('v', 'V').Split('+')[0];
+            pre = t[(t.IndexOf('-') + 1)..];
+        }
+        return true;
+    }
+
+    /// <summary>Orders versions: 0.4.6 &lt; 0.5.0-beta.1 &lt; 0.5.0-beta.2 &lt; 0.5.0. Unreadable versions compare as equal.</summary>
+    public static int Compare(string? a, string? b)
+    {
+        if (!TryParseFull(a, out var va, out var pa) || !TryParseFull(b, out var vb, out var pb)) return 0;
+        var c = va.CompareTo(vb);
+        if (c != 0) return c;
+        if (pa is null && pb is null) return 0;
+        if (pa is null) return 1;      // a full release is newer than any pre-release of the same number
+        if (pb is null) return -1;
+        var xa = pa.Split('.'); var xb = pb.Split('.');
+        for (var i = 0; i < Math.Min(xa.Length, xb.Length); i++)
+        {
+            var na = int.TryParse(xa[i], out var ia); var nb = int.TryParse(xb[i], out var ib);
+            var r = na && nb ? ia.CompareTo(ib) : na ? -1 : nb ? 1 : string.CompareOrdinal(xa[i], xb[i]);
+            if (r != 0) return r;
+        }
+        return xa.Length.CompareTo(xb.Length);
+    }
+
+    /// <summary>True when <paramref name="candidate"/> is newer than <paramref name="current"/>. Pre-releases only count when <paramref name="allowPre"/> is set.</summary>
+    public static bool IsNewer(string candidate, string current, bool allowPre = false)
+    {
+        if (!TryParseFull(candidate, out _, out var cPre) || (cPre is not null && !allowPre)) return false;
+        if (!TryParse(current, out _, out _)) return false;
+        return Compare(candidate, current) > 0;
     }
 
     private static bool AllowedUrl(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps && AllowedHosts.Contains(u.Host, StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The newest published release if it is newer than <paramref name="current"/> and carries a zip plus its signature; otherwise null.</summary>
-    public async Task<UpdateInfo?> CheckAsync(string current, CancellationToken ct = default)
+    /// <summary>
+    /// The newest published release if it is newer than <paramref name="current"/> and carries a zip plus its signature; otherwise null.
+    /// With <paramref name="includeTestBuilds"/> GitHub pre-releases (test builds) are considered too.
+    /// </summary>
+    public async Task<UpdateInfo?> CheckAsync(string current, bool includeTestBuilds = false, CancellationToken ct = default)
     {
         if (!_cfg.Enabled) return null;
-        using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{_cfg.Repo}/releases/latest");
+        var url = includeTestBuilds ? $"https://api.github.com/repos/{_cfg.Repo}/releases?per_page=15" : $"https://api.github.com/repos/{_cfg.Repo}/releases/latest";
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         using var resp = await _http.SendAsync(req, ct);
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;      // no release yet
         resp.EnsureSuccessStatusCode();
         using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
-        var r = doc.RootElement;
+        if (!includeTestBuilds) return ParseRelease(doc.RootElement, current, allowPre: false);
+        // newest first by version, not by date: a beta of the next version can be older than a hotfix of this one
+        var all = doc.RootElement.EnumerateArray().ToList();
+        all.Sort((x, y) => Compare(y.TryGetProperty("tag_name", out var ty) ? ty.GetString() : null, x.TryGetProperty("tag_name", out var tx) ? tx.GetString() : null));
+        foreach (var r in all)
+            if (ParseRelease(r, current, allowPre: true) is { } found) return found;
+        return null;
+    }
+
+    private static UpdateInfo? ParseRelease(JsonElement r, string current, bool allowPre)
+    {
         if (r.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True) return null;
-        if (r.TryGetProperty("prerelease", out var p) && p.ValueKind == JsonValueKind.True) return null;
+        var isPre = r.TryGetProperty("prerelease", out var p) && p.ValueKind == JsonValueKind.True;
+        if (isPre && !allowPre) return null;
         var tag = r.GetProperty("tag_name").GetString() ?? "";
-        if (!IsNewer(tag, current)) return null;
-        TryParse(tag, out var ver, out _);
+        if (!IsNewer(tag, current, allowPre)) return null;
+        TryParseFull(tag, out var ver, out var pre);
 
         string? zipName = null, zipUrl = null, sigUrl = null; long size = 0;
         var assets = r.GetProperty("assets").EnumerateArray().Select(a => (
@@ -145,7 +195,7 @@ public sealed class GitHubUpdater
         }
         if (zipUrl is null || string.IsNullOrEmpty(sigUrl) || !AllowedUrl(zipUrl) || !AllowedUrl(sigUrl)) return null;   // not a usable, signed release
         if (size > MaxZipBytes) return null;
-        return new UpdateInfo($"{ver.Major}.{ver.Minor}.{ver.Build}", tag, zipName!, zipUrl, size, sigUrl,
+        return new UpdateInfo($"{ver.Major}.{ver.Minor}.{ver.Build}" + (pre is null ? "" : "-" + pre), tag, zipName!, zipUrl, size, sigUrl,
             r.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : "", r.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "");
     }
 
@@ -211,9 +261,9 @@ public sealed class GitHubUpdater
             var exe = Directory.GetFiles(staged, "AStoryWealth.Installer.exe", SearchOption.TopDirectoryOnly).FirstOrDefault()
                 ?? throw new InvalidOperationException("The update doesn't contain the installer.");
             var stagedVersion = _exeVersion(exe);
-            if (!TryParse(stagedVersion, out var sv, out _) || !TryParse(info.Version, out var iv, out _) || sv != iv)
+            if (!TryParse(stagedVersion, out _, out _) || !TryParse(info.Version, out _, out _) || Compare(stagedVersion, info.Version) != 0)
                 throw new InvalidOperationException($"The update says it is {info.Version} but the program inside is {stagedVersion}.");
-            if (!IsNewer(stagedVersion!, currentVersion))
+            if (!IsNewer(stagedVersion!, currentVersion, allowPre: true))
                 throw new InvalidOperationException("The update isn't newer than this version.");
             File.Delete(zipPath);
             return staged;

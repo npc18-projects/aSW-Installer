@@ -748,6 +748,7 @@ foreach (var sample in FindSamples())
                 calls++;
                 var u = rq.RequestUri!.ToString();
                 if (u.EndsWith("/releases/latest")) return Ok(rq, new StringContent(releaseJson));
+                if (u.Contains("/releases?per_page")) return Ok(rq, new StringContent("[" + releaseJson + "]"));
                 if (u.EndsWith(".zip")) return Ok(rq, new ByteArrayContent(zip));
                 if (u.EndsWith(".sig")) return Ok(rq, new StringContent(Convert.ToBase64String(Sign(signer, zip))));
                 return new(System.Net.HttpStatusCode.NotFound) { RequestMessage = rq };
@@ -757,6 +758,19 @@ foreach (var sample in FindSamples())
         Check("a newer signed release is found", info is not null && info.Version == "0.5.0" && info.ZipName == zipName && info.Notes == "notes", info?.Version);
         Check("the same or an older version is not offered", await Updater(Release("v0.4.0"), ecdsa).CheckAsync("0.4.0") is null && await Updater(Release("v0.3.9"), ecdsa).CheckAsync("0.4.0") is null);
         Check("a pre-release is ignored", await Updater(Release("v0.5.0", pre: true), ecdsa).CheckAsync("0.4.0") is null);
+        Check("versions order as 0.4.6 < 0.5.0-beta.1 < 0.5.0-beta.2 < 0.5.0 < 0.5.1",
+            new[] { "0.4.6", "0.5.0-beta.1", "0.5.0-beta.2", "0.5.0-beta.10", "0.5.0", "0.5.1" }.Zip(new[] { "0.5.0-beta.1", "0.5.0-beta.2", "0.5.0-beta.10", "0.5.0", "0.5.1" })
+                .All(x => GitHubUpdater.Compare(x.First, x.Second) < 0 && GitHubUpdater.Compare(x.Second, x.First) > 0)
+            && GitHubUpdater.Compare("v0.5.0+abc", "0.5.0") == 0);
+        Check("a test build is offered to someone on an older release only when they opted in",
+            await Updater(Release("v0.5.0-beta.1", pre: true), ecdsa).CheckAsync("0.4.0") is null
+            && (await Updater(Release("v0.5.0-beta.1", pre: true), ecdsa).CheckAsync("0.4.0", includeTestBuilds: true))?.Version == "0.5.0-beta.1");
+        Check("a test build is not offered once you're on that test build or a later one",
+            await Updater(Release("v0.5.0-beta.1", pre: true), ecdsa).CheckAsync("0.5.0-beta.1", true) is null
+            && await Updater(Release("v0.5.0-beta.1", pre: true), ecdsa).CheckAsync("0.5.0", true) is null);
+        var betaInfo = await Updater(Release("v0.5.0-beta.1", pre: true), ecdsa, exeVersion: "0.5.0-beta.1+abc").CheckAsync("0.4.0", true);
+        var betaStaged = await Updater(Release("v0.5.0-beta.1", pre: true), ecdsa, exeVersion: "0.5.0-beta.1+abc").DownloadAndVerifyAsync(betaInfo!, "0.4.0");
+        Check("a signed test build downloads and verifies", File.Exists(Path.Combine(betaStaged, "AStoryWealth.Installer.exe")));
         Check("a release without a signature is ignored", await Updater(Release("v0.5.0", withSig: false), ecdsa).CheckAsync("0.4.0") is null);
         Check("assets hosted somewhere else are ignored", await Updater(Release("v0.5.0", host: "evil.example.com"), ecdsa).CheckAsync("0.4.0") is null);
         calls = 0;

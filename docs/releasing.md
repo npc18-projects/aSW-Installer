@@ -29,6 +29,19 @@ The app can update itself from GitHub releases. It stays off until you set it up
    ```
    Don't tick "pre-release": the app ignores those.
 
+## Test builds
+
+Test builds go out as GitHub pre-releases, so they don't count as a public release. The app ignores pre-releases unless the user ticks Settings > Updates > Include test builds.
+
+1. Set `version.txt` to something like `0.5.0-beta.1`. Versions order as `0.4.6 < 0.5.0-beta.1 < 0.5.0-beta.2 < 0.5.0`.
+2. Build and sign as usual (`pwsh build/publish.ps1 ... -SigningKey ...`).
+3. Create the release with `--prerelease`:
+   ```
+   gh release create v0.5.0-beta.1 dist/AStoryWealth-Installer-0.5.0-beta.1-win-x64.zip dist/AStoryWealth-Installer-0.5.0-beta.1-win-x64.zip.sig --title "0.5.0-beta.1" --notes-file notes.md --prerelease
+   ```
+
+A tester has to install the first test build by hand, because older versions don't have the tick box. After that it updates itself. When the real 0.5.0 comes out, testers move to it.
+
 ## What the app does
 
 - At startup (and when you press Check now in Settings) it asks GitHub for the latest release.

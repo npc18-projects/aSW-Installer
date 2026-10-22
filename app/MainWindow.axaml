@@ -336,6 +336,7 @@
                             <TextBlock Classes="h2">Updates</TextBlock>
                             <TextBlock x:Name="TxtUpdateStatus" Classes="info" TextWrapping="Wrap"/>
                             <CheckBox x:Name="ChkUpdateAuto" Click="OnUpdateAutoChanged">Look for updates when the app starts</CheckBox>
+                            <CheckBox x:Name="ChkUpdateTest" Click="OnUpdateAutoChanged">Include test builds (newer, but less tested)</CheckBox>
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <Button x:Name="BtnUpdateCheck" Classes="primary" Click="OnCheckUpdateNow">Check now</Button>
                             </StackPanel>

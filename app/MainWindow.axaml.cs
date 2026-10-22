@@ -238,10 +238,11 @@ public partial class MainWindow : Window
     {
         var settings = UpdateSettings.Load();
         ChkUpdateAuto.IsChecked = settings.CheckAtStartup;
+        ChkUpdateTest.IsChecked = settings.IncludeTestBuilds;
         if (!UpdateCfg.Enabled)
         {
             TxtUpdateStatus.Text = $"You're on version {_version}. Updates aren't set up in this build.";
-            ChkUpdateAuto.IsEnabled = BtnUpdateCheck.IsEnabled = false;
+            ChkUpdateAuto.IsEnabled = ChkUpdateTest.IsEnabled = BtnUpdateCheck.IsEnabled = false;
             return;
         }
         TxtUpdateStatus.Text = $"You're on version {_version}.";
@@ -249,7 +250,8 @@ public partial class MainWindow : Window
         if (settings.CheckAtStartup) _ = Task.Run(async () => { await Task.Delay(4000); await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => CheckForUpdateAsync(false)); });
     }
 
-    private void OnUpdateAutoChanged(object? sender, RoutedEventArgs e) => new UpdateSettings { CheckAtStartup = ChkUpdateAuto.IsChecked == true }.Save();
+    private void OnUpdateAutoChanged(object? sender, RoutedEventArgs e) =>
+        new UpdateSettings { CheckAtStartup = ChkUpdateAuto.IsChecked == true, IncludeTestBuilds = ChkUpdateTest.IsChecked == true }.Save();
 
     private async void OnCheckUpdateNow(object? sender, RoutedEventArgs e) => await CheckForUpdateAsync(true);
 
@@ -263,7 +265,7 @@ public partial class MainWindow : Window
         {
             _updater ??= new GitHubUpdater(UpdateCfg);
             if (manual) TxtUpdateStatus.Text = "Checking…";
-            var info = await _updater.CheckAsync(_version);
+            var info = await _updater.CheckAsync(_version, ChkUpdateTest.IsChecked == true);
             if (info is null)
             {
                 if (manual) TxtUpdateStatus.Text = $"You're on the latest version ({_version}).";
