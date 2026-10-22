@@ -531,6 +531,20 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- changelog text
+{
+    var md = "## Revision 284\n\nSmaller revision.\n\n### Updated Mods\n\n- A StoryWealth - Armors Patch\n- Blood Fixes *Loose Files* **replaced with** *ba2*\n\n[Page](https://x.y)";
+    var plain = ChangelogFormat.ToPlain(md);
+    Check("headings lose their #, and the leading 'Revision N' line is dropped", plain.StartsWith("Smaller revision") && plain.Contains("Updated Mods") && !plain.Contains('#'), plain);
+    Check("a trailing backslash line break is dropped", !ChangelogFormat.ToPlain("Added - A\\\nAdded - B\\\n\\\nRemoved - C").Contains('\\'));
+    Check("bullets become dots", plain.Contains("•  A StoryWealth - Armors Patch"), plain);
+    Check("bold and italic marks go, links keep their text", plain.Contains("Blood Fixes Loose Files replaced with ba2") && plain.Contains("Page") && !plain.Contains("https"), plain);
+    Check("nothing in gives nothing out", ChangelogFormat.ToPlain(null) == "" && ChangelogFormat.ToPlain("  ") == "");
+    var node = System.Text.Json.JsonDocument.Parse("{\"endorsements\":5,\"latestPublishedRevision\":{\"revisionNumber\":284,\"modCount\":9,\"totalSize\":\"100\",\"collectionChangelog\":{\"description\":\"hi\",\"createdAt\":\"2026-10-20T08:08:41Z\"}}}").RootElement;
+    var st = AStoryWealth.NexusApi.NexusApiClient.ParseStats(node);
+    Check("stats carry the newest revision's changelog", st.Revision == 284 && st.Changelog == "hi" && st.ChangelogDate?.Year == 2026);
+}
+
 // ---- Home tab: finding the F4SE program in MO2's list
 {
     var ini = new[] { "[General]", "x=1", "[customExecutables]", "size=3",

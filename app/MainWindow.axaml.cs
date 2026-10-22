@@ -591,6 +591,17 @@ public partial class MainWindow : Window
         BtnHomeF4se.Content = title is null ? "F4SE not found in Mod Organizer 2" : "Launch with F4SE";
     }
 
+    /// <summary>Fills a "latest changes" card from a collection's newest revision; hides it when Nexus has none.</summary>
+    private static void ShowChangelog(Control card, TextBlock title, TextBlock body, NexusApiClient.CollectionStats? s)
+    {
+        var text = ChangelogFormat.ToPlain(s?.Changelog);
+        card.IsVisible = text.Length > 0;
+        if (text.Length == 0) return;
+        var when = s!.ChangelogDate is { } d ? $" · {d.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}" : "";
+        title.Text = (s.Revision > 0 ? $"What's new in revision {s.Revision}" : "What's new") + when;
+        body.Text = text;
+    }
+
     private void OnHomeMo2(object? sender, RoutedEventArgs e)
     {
         if (InstallState.GetInstallDir() is not { } dir || !Mo2Launcher.IsInstalled(dir)) return;
@@ -812,6 +823,7 @@ public partial class MainWindow : Window
         TxtAddDetBy.Text = $"By {c.Author} - Revision {c.Version}";
         TxtAddDetSummary.Text = _liveSummary.GetValueOrDefault(c.Slug, "");
         TxtAddDetStats.Text = c.Stats is { } stats ? StatsDetail(stats) : "";
+        ShowChangelog(CardAddDetChanges, TxtAddDetChangesTitle, TxtAddDetChanges, c.Stats);
         BtnAddDetRemove.IsVisible = c.InstalledRev is not null;
         BtnAddDetRemove.Content = "Remove";
         _addonJsonPath = null;           // belongs to whichever add-on was last fetched
@@ -960,6 +972,7 @@ public partial class MainWindow : Window
             {
                 TxtBaseStats.Text = StatsLine(bs, withSize: false);
                 TxtBaseStatsDetail.Text = StatsDetail(bs, " (everything, including optional files)", stacked: true);
+                ShowChangelog(CardHomeChanges, TxtHomeChangesTitle, TxtHomeChanges, bs);
             }
             await LoadImageAsync(ImgBaseCard, info.HeaderImageUrl, "base");
             await LoadImageAsync(ImgDetailBanner, info.HeaderImageUrl, "base");

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Latest changelog from Nexus: "What's new" on the Home tab for the base list, and on each add-on's page.
 - Home tab (shown once the base list is installed): open Mod Organizer 2, or launch the game with F4SE through MO2.
 - Fixed: plugins inside installed mods that the collection's plugin list leaves out (for example KCI.esp) were added by MO2 switched off. They are now switched on.
 - Plugins turned off for a missing master are turned back on on a later run once the master is there.

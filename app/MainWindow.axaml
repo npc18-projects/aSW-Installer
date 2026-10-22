@@ -239,6 +239,12 @@
                         <Button Click="OnAddDetOpenPage">Open the collection page</Button>
                         <Button Click="OnAddDetPick">Choose the downloaded collection…</Button>
                     </StackPanel>
+                    <Border x:Name="CardAddDetChanges" Classes="card" IsVisible="False">
+                        <StackPanel Spacing="8">
+                            <TextBlock x:Name="TxtAddDetChangesTitle" Classes="h2"/>
+                            <TextBlock x:Name="TxtAddDetChanges" Classes="info" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
 
@@ -273,6 +279,12 @@
                                 <Button x:Name="BtnHomeMo2" Click="OnHomeMo2">Open Mod Organizer 2</Button>
                             </StackPanel>
                             <TextBlock x:Name="TxtHomeStatus" Classes="info" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="CardHomeChanges" Classes="card" IsVisible="False">
+                        <StackPanel Spacing="8">
+                            <TextBlock x:Name="TxtHomeChangesTitle" Classes="h2"/>
+                            <TextBlock x:Name="TxtHomeChanges" Classes="info" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>

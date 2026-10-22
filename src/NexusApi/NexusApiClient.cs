@@ -106,11 +106,12 @@ public sealed class NexusApiClient : IDisposable
 
     /// <summary>What Nexus publishes about a collection: popularity of the collection and size/mod count of its latest revision.</summary>
     public sealed record CollectionStats(long Endorsements, long TotalDownloads, long UniqueDownloads, double RatingPercent, long RatingCount,
-        DateTime? LastPublished, DateTime? FirstPublished, int ModCount, long SizeBytes, bool AdultContent);
+        DateTime? LastPublished, DateTime? FirstPublished, int ModCount, long SizeBytes, bool AdultContent,
+        int Revision = 0, string? Changelog = null, DateTime? ChangelogDate = null);
 
     private const string StatsFields =
         "endorsements totalDownloads uniqueDownloads overallRating overallRatingCount lastPublishedAt firstPublishedAt "
-        + "latestPublishedRevision{ revisionNumber modCount totalSize adultContent }";
+        + "latestPublishedRevision{ revisionNumber modCount totalSize adultContent collectionChangelog{ description createdAt } }";
 
     private static long AsLong(JsonElement e) => e.ValueKind switch
     {
@@ -139,7 +140,11 @@ public sealed class NexusApiClient : IDisposable
             AsDate(c, "lastPublishedAt"), AsDate(c, "firstPublishedAt"),
             rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("modCount", out var mc) ? (int)AsLong(mc) : 0,
             rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("totalSize", out var ts) ? AsLong(ts) : 0,
-            rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("adultContent", out var ad) && ad.ValueKind == JsonValueKind.True);
+            rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("adultContent", out var ad) && ad.ValueKind == JsonValueKind.True,
+            rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("revisionNumber", out var rn) ? (int)AsLong(rn) : 0,
+            Changelog: rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("collectionChangelog", out var cl) && cl.ValueKind == JsonValueKind.Object
+                && cl.TryGetProperty("description", out var cd) && cd.ValueKind == JsonValueKind.String ? cd.GetString() : null,
+            ChangelogDate: rev.ValueKind == JsonValueKind.Object && rev.TryGetProperty("collectionChangelog", out var cl2) && cl2.ValueKind == JsonValueKind.Object ? AsDate(cl2, "createdAt") : null);
     }
 
     /// <summary>
