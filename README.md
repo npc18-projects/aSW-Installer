@@ -35,7 +35,7 @@ An interrupted install resumes where it stopped (Resume on the install page, or 
 ## Requirements
 
 - Windows 10/11, a legitimate Fallout 4 install (Steam, Bethesda launcher or GOG)
-- 7-Zip (`7z.exe` on PATH, in Program Files, next to the installer, or its path in `ASW_7Z`)
+- 7-Zip: bundled with release builds (`7z.exe` and `7z.dll` next to the installer). Running from source needs `7z.exe` on PATH, in Program Files, or its path in `ASW_7Z`.
 - About 150 GB free for the full list (less without HD textures and Sim Settlements 2)
 
 ## Building
@@ -60,7 +60,7 @@ skips that check otherwise.
 | `src/OrderTool/` | maintainer tool that generates the shipped order and optional-group files |
 | `src/Tests/` | test runner |
 | `docs/` | [how it works](docs/how-it-works.md) and [data formats](docs/formats.md) |
-| `build/` | publish script |
+| `build/` | publish script (bundles 7-Zip) |
 
 ## Status
 

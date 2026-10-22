@@ -17,4 +17,5 @@
   to `<instance>/Tools`; native Downgrader step.
 - Setup is validated before continuing (paths, game found, free disk space per drive); Resume / Back after a stopped run;
   buffered install log; game folder Browse (Steam, Bethesda launcher and GOG detection).
+- 7-Zip is bundled with release builds (`build/publish.ps1` copies it from a local 7-Zip install; see THIRD-PARTY-NOTICES.md).
 - Personal Nexus API key sign-in (stored encrypted for the current Windows user) until Nexus verifies the application for SSO.
