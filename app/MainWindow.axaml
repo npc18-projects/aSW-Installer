@@ -3,6 +3,7 @@
         xmlns:local="using:AStoryWealth.Installer"
         x:Class="AStoryWealth.Installer.MainWindow"
         Title="A StoryWealth Installer"
+        Icon="/Assets/app.ico"
         Width="1080" Height="720"
         MinWidth="900" MinHeight="600"
         Background="#121519">

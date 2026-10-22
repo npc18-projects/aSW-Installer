@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Settings > Save report: one zip with the install logs, mod list and basic PC details to send when something goes wrong. Your Nexus key is left out.
+- Remove an add-on (Add-Ons page) or an installed optional mod (Optional tab). Mods another add-on needs are kept.
+- App icon
+
 ## 0.4.1
 
 - Fixed: a finished install wasn't recorded on a PC with no settings file, so the app acted as if nothing was installed

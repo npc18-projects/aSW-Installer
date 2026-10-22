@@ -37,6 +37,8 @@ public partial class MainWindow : Window
         Closed += (_, _) => { _cts?.Cancel(); InstallRunner.UiLogLine -= OnLogLine; _logTimer?.Stop(); };
         RbFresh.IsCheckedChanged += (_, _) => OnSourceChanged();
         RbVortex.IsCheckedChanged += (_, _) => OnSourceChanged();
+        if (Environment.GetEnvironmentVariable("ASW_MAKE_ICON") is { Length: > 0 } iconDir)
+            Opened += async (_, _) => { await MakeIconAsync(iconDir); Close(); };
         if (Environment.GetEnvironmentVariable("ASW_UI_SHOT") is { Length: > 0 } shotDir)
             Opened += (_, _) => RunScreenshotTour(shotDir);
         var version = typeof(MainWindow).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
@@ -334,6 +336,66 @@ public partial class MainWindow : Window
             InstallLog.Warn("update", ex.Message);
             TxtUpdateBar.Text = $"Couldn't start the update: {ex.Message}";
         }
+    }
+
+    // ---------- icon maker (development only) ----------
+
+    /// <summary>
+    /// With ASW_MAKE_ICON=&lt;dir&gt; the window draws the app icon (gold "A" on the dark rail colour, "SW" under it at larger
+    /// sizes) at 16–256 px, writes icon-256.png and a multi-size app.ico into that folder, and closes. Replace the files in
+    /// app/Assets to change the icon.
+    /// </summary>
+    private async Task MakeIconAsync(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        await Task.Delay(500);
+        var gold = new SolidColorBrush(Color.Parse("#F2C48D"));
+        byte[] Render(int size)
+        {
+            var root = new Border
+            {
+                Width = size, Height = size, Background = new SolidColorBrush(Color.Parse("#171A20")),
+                CornerRadius = new Avalonia.CornerRadius(size * 0.22), BorderBrush = gold, BorderThickness = new Avalonia.Thickness(Math.Max(1, size / 24.0)),
+            };
+            var grid = new Grid();
+            grid.Children.Add(new TextBlock
+            {
+                Text = "A", FontSize = size * (size >= 48 ? 0.56 : 0.72), FontWeight = FontWeight.Bold, Foreground = gold,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Margin = new Avalonia.Thickness(0, 0, 0, size >= 48 ? size * 0.08 : 0),
+            });
+            if (size >= 48)
+                grid.Children.Add(new TextBlock
+                {
+                    Text = "SW", FontSize = size * 0.17, FontWeight = FontWeight.SemiBold, Foreground = gold, Opacity = 0.85,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
+                    Margin = new Avalonia.Thickness(0, 0, 0, size * 0.1),
+                });
+            root.Child = grid;
+            root.Measure(new Avalonia.Size(size, size));
+            root.Arrange(new Avalonia.Rect(0, 0, size, size));
+            using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(size, size));
+            bmp.Render(root);
+            using var ms = new MemoryStream();
+            bmp.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+            return ms.ToArray();
+        }
+        int[] sizes = [16, 24, 32, 48, 64, 128, 256];
+        var pngs = sizes.Select(Render).ToList();
+        File.WriteAllBytes(Path.Combine(dir, "icon-256.png"), pngs[^1]);
+        using var ico = new MemoryStream();
+        using var w = new BinaryWriter(ico);
+        w.Write((short)0); w.Write((short)1); w.Write((short)sizes.Length);                 // ICONDIR
+        var offset = 6 + 16 * sizes.Length;
+        for (var i = 0; i < sizes.Length; i++)
+        {
+            w.Write((byte)(sizes[i] >= 256 ? 0 : sizes[i])); w.Write((byte)(sizes[i] >= 256 ? 0 : sizes[i]));
+            w.Write((byte)0); w.Write((byte)0); w.Write((short)1); w.Write((short)32);
+            w.Write(pngs[i].Length); w.Write(offset);
+            offset += pngs[i].Length;
+        }
+        foreach (var p in pngs) w.Write(p);                                                 // PNG-compressed images
+        File.WriteAllBytes(Path.Combine(dir, "app.ico"), ico.ToArray());
     }
 
     // ---------- screenshot hook (development only) ----------
