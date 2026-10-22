@@ -34,6 +34,7 @@ public static class VortexCollectionMapper
             InstallPriority = installPriority
         };
 
+        var prefix = FolderPrefix(manifest.Name);
         foreach (var m in root.GetProperty("mods").EnumerateArray())
         {
             var src = m.GetProperty("source");
@@ -64,10 +65,11 @@ public static class VortexCollectionMapper
                 ? lf.GetString()! : m.GetProperty("name").GetString()!);
             // The folder on disk goes through SafeName (it turns ".." into "_"). The name used everywhere else has to be that
             // same name, or modlist.txt lists a mod MO2 can't find and the real folder shows up disabled at the top.
-            entry.InstallAs = Mo2InstanceWriter.SafeName($"A Storywealth - {modName}", "installAs");
+            entry.InstallAs = Mo2InstanceWriter.SafeName($"{prefix} - {modName}", "installAs");
             entry.DisplayName = m.TryGetProperty("name", out var dn) && dn.ValueKind == JsonValueKind.String ? dn.GetString()! : modName;
             if (m.TryGetProperty("instructions", out var ins) && ins.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(ins.GetString()))
                 entry.Instructions = ins.GetString()!.Trim();
+            if (prefix != BasePrefix) entry.LegacyInstallAs.Add(Mo2InstanceWriter.SafeName($"{BasePrefix} - {modName}", "installAs"));
             entry.LegacyInstallAs.Add($"aSW AStorywealth - {modName}");
             entry.LegacyInstallAs.Add($"aSW {Pascalize(addonId)} - {modName}");
             if (m.TryGetProperty("details", out var det2) && det2.ValueKind == JsonValueKind.Object
@@ -137,6 +139,19 @@ public static class VortexCollectionMapper
         }
         var s = sb.ToString().TrimEnd('.', ' ');
         return string.IsNullOrWhiteSpace(s) ? "mod" : s;
+    }
+
+    public const string BasePrefix = "A Storywealth";
+
+    /// <summary>
+    /// Folder-name prefix for a collection's mods: the base list uses "A Storywealth", an add-on its own title
+    /// ("A Storywealth - Atmosphere"), so a mod's folder says which collection it came from.
+    /// </summary>
+    public static string FolderPrefix(string collectionName)
+    {
+        var n = SanitizeFolder(collectionName ?? "").Trim();
+        if (n.Length == 0 || n.Equals(BasePrefix, StringComparison.OrdinalIgnoreCase)) return BasePrefix;
+        return n.StartsWith(BasePrefix + " - ", StringComparison.OrdinalIgnoreCase) ? BasePrefix + n[BasePrefix.Length..] : $"{BasePrefix} - {n}";
     }
 
     private static string Pascalize(string s)

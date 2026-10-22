@@ -50,8 +50,12 @@ public static class OptionalCatalog
 
         var picked = new HashSet<string>(registry.BaseOptional.Concat(registry.Addons.SelectMany(a => a.Optional))
             .Concat(registry.Addons.SelectMany(a => a.Mods.Select(m => m.Md5))), StringComparer.OrdinalIgnoreCase);
+        // add-ons installed before folders carried the add-on's name still sit under "A Storywealth - <mod>"
+        string Folder(ModEntry m) =>
+            Directory.Exists(Path.Combine(instanceDir, "mods", m.InstallAs)) ? m.InstallAs
+            : m.LegacyInstallAs.FirstOrDefault(l => Directory.Exists(Path.Combine(instanceDir, "mods", l))) ?? m.InstallAs;
         bool OnDisk(ModEntry m) =>
-            Directory.Exists(Path.Combine(instanceDir, "mods", m.InstallAs))
+            Directory.Exists(Path.Combine(instanceDir, "mods", Folder(m)))
             || (m.Nexus?.Md5 is { Length: > 0 } h && picked.Contains(h));
 
         OptionalItem Row(string sourceId, string sourceName, string json, ModEntry m)
@@ -76,7 +80,7 @@ public static class OptionalCatalog
             {
                 SourceId = sourceId, SourceName = sourceName, SourceJson = json,
                 Name = string.IsNullOrWhiteSpace(m.DisplayName) ? m.InstallAs : m.DisplayName,
-                Bytes = m.Nexus?.FileSize ?? 0, Md5 = m.Nexus?.Md5 ?? "", InstallAs = m.InstallAs,
+                Bytes = m.Nexus?.FileSize ?? 0, Md5 = m.Nexus?.Md5 ?? "", InstallAs = Folder(m),
                 Instruction = note, State = state, Reason = reason,
             };
         }

@@ -119,7 +119,9 @@ public sealed class InstallRunner
             // An add-on repeats the base mods it needs rules against. Those are anchors: already installed, never fetched
             // again, but their rules place the add-on's own mods (AddonPlacement).
             var baseMods = VortexCollectionMapper.Map(baseCollectionJsonPath!, "a-storywealth").Mods;
-            var anchors = AddonPlacement.MarkAnchors(manifest, baseMods, AddonRegistry.Load(instanceDir), instanceDir);
+            var registry = AddonRegistry.Load(instanceDir);
+            var anchors = AddonPlacement.MarkAnchors(manifest, baseMods, registry, instanceDir);
+            AddonPlacement.KeepExistingFolders(manifest, registry, instanceDir);
             var rev = System.Text.RegularExpressions.Regex.Match(collectionJsonPath, @"[\\/]r(\d+)[\\/][^\\/]*$");
             if (rev.Success) manifest.Version = "r" + rev.Groups[1].Value;
             InstallLog.Info("plan", $"add-on \"{manifest.Name}\" {manifest.Version}: {manifest.Mods.Count} mods, {anchors} already installed (anchors), {manifest.Mods.Count - anchors} to install");

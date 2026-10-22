@@ -459,6 +459,32 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- add-on folder names carry the add-on's name
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        string Coll(string name) => "{\"info\":{\"name\":\"" + name + "\"},\"mods\":[{\"name\":\"Cool Mod\",\"version\":\"1\",\"optional\":false,\"domainName\":\"fallout4\",\"phase\":0,\"source\":{\"type\":\"nexus\",\"modId\":5,\"fileId\":6,\"md5\":\"c\",\"fileSize\":1}}]}";
+        string Map1(string name) { var f = Path.Combine(dir, "c.json"); File.WriteAllText(f, Coll(name)); return VortexCollectionMapper.Map(f, "x").Mods[0].InstallAs; }
+        Check("base keeps the plain prefix", Map1("A StoryWealth") == "A Storywealth - Cool Mod", Map1("A StoryWealth"));
+        Check("add-on title is the prefix", Map1("A Storywealth - Atmosphere") == "A Storywealth - Atmosphere - Cool Mod", Map1("A Storywealth - Atmosphere"));
+        Check("a title without the base name gets it added", Map1("Thuggyverse") == "A Storywealth - Thuggyverse - Cool Mod", Map1("Thuggyverse"));
+
+        var f2 = Path.Combine(dir, "c.json"); File.WriteAllText(f2, Coll("A Storywealth - Atmosphere"));
+        var addon = VortexCollectionMapper.Map(f2, "vq4q7d");
+        var inst = Path.Combine(dir, "inst");
+        Directory.CreateDirectory(Path.Combine(inst, "mods", "A Storywealth - Cool Mod"));
+        var reg = new AddonRegistryFile { Addons = [new InstalledAddon { Id = "vq4q7d", Mods = [new InstalledAddonMod { Name = "A Storywealth - Cool Mod", Md5 = "c" }] }] };
+        AddonPlacement.KeepExistingFolders(addon, reg, inst);
+        Check("an add-on installed under the old name keeps its folder", addon.Mods[0].InstallAs == "A Storywealth - Cool Mod", addon.Mods[0].InstallAs);
+        var other = VortexCollectionMapper.Map(f2, "vq4q7d");
+        AddonPlacement.KeepExistingFolders(other, new AddonRegistryFile(), inst);
+        Check("a folder the add-on doesn't own is not taken", other.Mods[0].InstallAs == "A Storywealth - Atmosphere - Cool Mod", other.Mods[0].InstallAs);
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- hash-guided layout repair
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

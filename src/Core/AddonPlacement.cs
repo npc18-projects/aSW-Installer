@@ -18,6 +18,27 @@ public static class AddonPlacement
     public sealed record Result(List<string> Head, List<string> Block, HashSet<string> Hoisted);
 
     /// <summary>
+    /// Add-ons installed before folders carried the add-on's name are named "A Storywealth - Mod". When this add-on's
+    /// registry entry owns such a folder, the mod keeps it instead of being installed a second time under the new name.
+    /// </summary>
+    public static int KeepExistingFolders(AddonManifest addon, AddonRegistryFile registry, string instanceDir)
+    {
+        var mine = registry.Addons.FirstOrDefault(a => a.Id.Equals(addon.AddonId, StringComparison.OrdinalIgnoreCase));
+        if (mine is null) return 0;
+        var owned = new HashSet<string>(mine.Mods.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
+        var n = 0;
+        foreach (var m in addon.Mods.Where(m => !m.IsAnchor))
+        {
+            if (Directory.Exists(Path.Combine(instanceDir, "mods", m.InstallAs))) continue;
+            var old = m.LegacyInstallAs.FirstOrDefault(l => owned.Contains(l) && Directory.Exists(Path.Combine(instanceDir, "mods", l)));
+            if (old is null) continue;
+            m.InstallAs = old;
+            n++;
+        }
+        return n;
+    }
+
+    /// <summary>
     /// Points the add-on's repeats of installed mods at their existing folders and flags them. A repeat is an entry whose
     /// md5 matches a mod of the base list or of another installed add-on AND whose folder is on disk; anything else
     /// (including a base mod the user left out) is installed by the add-on as usual. Returns how many were flagged.
