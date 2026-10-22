@@ -101,6 +101,67 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------- removing add-ons and optional mods ----------
+
+    private string? _armed;
+    private Avalonia.Threading.DispatcherTimer? _armTimer;
+    private string _optNote = "";
+
+    /// <summary>First click arms the button (it asks "sure?" for a few seconds); the second click returns true.</summary>
+    private bool Arm(string key, Button btn, string armedText, string normalText)
+    {
+        if (_armed == key) { _armTimer?.Stop(); _armed = null; btn.Content = normalText; return true; }
+        _armed = key;
+        btn.Content = armedText;
+        _armTimer?.Stop();
+        _armTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+        _armTimer.Tick += (_, _) => { _armTimer!.Stop(); if (_armed == key) { _armed = null; btn.Content = normalText; } };
+        _armTimer.Start();
+        return false;
+    }
+
+    /// <summary>Why a removal can't happen right now, or null. Mod Organizer 2 rewrites the profile when it closes.</summary>
+    private string? RemovalBlocker() =>
+        _installing ? "Wait for the current install to finish."
+        : Process.GetProcesses().Any(p => p.ProcessName.StartsWith("ModOrganizer", StringComparison.OrdinalIgnoreCase))
+            ? "Close Mod Organizer 2 first. It rewrites your profile when it closes and would undo the removal."
+        : null;
+
+    private HashSet<string> BaseModNames(bool requiredOnly) =>
+        new((_manifest?.Mods ?? []).Where(m => !requiredOnly || !m.IsOptional).Select(m => m.InstallAs), StringComparer.OrdinalIgnoreCase);
+
+    private async void OnAddDetRemove(object? sender, RoutedEventArgs e)
+    {
+        if (_addonDetailCard is not { } c || InstallState.GetInstallDir() is not { } dir) return;
+        if (RemovalBlocker() is { } why) { TxtAddDetStatus.Text = why; return; }
+        var names = BaseModNames(requiredOnly: false);
+        var (del, kept) = Removal.PlanAddon(dir, c.Slug, names);
+        if (!Arm("addon:" + c.Slug, BtnAddDetRemove, $"Remove {del.Count} mods? Click again", "Remove"))
+        {
+            TxtAddDetStatus.Text = $"This deletes {del.Count} mod folders" + (kept.Count > 0 ? $" and keeps {kept.Count} that something else needs" : "")
+                + ". Downloaded archives stay. Click Remove again to confirm.";
+            return;
+        }
+        BtnAddDetRemove.IsEnabled = false;
+        var res = await Task.Run(() => Removal.RemoveAddon(dir, c.Slug, names));
+        BtnAddDetRemove.IsEnabled = true;
+        RefreshAddons();
+        ShowAddonDetail(new AddonCard(c.Slug, c.Name, c.Author, c.Version, false, c.HeaderImageUrl, null, c.Stats));
+        TxtAddDetStatus.Text = res.Refused ?? $"Removed. {res.FoldersDeleted} mod folders deleted ({SizeText(res.BytesFreed)})."
+            + (res.Kept.Count > 0 ? $" {res.Kept.Count} kept because something else needs them." : "");
+    }
+
+    private async void RemoveOptionalAsync(OptionalItem it, Button btn)
+    {
+        if (RemovalBlocker() is { } why) { _optNote = why; UpdateOptSummary(); return; }
+        if (InstallState.GetInstallDir() is not { } dir) return;
+        if (!Arm("opt:" + it.SourceId + it.Md5, btn, "Sure?", "Remove")) { _optNote = $"Click Remove again to delete {it.Name}."; UpdateOptSummary(); return; }
+        var required = BaseModNames(requiredOnly: true);
+        var res = await Task.Run(() => Removal.RemoveOptional(dir, it.SourceId == OptionalCatalog.BaseId ? null : it.SourceId, it.InstallAs, it.Md5, required));
+        _optNote = res.Refused ?? $"Removed {it.Name} ({SizeText(res.BytesFreed)}).";
+        RefreshOptionalTab();
+    }
+
     // ---------- support report ----------
 
     private async void OnSaveReport(object? sender, RoutedEventArgs e)
@@ -304,7 +365,7 @@ public partial class MainWindow : Window
                 if (i == 8)
                 {
                     var c0 = _liveAddons?.FirstOrDefault(c => c.Slug == "vq4q7d") ?? _liveAddons?.FirstOrDefault();
-                    if (c0 is not null) ShowAddonDetail(new AddonCard(c0.Slug, c0.Name, c0.Author, $"r{c0.LatestRevision}", false, c0.HeaderImageUrl, null, c0.Stats));
+                    if (c0 is not null) ShowAddonDetail(new AddonCard(c0.Slug, c0.Name, c0.Author, $"r{c0.LatestRevision}", false, c0.HeaderImageUrl, (InstallState.GetInstallDir() is { } idir ? AddonRegistry.Load(idir).Addons.FirstOrDefault(a => a.Id == c0.Slug)?.Revision : null), c0.Stats));
                     await Task.Delay(1500);
                 }
                 if (i == 3) { TxtPhase.Text = "Downloading mod 42 of 911"; TxtItem.Text = "Sample Mod"; TxtSpeed.Text = "12.4 MB/s"; TxtCounts.Text = "41/911"; PbOverall.Value = 4.5; OnLogLine("sample log line"); FlushLog(); }
@@ -653,6 +714,8 @@ public partial class MainWindow : Window
         TxtAddDetBy.Text = $"By {c.Author} - Revision {c.Version}";
         TxtAddDetSummary.Text = _liveSummary.GetValueOrDefault(c.Slug, "");
         TxtAddDetStats.Text = c.Stats is { } stats ? StatsDetail(stats) : "";
+        BtnAddDetRemove.IsVisible = c.InstalledRev is not null;
+        BtnAddDetRemove.Content = "Remove";
         _addonJsonPath = null;           // belongs to whichever add-on was last fetched
         PnlAddDetManual.IsVisible = false;
         var baseInstalled = InstallState.GetInstallDir() is not null;
@@ -1419,7 +1482,19 @@ public partial class MainWindow : Window
                 var note = string.Join("  ", new[] { it.State == OptionState.Installed ? "Installed." : null, it.Reason.Length > 0 ? it.Reason + "." : null, it.Instruction }
                     .Where(s => !string.IsNullOrWhiteSpace(s)));
                 var row = new StackPanel { Opacity = it.State == OptionState.NotApplicable ? 0.45 : 1 };
-                row.Children.Add(box);
+                if (it.State == OptionState.Installed && it.GroupId.Length == 0 && it.Md5.Length > 0)
+                {
+                    // an installed option can be taken out again (two clicks: Remove, then Sure?)
+                    var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+                    var rm = new Button { Content = "Remove", FontSize = 12, Padding = new Avalonia.Thickness(12, 3), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                    var item = it;
+                    rm.Click += (_, _) => RemoveOptionalAsync(item, rm);
+                    Grid.SetColumn(rm, 1);
+                    line.Children.Add(box);
+                    line.Children.Add(rm);
+                    row.Children.Add(line);
+                }
+                else row.Children.Add(box);
                 if (note.Length > 0)
                     row.Children.Add(new TextBlock { Text = note, FontSize = 12, Foreground = grey, TextWrapping = TextWrapping.Wrap, Margin = new Avalonia.Thickness(28, -2, 0, 8) });
                 body.Children.Add(row);
@@ -1433,7 +1508,7 @@ public partial class MainWindow : Window
     {
         var ticked = _optRows.Where(r => r.Box.IsChecked == true && r.Item.State == OptionState.Available).Select(r => r.Item).ToList();
         BtnOptInstall.IsEnabled = ticked.Count > 0 && !_installing;
-        TxtOptSummary.Text = ticked.Count == 0 ? "" : $"{ticked.Count} selected  ·  {SizeText(ticked.Sum(i => i.Bytes))} to download";
+        TxtOptSummary.Text = ticked.Count == 0 ? _optNote : $"{ticked.Count} selected  ·  {SizeText(ticked.Sum(i => i.Bytes))} to download";
     }
 
     private void OnOptInstall(object? sender, RoutedEventArgs e)

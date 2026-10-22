@@ -19,6 +19,8 @@ public sealed class OptionalItem
     public OptionState State { get; init; }
     /// <summary>Why a not-applicable option is greyed out.</summary>
     public string Reason { get; init; } = "";
+    /// <summary>The mod folder name in the instance; empty for a group row.</summary>
+    public string InstallAs { get; init; } = "";
     /// <summary>md5 of the mod; empty for a group row.</summary>
     public string Md5 { get; init; } = "";
     /// <summary>Set for a base group row.</summary>
@@ -74,7 +76,7 @@ public static class OptionalCatalog
             {
                 SourceId = sourceId, SourceName = sourceName, SourceJson = json,
                 Name = string.IsNullOrWhiteSpace(m.DisplayName) ? m.InstallAs : m.DisplayName,
-                Bytes = m.Nexus?.FileSize ?? 0, Md5 = m.Nexus?.Md5 ?? "",
+                Bytes = m.Nexus?.FileSize ?? 0, Md5 = m.Nexus?.Md5 ?? "", InstallAs = m.InstallAs,
                 Instruction = note, State = state, Reason = reason,
             };
         }

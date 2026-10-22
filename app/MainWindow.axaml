@@ -230,6 +230,7 @@
                     <TextBlock x:Name="TxtAddDetStatus" Classes="sub" FontSize="12" Foreground="#B8BEC9"/>
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <Button x:Name="BtnAddDetInstall" Classes="primary" Click="OnAddDetInstall">Install</Button>
+                        <Button x:Name="BtnAddDetRemove" Click="OnAddDetRemove" IsVisible="False">Remove</Button>
                         <Button Click="OnAddDetBack">Back</Button>
                     </StackPanel>
                     <StackPanel x:Name="PnlAddDetManual" Orientation="Horizontal" Spacing="12" IsVisible="False">

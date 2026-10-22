@@ -708,6 +708,66 @@ foreach (var sample in FindSamples())
     finally { InstallState.UseDirectory(null); try { Directory.Delete(state, true); } catch { } }
 }
 
+// ---- removing an add-on or one optional mod
+{
+    var inst = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var profile = Path.Combine(inst, "profiles", "A StoryWealth"); Directory.CreateDirectory(profile);
+        void MakeMod(string name, params string[] plugins)
+        {
+            var d = Path.Combine(inst, "mods", name); Directory.CreateDirectory(d);
+            File.WriteAllText(Path.Combine(d, "data.bin"), "12345");
+            foreach (var p in plugins) File.WriteAllText(Path.Combine(d, p), "p");
+        }
+        MakeMod("Base A", "BaseA.esp"); MakeMod("Add One", "AddOne.esp"); MakeMod("Add Two"); MakeMod("Shared", "Shared.esp"); MakeMod("Opt Pick", "OptPick.esp");
+        MakeMod("Base Opt", "BaseOpt.esp"); MakeMod("Y1", "Y1.esp");
+        MakeMod("X_separator");   // folder MO2 uses for the separator
+        File.WriteAllText(Path.Combine(inst, "mods", "X_separator", "meta.ini"), "[General]\nnotes=" + Mo2InstanceWriter.SeparatorMarker + "\n");
+        File.WriteAllLines(Path.Combine(profile, "modlist.txt"), ["# h", "+Y1", "-Y_separator", "+Opt Pick", "+Add Two", "+Shared", "+Add One", "-X_separator", "+Base Opt", "+Base A"]);
+        File.WriteAllLines(Path.Combine(profile, "plugins.txt"), ["# h", "*BaseA.esp", "*BaseOpt.esp", "*AddOne.esp", "*Shared.esp", "*OptPick.esp", "*Y1.esp"]);
+        File.WriteAllLines(Path.Combine(profile, "loadorder.txt"), ["# h", "BaseA.esp", "BaseOpt.esp", "AddOne.esp", "Shared.esp", "OptPick.esp", "Y1.esp"]);
+        Directory.CreateDirectory(Path.Combine(inst, ".asw")); File.WriteAllText(Path.Combine(inst, ".asw", "x.collection.json"), "{}");
+        AddonRegistry.Save(inst, new AddonRegistryFile
+        {
+            BaseOptional = ["mdbase"],
+            Addons =
+            [
+                new InstalledAddon { Id = "x", Name = "Add-on X", Separator = "X", Optional = ["mdopt"], Mods = [new() { Name = "Add One", Md5 = "m1" }, new() { Name = "Add Two", Md5 = "m2" }, new() { Name = "Shared", Md5 = "ms" }, new() { Name = "Opt Pick", Md5 = "mdopt" }] },
+                new InstalledAddon { Id = "y", Name = "Add-on Y", Separator = "Y", Mods = [new() { Name = "Shared", Md5 = "ms" }, new() { Name = "Y1", Md5 = "m3" }] },
+            ],
+        });
+        var baseNames = new HashSet<string>(["Base A", "Base Opt"], StringComparer.OrdinalIgnoreCase);
+
+        var (plan, planKept) = Removal.PlanAddon(inst, "x", baseNames);
+        Check("the plan lists what goes and what stays, without touching anything",
+            J(plan.OrderBy(x => x)) == "Add One | Add Two | Opt Pick" && planKept.Count == 1 && planKept[0].StartsWith("Shared") && Directory.Exists(Path.Combine(inst, "mods", "Add One")));
+
+        var optBlocked = Removal.RemoveOptional(inst, null, "Shared", "ms", baseNames);
+        Check("an optional mod another add-on needs is refused", optBlocked.Refused is not null && Directory.Exists(Path.Combine(inst, "mods", "Shared")));
+        var optBase = Removal.RemoveOptional(inst, null, "Base Opt", "mdbase", baseNames);
+        Check("removing a base optional mod deletes its folder, line and plugin, and forgets the pick",
+            optBase.FoldersDeleted == 1 && !Directory.Exists(Path.Combine(inst, "mods", "Base Opt"))
+            && !File.ReadAllText(Path.Combine(profile, "modlist.txt")).Contains("Base Opt") && !File.ReadAllText(Path.Combine(profile, "plugins.txt")).Contains("BaseOpt.esp")
+            && AddonRegistry.Load(inst).BaseOptional.Count == 0);
+
+        var r = Removal.RemoveAddon(inst, "x", baseNames);
+        var ml = File.ReadAllText(Path.Combine(profile, "modlist.txt")); var pl = File.ReadAllText(Path.Combine(profile, "plugins.txt")); var lo = File.ReadAllText(Path.Combine(profile, "loadorder.txt"));
+        Check("removing an add-on deletes its own mods and separator, keeps shared and base mods",
+            r.FoldersDeleted == 3 && !Directory.Exists(Path.Combine(inst, "mods", "Add One")) && !Directory.Exists(Path.Combine(inst, "mods", "Opt Pick")) && !Directory.Exists(Path.Combine(inst, "mods", "X_separator"))
+            && Directory.Exists(Path.Combine(inst, "mods", "Shared")) && Directory.Exists(Path.Combine(inst, "mods", "Base A")) && r.Kept.Count == 1, J(r.Kept));
+        Check("its lines leave modlist.txt, the others stay",
+            !ml.Contains("Add One") && !ml.Contains("Add Two") && !ml.Contains("Opt Pick") && !ml.Contains("X_separator") && ml.Contains("Shared") && ml.Contains("Y1") && ml.Contains("Base A"), ml);
+        Check("only plugins the removed mods provided leave plugins.txt and loadorder.txt",
+            !pl.Contains("AddOne.esp") && !pl.Contains("OptPick.esp") && pl.Contains("Shared.esp") && pl.Contains("Y1.esp") && pl.Contains("BaseA.esp") && !lo.Contains("AddOne.esp") && lo.Contains("Shared.esp"), pl);
+        var reg = AddonRegistry.Load(inst);
+        Check("the record, and the kept copy of its collection list, are gone; the other add-on is untouched",
+            reg.Addons.Count == 1 && reg.Addons[0].Id == "y" && !File.Exists(Path.Combine(inst, ".asw", "x.collection.json")));
+        Check("removing something that isn't installed is refused", Removal.RemoveAddon(inst, "x", baseNames).Refused is not null);
+    }
+    finally { try { Directory.Delete(inst, true); } catch { } }
+}
+
 // ---- support report: one zip with logs, lists and a summary; the API key never leaves the PC
 {
     var root = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
