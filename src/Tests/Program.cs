@@ -508,6 +508,29 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- FOMOD config in UTF-16 with a UTF-8 declaration, and wrapper folders two levels deep
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        var xml = Path.Combine(dir, "ModuleConfig.xml");
+        File.WriteAllText(xml, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><config><moduleName>x</moduleName></config>", System.Text.Encoding.Unicode);
+        Check("a UTF-16 ModuleConfig with a UTF-8 declaration loads", FomodResolver.LoadXml(xml).Root?.Name.LocalName == "config");
+        var mod = Path.Combine(dir, "mod");
+        Directory.CreateDirectory(Path.Combine(mod, "Replacer-96858-2", "AdVictoriam Replacer"));
+        File.WriteAllText(Path.Combine(mod, "Replacer-96858-2", "AdVictoriam Replacer", "thing.esp"), "x");
+        Mo2InstanceWriter.StripWrapper(mod, "t");
+        Check("a wrapper inside a wrapper is stripped too", File.Exists(Path.Combine(mod, "thing.esp")), string.Join(",", Directory.GetFileSystemEntries(mod)));
+        var real = Path.Combine(dir, "real");
+        Directory.CreateDirectory(Path.Combine(real, "Wrapper", "Meshes", "a"));
+        File.WriteAllText(Path.Combine(real, "Wrapper", "Meshes", "a", "x.nif"), "x");
+        Mo2InstanceWriter.StripWrapper(real, "t");
+        Check("real game folders are never mistaken for a wrapper", File.Exists(Path.Combine(real, "Meshes", "a", "x.nif")));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- plugins whose master isn't installed are turned off
 {
     var infos = new Dictionary<string, PluginOrder.Info>(StringComparer.OrdinalIgnoreCase)

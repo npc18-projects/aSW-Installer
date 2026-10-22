@@ -15,6 +15,16 @@ public static class FomodResolver
 
     public sealed record InstallPlan(List<FileMapping> Files, List<string> Issues);
 
+    /// <summary>
+    /// ModuleConfig files are often UTF-16 (byte-order mark) while their declaration says UTF-8; the XML reader refuses that
+    /// mix, so decode by the byte-order mark ourselves and parse the text.
+    /// </summary>
+    public static XDocument LoadXml(string path)
+    {
+        using var sr = new StreamReader(path, detectEncodingFromByteOrderMarks: true);
+        return XDocument.Parse(sr.ReadToEnd());
+    }
+
     /// <summary>Evaluates the ModuleConfig against the collection's choices.
     /// choicesJson is the raw "choices" object from the collection mod entry.</summary>
     public static InstallPlan Resolve(string archivePath, string choicesJson,
@@ -36,7 +46,7 @@ public static class FomodResolver
                 return new InstallPlan([], issues);
             }
 
-            var root = XDocument.Load(cfgPath).Root
+            var root = LoadXml(cfgPath).Root
                 ?? throw new InvalidDataException("empty ModuleConfig.xml");
             var ns = root.Name.Namespace;
             var files = new List<FileMapping>();

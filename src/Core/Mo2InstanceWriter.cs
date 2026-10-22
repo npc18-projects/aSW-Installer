@@ -629,6 +629,7 @@ public static partial class Mo2InstanceWriter
                 }
                 Directory.Delete(inner, true);
                 InstallLog.Info("mo2", $"{label}: stripped wrapper folder '{innerName}' (Vortex convention)");
+                StripWrapper(dir, label);   // "Mod-123-1/Replacer/plugin.esp": the next folder down can be a wrapper too
                 return;
             }
         }
