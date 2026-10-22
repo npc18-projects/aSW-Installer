@@ -33,7 +33,7 @@ public sealed record OptionalJob(string SourceId, string SourceName, string Json
 public static class OptionalCatalog
 {
     public const string BaseId = "base";
-    private const string BaseAddonId = "a-storywealth";
+    public const string BaseAddonId = "a-storywealth";
 
     /// <param name="baseJson">The base list's collection.json.</param>
     /// <param name="addonJson">collection.json of an installed add-on (instance copy, else cache); null when it cannot be found.</param>

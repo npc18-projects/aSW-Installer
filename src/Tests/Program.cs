@@ -490,6 +490,24 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- curated mods the collection lists as required but that need SS2 become optional
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        var f = Path.Combine(dir, "c.json");
+        File.WriteAllText(f, "{\"info\":{\"name\":\"aSW-Faction Addon\"},\"mods\":[" +
+            "{\"name\":\"IT_SS2\",\"version\":\"1\",\"optional\":false,\"domainName\":\"fallout4\",\"phase\":0,\"source\":{\"type\":\"nexus\",\"modId\":1,\"fileId\":1,\"md5\":\"b51ff46b9456c95ae1986353e6d2f9b9\",\"fileSize\":1}}," +
+            "{\"name\":\"Other\",\"version\":\"1\",\"optional\":false,\"domainName\":\"fallout4\",\"phase\":0,\"source\":{\"type\":\"nexus\",\"modId\":2,\"fileId\":2,\"md5\":\"zz\",\"fileSize\":1}}]}");
+        var faction = VortexCollectionMapper.Map(f, "0shihl");
+        Check("the Faction SS2 mod is optional", faction.Mods[0].IsOptional && !faction.Mods[1].IsOptional);
+        Check("only for that add-on", !VortexCollectionMapper.Map(f, "other").Mods[0].IsOptional);
+        Check("the shipped list names the SS2 group", AddonOptions.Load().Any(e => e.MakeOptional && e.NeedsGroups.Contains("ss2")));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- plugins whose master isn't installed are turned off
 {
     var infos = new Dictionary<string, PluginOrder.Info>(StringComparer.OrdinalIgnoreCase)

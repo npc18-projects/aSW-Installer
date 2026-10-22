@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6
+
+- Faction add-on: the SS2 mods (IT_SS2, SS2 and ITOv2 Integration Patch, RGE Concord SS2 Patch) are optional. They install when the SS2 group is installed, and otherwise show greyed out on the Optional tab.
+
 ## 0.4.5
 
 - Plugins whose master isn't installed (an optional mod, or the SS2 group left out) are now turned off, so MO2 no longer warns about missing masters. The log lists them.

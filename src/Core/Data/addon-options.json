@@ -3,6 +3,9 @@
   "Note": "Curated facts the collections cannot express: which other add-on (slug) or base group an optional mod needs. The Optional tab greys an option out until that is installed. Seeded only from instructions the collection authors wrote. Override with <app>/order/addon-options.json. Add-on slugs: yilurh = Thuggyverse, yisqmu = Arms & Armaments, 0shihl = Faction.",
   "Names": { "yilurh": "Thuggyverse", "yisqmu": "Arms & Armaments", "0shihl": "Faction" },
   "Entries": [
+    { "Addon": "0shihl", "Name": "IT_SS2", "Md5": "b51ff46b9456c95ae1986353e6d2f9b9", "NeedsAddons": [], "NeedsGroups": ["ss2"], "Note": "Needs Sim Settlements 2.", "MakeOptional": true },
+    { "Addon": "0shihl", "Name": "SS2 and ITOv2 Integration Patch", "Md5": "44f1879b93be2556239e760785cc5d10", "NeedsAddons": [], "NeedsGroups": ["ss2"], "Note": "Needs Sim Settlements 2.", "MakeOptional": true },
+    { "Addon": "0shihl", "Name": "4estGimp - RGE Concord SS2 Patch", "Md5": "8bfe2450a1a597bcd85b20bcb13c6522", "NeedsAddons": [], "NeedsGroups": ["ss2"], "Note": "Needs Sim Settlements 2.", "MakeOptional": true },
     { "Addon": "wrbrop", "Name": "Project Valkyrie", "Md5": "a0791cb8b0b466346530de087c127d70", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "" },
     { "Addon": "wrbrop", "Name": "Outcasts and Remnants - Quest Mod Plus", "Md5": "0e3aa1fbbfb4a674d3f9cc7a0527729e", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "" },
     { "Addon": "wrbrop", "Name": "Depravity - A Harmless Bit of Fun", "Md5": "819c3aca7b05cb4ab30af851fcaceceb", "NeedsAddons": ["yilurh"], "NeedsGroups": [], "Note": "" },

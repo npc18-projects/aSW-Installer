@@ -194,6 +194,16 @@ public sealed class InstallRunner
             StringComparer.OrdinalIgnoreCase);
         var pickedNames = installable.Where(m => m.Nexus?.Md5 is { Length: > 0 } h && pickedOptional.Contains(h)).Select(m => m.InstallAs).ToList();
         excludedMods.ExceptWith(pickedNames);
+        if (isAddon)
+        {
+            // Mods the collection lists as required but that need a base group (SS2) go in when that group is installed.
+            var reg = AddonRegistry.Load(instanceDir);
+            var baseGroups = reg.BaseGroups ?? OptionalGroups.Defaults(OptionalGroups.Load(OptionalCatalog.BaseAddonId));
+            var withGroup = AddonOptions.Load().Where(e => e.MakeOptional && e.Addon.Equals(addonId, StringComparison.OrdinalIgnoreCase)
+                && e.NeedsGroups.Count > 0 && e.NeedsGroups.All(g => baseGroups.Contains(g, StringComparer.OrdinalIgnoreCase))).Select(e => e.Md5).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var auto = installable.Where(m => m.Nexus?.Md5 is { Length: > 0 } h && withGroup.Contains(h)).Select(m => m.InstallAs).ToList();
+            excludedMods.ExceptWith(auto);
+        }
         if (pickedNames.Count > 0) InstallLog.Info("config", $"{pickedNames.Count} optional mod(s) picked: {string.Join(", ", pickedNames.Take(5))}{(pickedNames.Count > 5 ? ", …" : "")}");
         var coreMods = installable.Where(m => !excludedMods.Contains(m.InstallAs)).ToList();
         InstallLog.Info("config", $"optional groups: installing [{string.Join(", ", selectedGroups)}]; leaving out {excludedMods.Count} mod(s) ({excludedMods.Sum(n => manifest.Mods.First(m => m.InstallAs == n).Nexus?.FileSize ?? 0) / 1_000_000_000.0:F1} GB)");

@@ -31,6 +31,11 @@ public sealed class AddonOptionEntry
     public List<string> NeedsGroups { get; set; } = [];
     /// <summary>Shown to the user next to the option.</summary>
     public string Note { get; set; } = "";
+    /// <summary>
+    /// The collection lists this mod as required, but it only works with what NeedsGroups / NeedsAddons names. It is treated
+    /// as optional: installed by default when that requirement is installed, otherwise offered (greyed out) on the Optional tab.
+    /// </summary>
+    public bool MakeOptional { get; set; }
 }
 
 public static class AddonOptions

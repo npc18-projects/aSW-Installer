@@ -35,6 +35,7 @@ public static class VortexCollectionMapper
         };
 
         var prefix = FolderPrefix(manifest.Name);
+        var forcedOptional = AddonOptions.Load().Where(e => e.MakeOptional && e.Addon.Equals(addonId, StringComparison.OrdinalIgnoreCase)).ToList();
         foreach (var m in root.GetProperty("mods").EnumerateArray())
         {
             var src = m.GetProperty("source");
@@ -93,6 +94,8 @@ public static class VortexCollectionMapper
             if (m.TryGetProperty("patches", out var pt) && pt.ValueKind == JsonValueKind.Object)
                 entry.PatchesJson = pt.GetRawText();
 
+            if (!entry.IsOptional && forcedOptional.Any(e => e.Md5.Length > 0 && e.Md5.Equals(entry.Nexus.Md5, StringComparison.OrdinalIgnoreCase)))
+                entry.IsOptional = true;
             manifest.Mods.Add(entry);
         }
 
