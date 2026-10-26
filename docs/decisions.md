@@ -8,8 +8,10 @@ The installer builds a portable MO2 instance with its own copy of the game. Your
 ## Nexus only
 Collections and add-ons come from Nexus, and downloads use the Nexus API. Other sites need logins or have no API, so they stay manual (see the roadmap).
 
-## The Nexus key is stored with Windows encryption
-The personal API key is encrypted with Windows' per-user encryption (DPAPI) and kept in `%LOCALAPPDATA%\AStoryWealth\nexus-api-key.secret`. It only decrypts for the same Windows user on the same PC. It is only sent to Nexus. It is removed from reports. Sign out deletes it. Once Nexus approves the app, sign-in goes through the browser and hands the key to the same store.
+## Sign-in is Nexus OAuth (PKCE), not a pasted key
+Nexus requires OAuth for apps that download files, and personal keys aren't allowed in public apps. The installer is a public desktop app, so it uses OAuth 2.0 with PKCE and no client secret. Sign in opens the browser, Nexus answers on `http://127.0.0.1:<port>/callback`, and the app swaps the code for an access token and a refresh token. The client id and port are in `src/Core/Data/nexus-oauth.json`. Until Nexus issues our own client id, the guide's `public_test` is in it.
+
+The tokens are encrypted with Windows' per-user encryption (DPAPI) and kept in `%LOCALAPPDATA%\AStoryWealth\nexus-oauth.secret`. They only decrypt for the same Windows user on the same PC, and they are only sent to the Nexus API host (never to a download address). The access token is renewed with the refresh token when it runs out. If Nexus refuses the refresh (400), the user is signed out. A Nexus outage is not a sign-out. Sign out deletes the tokens and asks Nexus to revoke them. They are removed from reports. An old saved personal key is deleted when the app starts. `ASW_NEXUS_KEY` still works for developers.
 
 ## Updates are signed
 The app updates itself from GitHub releases. Each zip has a signature made with a private key that is never committed, and the app only accepts updates that match the public key shipped inside it. Test builds are GitHub pre-releases, and only people who tick "Include test builds" see them.

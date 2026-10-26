@@ -34,4 +34,4 @@ The Optional tab lists the optional mods and groups of the base list and of inst
 
 - Removing an installed add-on or optional mod.
 - A remote, signed metadata channel, so ordering, add-on rules and curated options can change without a new build. A Curator section would edit and publish it. Publishing collections from the installer depends on what the Nexus API allows.
-- Nexus browser sign-in. Nexus has to verify the app first. Until then the personal API key is used.
+- Nexus sign-in is OAuth in the browser. It uses Nexus's test client until the app is registered and gets its own client id.

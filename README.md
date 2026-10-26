@@ -15,7 +15,7 @@ A free, open-source Windows installer for the A StoryWealth Fallout 4 collection
 ## Getting started
 
 1. Download the zip from the [latest release](https://github.com/npc18-projects/aSW-Installer/releases/latest), unzip it anywhere and run `AStoryWealth.Installer.exe`. Windows may warn about an unrecognised app, because the exe isn't code-signed. Click "More info", then "Run anyway".
-2. Sign in to Nexus. For now this opens your Nexus API key page and asks you to paste the key (`nexusmods.com/settings/api-keys`). It is stored encrypted on your PC and only sent to Nexus.
+2. Press **Sign in to Nexus**. Your browser opens on Nexus, you allow the app, and you're back. The sign-in is stored encrypted on your PC and only sent to Nexus. You can take access away any time on Nexus.
 3. Pick your folders and install. You need about 150 GB free.
 4. In Mod Organizer 2, choose **F4SE** in the drop-down at the top right and press Run. The game only starts through F4SE.
 

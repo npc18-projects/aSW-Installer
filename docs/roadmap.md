@@ -16,7 +16,7 @@ A finished install has no disabled mods and no disabled plugins, and the Install
 
 - Fix what the beta testers find.
 - Report zip hides the Windows user, PC name and Nexus account.
-- Nexus registration, so people can sign in with Nexus instead of pasting a key.
+- Nexus sign-in through OAuth is built on Nexus's test client. Next: test it with real accounts, then register the app and switch to our own client id.
 - The LK Modular Beret rule for the Faction add-on, once the curator answers.
 
 ## Next (0.6)

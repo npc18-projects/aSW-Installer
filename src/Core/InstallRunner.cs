@@ -49,7 +49,7 @@ public sealed class InstallRunner
         InstallLog.Written += line => UiLogLine?.Invoke(line);
     }
 
-    public async Task RunAsync(string collectionJsonPath, string addonId, string apiKey,
+    public async Task RunAsync(string collectionJsonPath, string addonId, NexusCredential apiKey,
         string instanceDir, string gamePath, IProgress<ProgressInfo>? progress = null,
         CancellationToken ct = default, bool stockGame = false, string? reuseDir = null,
         string? downloadsDir = null, InstallState.ResumeInfo? resume = null,
@@ -828,7 +828,7 @@ if (numbered >= 1) dumpSignature = true;
         private readonly IProgress<ProgressInfo>? _progress;
         private readonly CancellationToken _ct;
 
-        public NexusApiProxy(string key, IProgress<ProgressInfo>? progress, CancellationToken ct)
+        public NexusApiProxy(NexusCredential key, IProgress<ProgressInfo>? progress, CancellationToken ct)
         {
             _inner = new NexusApiClient(key);
             _progress = progress;

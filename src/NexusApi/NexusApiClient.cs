@@ -21,13 +21,17 @@ public sealed class NexusApiClient : IDisposable
         (System.Reflection.Assembly.GetEntryAssembly()?.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion ?? "0.0.0").Split('+')[0];
 
-    public NexusApiClient(string apiKey, string? appVersion = null)
+    /// <summary>A personal API key. Developers only; the app signs in with OAuth.</summary>
+    public NexusApiClient(string apiKey, string? appVersion = null) : this(new ApiKeyCredential(apiKey), null, appVersion) { }
+
+    /// <param name="credential">Added to every request for the Nexus API host (never to a download address).</param>
+    /// <param name="inner">The handler underneath, so tests can stand in for the network.</param>
+    public NexusApiClient(NexusCredential credential, HttpMessageHandler? inner = null, string? appVersion = null)
     {
         appVersion ??= AppVersion;
-        _http = new HttpClient();
+        _http = new HttpClient(new CredentialHandler(credential, inner ?? new HttpClientHandler()));
         _http.BaseAddress = new Uri(BaseUrl);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _http.DefaultRequestHeaders.Add("apikey", apiKey);
         // Nexus requires identifying headers or returns 409
         _http.DefaultRequestHeaders.Add("Application-Version", appVersion);
         _http.DefaultRequestHeaders.UserAgent.ParseAdd($"aSWInstaller/{appVersion} (+https://github.com/npc18-projects/aSW-Installer)");

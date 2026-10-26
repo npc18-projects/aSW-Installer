@@ -56,7 +56,7 @@ The Optional tab greys an option out until every add-on in `NeedsAddons` is inst
 
 | Variable | What it does |
 |---|---|
-| `ASW_NEXUS_KEY` | Your Nexus personal API key. Overrides the key saved in Settings. |
+| `ASW_NEXUS_KEY` | A Nexus personal API key, for developers only. Used instead of the Nexus sign-in. |
 | `ASW_7Z` | Full path to `7z.exe` when it isn't in a standard place |
 | `ASW_UI_SHOT`, `ASW_UI_SIZE` | Development only. Renders every page to PNG files in that folder, then exits. `WxH` sets the window size. |
 

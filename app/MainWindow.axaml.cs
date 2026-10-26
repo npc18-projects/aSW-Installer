@@ -16,7 +16,9 @@ public partial class MainWindow : Window
     private const string AddonId = "a-storywealth";
     private const string NexusCollectionUrl = "https://www.nexusmods.com/games/fallout4/collections/5atq9t";
     private const string DiscordUrl = "https://discord.gg/storywealth";
-    private string? _apiKey;
+    private NexusCredential? _cred;
+    private NexusSession _session = null!;
+    private CancellationTokenSource? _signInCts;
     private InstallState.ResumeInfo? _resume;
     private bool _installing;
     private string? _resumeJsonPath;
@@ -29,7 +31,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         BuildOptionalGroups();
-        _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY") ?? SecretStore.Load("nexus-api-key");
+        try { SecretStore.Delete("nexus-api-key"); } catch { }   // a saved personal key from an older build: not used any more
+        _session = new NexusSession(NexusOAuthConfig.Load(), new DpapiTokenStore());
+        _cred = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY") is { Length: > 0 } devKey ? new ApiKeyCredential(devKey) : _session.IsSignedIn ? _session : null;
         InstallRunner.UiLogLine += OnLogLine;
         _logTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
         _logTimer.Tick += (_, _) => FlushLog();
@@ -182,7 +186,7 @@ public partial class MainWindow : Window
         var path = file.Path.LocalPath;
         var ctx = new ReportContext(_version, InstallState.GetInstallDir(), GameDir() is { Length: > 0 } g ? g : null,
             string.IsNullOrWhiteSpace(TxtDownloadsDir.Text) ? null : TxtDownloadsDir.Text.Trim(),
-            RbStockGame.IsChecked, _signedIn ? _authPremium : null, InstallState.GetResume() is not null, _apiKey, _nexusName);
+            RbStockGame.IsChecked, _signedIn ? _authPremium : null, InstallState.GetResume() is not null, null, _nexusName, _cred?.Secrets.ToList());
         try
         {
             await Task.Run(() => ReportBuilder.Build(path, ctx));
@@ -818,14 +822,14 @@ public partial class MainWindow : Window
     private bool _addonInstall;
     private async void StartAddonGrab()
     {
-        if (_addonGrabbed || _apiKey is null) return;
+        if (_addonGrabbed || _cred is null) return;
         _addonGrabbed = true;
         TxtAddonsStatus.Text = "Checking for add-ons…";
         TxtAddonsStatus.IsVisible = true;
         try
         {
             var prog = new Progress<string>(s => TxtAddonsStatus.Text = s);
-            _liveAddons = await AddonGrabber.ListAsync(_apiKey, prog);
+            _liveAddons = await AddonGrabber.ListAsync(_cred, prog);
             _liveSummary = _liveAddons.ToDictionary(c => c.Slug, c => c.Summary);
             TxtAddonsStatus.IsVisible = false;
         }
@@ -960,7 +964,7 @@ public partial class MainWindow : Window
             .Where(a => selected == "All authors" || string.Equals(a.Author, selected, StringComparison.OrdinalIgnoreCase))
             .Where(a => TglAddonsUpdate.IsChecked != true || a.UpdateAvailable)
             .ToList();
-        var listing = _apiKey != null && _liveAddons is null && _addonGrabbed; // still fetching the list
+        var listing = _cred != null && _liveAddons is null && _addonGrabbed; // still fetching the list
         TxtAddonsEmpty.Text = cards.Count == 0
             ? (listing ? "" : "No add-ons are available yet.")
             : rows.Count == 0 ? "No add-ons match this filter." : "";
@@ -1045,7 +1049,7 @@ public partial class MainWindow : Window
             : c.UpdateAvailable ? $"Installed ({c.InstalledRev}). A newer revision is available."
             : c.InstalledRev is not null ? $"Installed ({c.InstalledRev}). Installing again re-applies it." : "";
         BtnAddDetInstall.Content = c.UpdateAvailable ? "Update" : c.InstalledRev is not null ? "Reinstall" : "Install";
-        BtnAddDetInstall.IsEnabled = baseInstalled && _apiKey != null && _collectionPath != null;
+        BtnAddDetInstall.IsEnabled = baseInstalled && _cred != null && _collectionPath != null;
         _ = LoadImageAsync(ImgAddDet, c.HeaderImageUrl, "addon-" + c.Slug);
         ShowPage(8);
     }
@@ -1082,7 +1086,7 @@ public partial class MainWindow : Window
     /// <summary>One button: fetch the add-on's collection (Premium) if needed, then install it on top of the base list.</summary>
     private async void OnAddDetInstall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (_addonDetailCard is not { } card || _collectionPath is null || _apiKey is null) return;
+        if (_addonDetailCard is not { } card || _collectionPath is null || _cred is null) return;
         if (InstallState.GetInstallDir() is null) { TxtAddDetStatus.Text = "Install the base list first."; return; }
         BtnAddDetInstall.IsEnabled = false;
         PnlAddDetManual.IsVisible = false;
@@ -1092,7 +1096,7 @@ public partial class MainWindow : Window
             try
             {
                 var sync = new CollectionSync(SyncCacheDir);
-                var addon = await Task.Run(() => sync.EnsureAddonJsonAsync(_apiKey!, card.Slug, card.Name));
+                var addon = await Task.Run(() => sync.EnsureAddonJsonAsync(_cred!, card.Slug, card.Name));
                 _addonJsonPath = addon.CollectionJsonPath;
                 _addonJsonSlug = card.Slug;
             }
@@ -1175,10 +1179,10 @@ public partial class MainWindow : Window
     /// <summary>Pulls the base collection banner from Nexus for the gallery card and detail page.</summary>
     private async Task LoadBaseImagesAsync()
     {
-        if (_apiKey is null) return;
+        if (_cred is null) return;
         try
         {
-            using var api = new NexusApiClient(_apiKey);
+            using var api = new NexusApiClient(_cred);
             var info = await api.GetCollectionInfoAsync(CollectionSync.BaseSlug);
             if (info.Stats is { } bs)
             {
@@ -1536,7 +1540,7 @@ public partial class MainWindow : Window
 
     private async Task RefreshAuthAsync()
     {
-        if (_apiKey == null)
+        if (_cred == null)
         {
             _nexusName = null;
             TxtAuthDetail.Text = "Not signed in yet.";
@@ -1552,7 +1556,7 @@ public partial class MainWindow : Window
         TxtAuthDetail.Text = "Checking your Nexus account…";
         try
         {
-            using var api = new AStoryWealth.NexusApi.NexusApiClient(_apiKey);
+            using var api = new AStoryWealth.NexusApi.NexusApiClient(_cred);
             var user = await api.ValidateUserAsync();
             _nexusName = user.Name;
             _authPremium = user.IsPremium;
@@ -1569,13 +1573,16 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            TxtAuthDetail.Text = "Nexus didn't accept the key, or couldn't be reached. Check the key and your internet connection, then try again.";
+            TxtAuthDetail.Text = ex is NexusSignedOutException
+                ? "Your Nexus sign-in has ended. Sign in again."
+                : "Couldn't reach Nexus, or it didn't accept the sign-in. Check your internet connection and press Check again, or sign in again.";
+            if (ex is NexusSignedOutException) { _cred = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY") is { Length: > 0 } devKey ? new ApiKeyCredential(devKey) : null; }
             InstallLog.Error("ui", $"auth check failed: {ex.Message}");
             _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
         }
-        if (_apiKey != null) _ = LoadBaseImagesAsync();
+        if (_cred != null) _ = LoadBaseImagesAsync();
         TxtSettingsAuth.Text = TxtAuthDetail.Text;
         BtnRefreshAuth.IsEnabled = true;
         UpdateSignInButtons();
@@ -1621,7 +1628,7 @@ public partial class MainWindow : Window
         {
             var sync = new CollectionSync(SyncCacheDir);
             var prog = new Progress<string>(s => { TxtCollectionSummary.Text = ToFriendly(s); SetStatus(ToFriendly(s)); });
-            var result = await Task.Run(() => sync.EnsureLatestAsync(_apiKey!, prog));
+            var result = await Task.Run(() => sync.EnsureLatestAsync(_cred!, prog));
             await LoadCollectionAsync(result.CollectionJsonPath);
             TxtCollectionSummary.Text = result.UpdateAvailable
                 ? "Updated to the latest version"
@@ -1674,59 +1681,44 @@ public partial class MainWindow : Window
     }
 
 
-    // Browser sign-in (Nexus SSO) needs a Nexus-verified application. Until that is approved, Sign in opens the Nexus
-    // API key page and asks for the personal key in a small dialog. The key is kept DPAPI-encrypted for this Windows
-    // user (SecretStore); ASW_NEXUS_KEY still overrides it. When SSO is approved, only OnSignIn changes.
-    private const string KeyName = "nexus-api-key";
-    private const string KeyPageUrl = "https://www.nexusmods.com/settings/api-keys";
-
+    // Sign-in is Nexus OAuth (PKCE): the browser opens, the user allows the app, and Nexus answers on 127.0.0.1.
+    // The tokens are kept DPAPI-encrypted for this Windows user. ASW_NEXUS_KEY (a personal key) is for developers only.
     private async void OnSignIn(object? sender, RoutedEventArgs e)
     {
-        try { Process.Start(new ProcessStartInfo(KeyPageUrl) { UseShellExecute = true }); } catch { }
-        var key = await AskForKeyAsync();
-        if (string.IsNullOrWhiteSpace(key)) return;
-        try { SecretStore.Save(KeyName, key); }
-        catch (Exception ex) { InstallLog.Error("ui", $"couldn't store the API key: {ex.Message}"); TxtAuthNote.Text = "Couldn't save the key on this PC."; return; }
-        _apiKey = key;
-        _addonGrabbed = false;
-        await RefreshAuthAsync();
-    }
-
-    /// <summary>Small dialog for the personal API key (shown after the Nexus key page opens).</summary>
-    private async Task<string?> AskForKeyAsync()
-    {
-        var box = new TextBox { PasswordChar = '●', Watermark = "Paste your personal API key" };
-        var save = new Button { Content = "Sign in", IsDefault = true };
-        save.Classes.Add("primary");
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
-        var dlg = new Window
+        if (_signInCts is not null) { _signInCts.Cancel(); return; }   // the button reads "Cancel sign-in" while we wait
+        var cts = _signInCts = new CancellationTokenSource();
+        SetSignInWaiting(true);
+        string? message = null;
+        try
         {
-            Title = "Sign in to Nexus",
-            Width = 460, SizeToContent = SizeToContent.Height, CanResize = false,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.Parse("#1D2128")),
-            Content = new StackPanel
-            {
-                Margin = new Avalonia.Thickness(20), Spacing = 12,
-                Children =
-                {
-                    new TextBlock { Text = "On the Nexus page that just opened, copy your Personal API Key and paste it here. It is stored encrypted on this PC and only sent to Nexus.", TextWrapping = TextWrapping.Wrap },
-                    box,
-                    new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 10, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Children = { cancel, save } },
-                }
-            }
-        };
-        save.Click += (_, _) => dlg.Close(box.Text?.Trim());
-        cancel.Click += (_, _) => dlg.Close(null);
-        return await dlg.ShowDialog<string?>(this);
+            await _session.SignInAsync(url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }), cts.Token);
+            _cred = _session;
+            _addonGrabbed = false;
+        }
+        catch (OperationCanceledException) { message = "Sign-in cancelled."; }
+        catch (Exception ex)
+        {
+            InstallLog.Warn("auth", $"sign-in failed: {ex.Message}");
+            message = ex.Message;
+        }
+        finally { _signInCts = null; cts.Dispose(); SetSignInWaiting(false); }
+        await RefreshAuthAsync();
+        if (message is not null) TxtAuthNote.Text = message;
     }
 
-    private void OnSignOut(object? sender, RoutedEventArgs e)
+    private void SetSignInWaiting(bool waiting)
     {
-        try { SecretStore.Delete(KeyName); } catch { }
-        _apiKey = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY");
+        BtnSignIn.Content = BtnSettingsSignIn.Content = waiting ? "Cancel sign-in" : "Sign in to Nexus";
+        if (waiting) TxtAuthDetail.Text = TxtSettingsAuth.Text = "Finish signing in in your browser. The installer carries on when you allow it.";
+    }
+
+    private async void OnSignOut(object? sender, RoutedEventArgs e)
+    {
+        await _session.SignOutAsync();
+        _cred = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY") is { Length: > 0 } devKey ? new ApiKeyCredential(devKey) : null;
         _addonGrabbed = false;
-        _ = RefreshAuthAsync();
+        _liveAddons = null;
+        await RefreshAuthAsync();
     }
 
     /// <summary>Sign in shows when signed out, Sign out when signed in (on both the Settings page and the Nexus page).</summary>
@@ -2010,7 +2002,7 @@ public partial class MainWindow : Window
                     .Concat(job!.Groups).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
                 : SelectedGroups();
             var watchDir = string.IsNullOrWhiteSpace(TxtWatchDir.Text) ? null : TxtWatchDir.Text.Trim();
-            await Task.Run(() => runner.RunAsync(jsonPath, installId, _apiKey!, dir,
+            await Task.Run(() => runner.RunAsync(jsonPath, installId, _cred!, dir,
                 gamePath ?? "", progress, _cts.Token, stockGame: stockGame, reuseDir: reuseDir,
                 downloadsDir: downloadsDir, resume: _resume,
                 downloadThreads: dlThreads, extractThreads: exThreads, optionalGroups: optionalGroups,

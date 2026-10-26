@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using AStoryWealth.Core;
+using AStoryWealth.NexusApi;
 
 // Dependency-free test runner: `dotnet run --project src/Tests` exits non-zero on failure.
 var failed = 0;
@@ -1141,6 +1142,124 @@ foreach (var sample in FindSamples())
     finally { try { Directory.Delete(root, true); } catch { } }
 }
 
+// ---- Nexus sign-in: OAuth with PKCE
+{
+    // the example from RFC 7636, appendix B
+    Check("PKCE: the S256 challenge of the RFC's example verifier",
+        NexusSession.Challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    var v1 = NexusSession.NewVerifier(); var v2 = NexusSession.NewVerifier();
+    Check("PKCE: verifiers are 43-128 URL-safe characters and differ each time",
+        v1.Length is >= 43 and <= 128 && v1 != v2 && v1.All(c => char.IsLetterOrDigit(c) || c is '-' or '_'), v1);
+
+    var cfg = new NexusOAuthConfig { ClientId = "test_client", Port = 18089 };
+    var urlSession = new NexusSession(cfg, new MemStore(null));
+    var au = urlSession.BuildAuthorizeUrl("st4te", "chal");
+    Check("the authorize URL carries the client, the exact loopback redirect, S256, state and challenge",
+        au.StartsWith("https://users.nexusmods.com/oauth/authorize?") && au.Contains("client_id=test_client") && au.Contains("response_type=code")
+        && au.Contains("redirect_uri=" + Uri.EscapeDataString("http://127.0.0.1:18089/callback")) && au.Contains("code_challenge_method=S256")
+        && au.Contains("state=st4te") && au.Contains("code_challenge=chal"), au);
+
+    Check("callback: a code with the right state is accepted", NexusSession.ParseCallback("GET /callback?code=abc%20d&state=S HTTP/1.1", "S") is { Code: "abc d", Error: null });
+    Check("callback: a wrong state is refused, not accepted", NexusSession.ParseCallback("GET /callback?code=abc&state=X HTTP/1.1", "S") is { Code: null, Error: not null });
+    Check("callback: Nexus's error text is passed on", NexusSession.ParseCallback("GET /callback?error=access_denied&error_description=You+said+no&state=S HTTP/1.1", "S") is { Error: "You said no" });
+    Check("callback: other paths (favicon) are ignored", NexusSession.ParseCallback("GET /favicon.ico HTTP/1.1", "S").Ignore);
+
+    var now = new DateTime(2026, 10, 27, 12, 0, 0, DateTimeKind.Utc);
+    var tk = NexusSession.ParseTokens("{\"access_token\":\"A1\",\"refresh_token\":\"R1\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", null, now);
+    Check("tokens: access, refresh and expiry are read", tk is { AccessToken: "A1", RefreshToken: "R1" } && tk.ExpiresAtUtc == now.AddHours(1));
+    Check("tokens: a refresh answer without a new refresh token keeps the old one", NexusSession.ParseTokens("{\"access_token\":\"A2\",\"expires_in\":60}", "R1", now).RefreshToken == "R1");
+
+    // a session with a stored sign-in
+    string StoredJson(string a, string r, DateTime exp) => System.Text.Json.JsonSerializer.Serialize(new { access = a, refresh = r, expires = exp });
+    var calls = new List<string>();
+    NexusSession Make(MemStore store, Func<HttpRequestMessage, HttpResponseMessage> respond) => new(cfg, store, new FakeHandler(r => { calls.Add(r.RequestUri!.ToString() + " " + (r.Content?.ReadAsStringAsync().Result ?? "")); return respond(r); }));
+    HttpResponseMessage Json(int code, string body) => new((System.Net.HttpStatusCode)code) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+    const string TokenBody = "{\"access_token\":\"NEW\",\"refresh_token\":\"R2\",\"expires_in\":3600}";
+
+    var fresh = new MemStore(StoredJson("OLD", "R1", DateTime.UtcNow.AddHours(1)));
+    var s1 = Make(fresh, _ => Json(500, "{}"));
+    Check("a stored sign-in is picked up and used without asking Nexus", s1.IsSignedIn && s1.GetAccessTokenAsync(default).Result == "OLD" && calls.Count == 0);
+
+    var expired = new MemStore(StoredJson("OLD", "R1", DateTime.UtcNow.AddSeconds(-5)));
+    calls.Clear();
+    var s2 = Make(expired, _ => Json(200, TokenBody));
+    Check("an expired access token is renewed with the refresh token", s2.GetAccessTokenAsync(default).Result == "NEW"
+        && calls.Count == 1 && calls[0].Contains("grant_type=refresh_token") && calls[0].Contains("refresh_token=R1") && calls[0].Contains("client_id=test_client"), J(calls));
+    Check("the renewed tokens are saved (the new refresh token replaces the old)", expired.Json!.Contains("\"R2\"") && expired.Json.Contains("NEW"), expired.Json);
+
+    var revoked = new MemStore(StoredJson("OLD", "R1", DateTime.UtcNow.AddSeconds(-5)));
+    var s3 = Make(revoked, _ => Json(400, "{\"error\":\"invalid_grant\"}"));
+    var signedOut = false;
+    try { s3.GetAccessTokenAsync(default).Wait(); } catch (AggregateException ex) when (ex.InnerException is NexusSignedOutException) { signedOut = true; }
+    Check("a refused refresh (400) means signed out, and the saved sign-in is deleted", signedOut && !s3.IsSignedIn && revoked.Json is null);
+
+    var outage = new MemStore(StoredJson("OLD", "R1", DateTime.UtcNow.AddSeconds(-5)));
+    var s4 = Make(outage, _ => Json(503, "down"));
+    var transient = false;
+    try { s4.GetAccessTokenAsync(default).Wait(); } catch (AggregateException ex) when (ex.InnerException is HttpRequestException) { transient = true; }
+    Check("a Nexus outage (5xx) is not a sign-out: the tokens are kept", transient && s4.IsSignedIn && outage.Json is not null);
+
+    // the handler: Bearer for the API host only
+    var seen = new List<(string Host, string? Auth, bool ApiKey)>();
+    var sBearer = Make(new MemStore(StoredJson("TOK", "R", DateTime.UtcNow.AddHours(1))), _ => Json(200, "{}"));
+    var h = new CredentialHandler(sBearer, new FakeHandler(r => { seen.Add((r.RequestUri!.Host, r.Headers.Authorization?.ToString(), r.Headers.Contains("apikey"))); return Json(200, "{}"); }));
+    using (var hc = new HttpClient(h))
+    {
+        hc.GetAsync("https://api.nexusmods.com/v1/users/validate.json").Wait();
+        hc.GetAsync("https://cf-files.nexus-cdn.com/file.7z").Wait();
+    }
+    Check("the Bearer token goes to the API host only, never to a download address", seen.Count == 2 && seen[0].Auth == "Bearer TOK" && seen[1].Auth is null && !seen[0].ApiKey, J(seen.Select(x => x.Host + ":" + x.Auth)));
+    var seenKey = new List<(string Host, bool ApiKey)>();
+    using (var kc = new HttpClient(new CredentialHandler(new ApiKeyCredential("DEVKEY"), new FakeHandler(r => { seenKey.Add((r.RequestUri!.Host, r.Headers.Contains("apikey"))); return Json(200, "{}"); }))))
+    {
+        kc.GetAsync("https://api.nexusmods.com/v2/graphql").Wait();
+        kc.GetAsync("https://cf-files.nexus-cdn.com/file.7z").Wait();
+    }
+    Check("a developer key is also only sent to the API host", seenKey.Count == 2 && seenKey[0].ApiKey && !seenKey[1].ApiKey);
+
+    // the whole sign-in, with a pretend browser knocking on the loopback address
+    int FreePort() { var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); l.Start(); var p = ((System.Net.IPEndPoint)l.LocalEndpoint).Port; l.Stop(); return p; }
+    var port = FreePort();
+    var cfg2 = new NexusOAuthConfig { ClientId = "test_client", Port = port };
+    var store = new MemStore(null);
+    calls.Clear();
+    var signIn = new NexusSession(cfg2, store, new FakeHandler(r => { calls.Add(r.Content!.ReadAsStringAsync().Result); return Json(200, "{\"access_token\":\"ACC\",\"refresh_token\":\"REF\",\"expires_in\":3600}"); }));
+    string? stray = null, good = null;
+    signIn.SignInAsync(url =>
+    {
+        var state = System.Web.HttpUtility.ParseQueryString(new Uri(url).Query)["state"]!;
+        Task.Run(async () =>
+        {
+            using var browser = new HttpClient();
+            stray = (await browser.GetAsync($"http://127.0.0.1:{port}/callback?code=evil&state=wrong")).StatusCode.ToString();
+            good = (await browser.GetAsync($"http://127.0.0.1:{port}/callback?code=CODE123&state={state}")).StatusCode.ToString();
+        });
+    }, default, TimeSpan.FromSeconds(20)).Wait();
+    Check("sign-in: a forged answer is refused and the real one finishes it", stray == "BadRequest" && good == "OK" && signIn.IsSignedIn, stray + "/" + good);
+    Check("sign-in: the code is swapped with the PKCE verifier and the exact redirect",
+        calls.Count == 1 && calls[0].Contains("grant_type=authorization_code") && calls[0].Contains("code=CODE123") && calls[0].Contains("code_verifier=") && calls[0].Contains("redirect_uri=" + Uri.EscapeDataString($"http://127.0.0.1:{port}/callback")), J(calls));
+    Check("sign-in: the tokens are stored", store.Json is not null && store.Json.Contains("ACC") && store.Json.Contains("REF"));
+
+    calls.Clear();
+    signIn.SignOutAsync().Wait();
+    Check("sign-out: forgets the tokens and tells Nexus to revoke", !signIn.IsSignedIn && store.Json is null && calls.Count == 1 && calls[0].Contains("token=REF") && calls[0].Contains("token_type_hint=refresh_token"), J(calls));
+
+    // reports never carry a token
+    var rroot = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var inst = Path.Combine(rroot, "inst"); Directory.CreateDirectory(inst);
+        File.WriteAllText(Path.Combine(inst, "install-20261022-100000.log"), "auth: Bearer ACCESSTOKEN123 and refresh REFRESHTOKEN456\n");
+        var zp = Path.Combine(rroot, "r.zip");
+        ReportBuilder.Build(zp, new ReportContext("9.9.9", inst, null, null, true, false, false, null, null, ["ACCESSTOKEN123", "REFRESHTOKEN456"]));
+        using var z = ZipFile.OpenRead(zp);
+        using var rd = new StreamReader(z.GetEntry("logs/install-20261022-100000.log")!.Open());
+        var t = rd.ReadToEnd();
+        Check("the report removes the access and refresh tokens", !t.Contains("ACCESSTOKEN123") && !t.Contains("REFRESHTOKEN456") && t.Contains("[key removed]"), t);
+    }
+    finally { try { Directory.Delete(rroot, true); } catch { } }
+}
+
 // ---- the update settings that ship in the exe
 {
     var shipped = UpdateConfig.Load();
@@ -1164,4 +1283,12 @@ static IEnumerable<string> FindSamples()
 sealed class FakeHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(respond(request));
+}
+
+sealed class MemStore(string? initial) : INexusTokenStore
+{
+    public string? Json { get; private set; } = initial;
+    public string? Load() => Json;
+    public void Save(string json) => Json = json;
+    public void Delete() => Json = null;
 }

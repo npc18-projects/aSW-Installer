@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Nexus sign-in is now OAuth in your browser (Nexus's required method), replacing the pasted API key. Sign in to Nexus opens Nexus, you allow the app, and you're back. The sign-in renews itself, is stored encrypted on your PC, and Sign out cancels it on Nexus too. A key saved by an older build is deleted. For now it uses Nexus's test client until the app is registered.
+- The Nexus sign-in is only sent to Nexus's API address, never to a download address.
 - The report zip hides your Windows user name, PC name and Nexus account name in the logs and summary. The mod and plugin lists are left as they are.
 - Docs: a roadmap and a decisions page.
 - Fixed: an add-on with a "/" in its title (aSW harder / survival) made a nested folder instead of its separator, so MO2 showed a disabled "A StoryWealth aSW harder" mod at the top and dropped the separator. The title is now made safe first.

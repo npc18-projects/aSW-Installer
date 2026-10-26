@@ -47,7 +47,7 @@ public static class AddonGrabber
     /// One query for all team accounts; the member ids are looked up once and kept, and the listing itself is
     /// reused for an hour so reopening the app doesn't ask Nexus again. Manifests are only fetched when an add-on installs.
     /// </summary>
-    public static async Task<List<NexusApiClient.UserCollection>> ListAsync(string apiKey, IProgress<string>? progress = null, CancellationToken ct = default, bool refresh = false)
+    public static async Task<List<NexusApiClient.UserCollection>> ListAsync(NexusCredential apiKey, IProgress<string>? progress = null, CancellationToken ct = default, bool refresh = false)
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("addons", s); }
 
@@ -73,7 +73,7 @@ public static class AddonGrabber
         return all.Where(c => c.Slug != CollectionSync.BaseSlug).ToList();
     }
 
-    public static async Task<GrabResult> GrabAsync(string apiKey, IProgress<string>? progress = null, CancellationToken ct = default)
+    public static async Task<GrabResult> GrabAsync(NexusCredential apiKey, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("addons", s); }
 

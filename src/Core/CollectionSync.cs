@@ -42,7 +42,7 @@ public sealed class CollectionSync
     /// Ensure the collection manifest for the latest published revision is on disk.
     /// progress reports human-readable lines (percentages included) for the UI.
     /// </summary>
-    public async Task<SyncResult> EnsureLatestAsync(string apiKey, IProgress<string>? progress = null, CancellationToken ct = default)
+    public async Task<SyncResult> EnsureLatestAsync(NexusCredential apiKey, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("sync", s); }
 
@@ -96,7 +96,7 @@ public sealed class CollectionSync
     /// Fetch collection.json for an add-on collection (same pipeline as the base:
     /// revision query, premium archive link, 7z extract). Cached per slug+revision.
     /// </summary>
-    public async Task<AddonJson> EnsureAddonJsonAsync(string apiKey, string slug, string name, IProgress<string>? progress = null, CancellationToken ct = default)
+    public async Task<AddonJson> EnsureAddonJsonAsync(NexusCredential apiKey, string slug, string name, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("sync", s); }
 

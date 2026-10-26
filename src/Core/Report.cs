@@ -6,7 +6,7 @@ namespace AStoryWealth.Core;
 
 /// <summary>What the report says about this run of the app. Anything the app doesn't know is left null.</summary>
 public sealed record ReportContext(string AppVersion, string? InstallDir, string? GameDir, string? DownloadsDir,
-    bool? StockGame, bool? Premium, bool ResumePending, string? Secret = null, string? AccountName = null);
+    bool? StockGame, bool? Premium, bool ResumePending, string? Secret = null, string? AccountName = null, IReadOnlyList<string>? MoreSecrets = null);
 
 /// <summary>
 /// One zip a tester can send when something goes wrong: the latest install logs, the mod and plugin lists, the add-on
@@ -31,6 +31,7 @@ public static class ReportBuilder
         {
             using var w = new StreamWriter(zip.CreateEntry(entry, CompressionLevel.Optimal).Open(), new UTF8Encoding(false));
             var t = Redact(text, ctx.Secret);
+            foreach (var more in ctx.MoreSecrets ?? []) t = Redact(t, more);
             w.Write(hideNames ? Anonymize(t, who) : t);
         }
         void AddFile(string entry, string path, long maxBytes = MaxLogBytes, bool hideNames = true)
