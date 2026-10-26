@@ -72,3 +72,7 @@ A tester has to install the first test build by hand, because older versions don
 - Users can turn off the startup check in Settings. Auto-update needs a folder the app can write to.
 - Only the zip's own signature protects users. If the private key leaks, make a new key pair and ship a build with the new public key by hand.
 - Tested: the checks, the signature handling and the file replacement without the network, and a real update on a copy of the 0.4.0 app, which found 0.4.1 on GitHub, downloaded it, verified it, installed it and restarted in about 30 seconds.
+
+## Manual-only builds
+
+The updater only offers a release that has both the zip and a file named exactly `<zip name>.sig`. To publish a build that nobody is updated to automatically (for example one that is only for Nexus to review), attach the zip without the `.sig`. Attach the signature under another name, such as `<zip name>.signature`, so it can still be checked by hand. Make it a pre-release and pass `--latest=false`. v0.5.0-beta.3 was published this way. Check it with `GitHubUpdater.CheckAsync` for the versions you care about.
