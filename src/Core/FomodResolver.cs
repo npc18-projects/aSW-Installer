@@ -342,22 +342,11 @@ public static class FomodResolver
 
     private static string? ExtractModuleConfig(string archivePath, string tmp)
     {
-        var sevenZip = SevenZip.ExePath;
         // ModuleConfig.xml is not always at fomod/ — it can sit under a wrapper
         // folder (NanoSuit 6.2\FOMod\, BetterSettlers2.0\fomod\, data\fomod\…).
         // Extract every case-insensitive match, keep paths, take the shallowest.
-        var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = sevenZip,
-            Arguments = $"x \"{archivePath}\" -o\"{tmp}\" -ir!*ModuleConfig.xml -y -bso0 -bsp0",
-            UseShellExecute = false,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            CreateNoWindow = true
-        }) ?? throw new InvalidOperationException("cannot start 7z");
-        proc.WaitForExit(120_000);
-        proc.WaitForExit(); // timeout overload doesn't finalize exited state — ExitCode would throw
-        if (proc.ExitCode != 0) return null;
+        var (exitCode, _, _) = SevenZip.Run(["x", archivePath, "-o" + tmp, "-ir!*ModuleConfig.xml", "-y", "-bso0", "-bsp0"], TimeSpan.FromSeconds(120));
+        if (exitCode != 0) return null;
         var matches = Directory.EnumerateFiles(tmp, "ModuleConfig.xml", SearchOption.AllDirectories).ToList();
         return matches.OrderBy(p => p.Count(c => c is '/' or '\\')).FirstOrDefault();
     }

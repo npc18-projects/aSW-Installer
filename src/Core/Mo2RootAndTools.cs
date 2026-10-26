@@ -34,28 +34,13 @@ public static partial class Mo2InstanceWriter
         Directory.CreateDirectory(raw);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = SevenZip.ExePath,
-            Arguments = $"x \"{archivePath}\" -o\"{raw}\" -y -bso0 -bsp0",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-        };
         try
         {
-            using (var proc = System.Diagnostics.Process.Start(psi)!)
+            var (exitCode, se, so) = SevenZip.Extract(archivePath, raw);
+            if (exitCode != 0)
             {
-                var so = proc.StandardOutput.ReadToEnd();
-                var se = proc.StandardError.ReadToEnd();
-                proc.WaitForExit();
-                if (proc.ExitCode != 0)
-                {
-                    InstallLog.Error("mo2", $"7z exit {proc.ExitCode} extracting {Path.GetFileName(archivePath)}: {se} {so}");
-                    throw new InvalidOperationException($"archive extraction failed: {archivePath}");
-                }
+                InstallLog.Error("mo2", $"7z exit {exitCode} extracting {Path.GetFileName(archivePath)}: {se} {so}");
+                throw new InvalidOperationException($"archive extraction failed: {archivePath}");
             }
 
             // Descend through single-folder wrappers ("f4se_0_06_23\"), but never into Data.

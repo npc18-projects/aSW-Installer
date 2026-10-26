@@ -1224,17 +1224,18 @@ foreach (var sample in FindSamples())
     var store = new MemStore(null);
     calls.Clear();
     var signIn = new NexusSession(cfg2, store, new FakeHandler(r => { calls.Add(r.Content!.ReadAsStringAsync().Result); return Json(200, "{\"access_token\":\"ACC\",\"refresh_token\":\"REF\",\"expires_in\":3600}"); }));
-    string? stray = null, good = null;
+    string? stray = null, good = null; Task? browserTask = null;
     signIn.SignInAsync(url =>
     {
         var state = System.Web.HttpUtility.ParseQueryString(new Uri(url).Query)["state"]!;
-        Task.Run(async () =>
+        browserTask = Task.Run(async () =>
         {
             using var browser = new HttpClient();
             stray = (await browser.GetAsync($"http://127.0.0.1:{port}/callback?code=evil&state=wrong")).StatusCode.ToString();
             good = (await browser.GetAsync($"http://127.0.0.1:{port}/callback?code=CODE123&state={state}")).StatusCode.ToString();
         });
     }, default, TimeSpan.FromSeconds(20)).Wait();
+    browserTask!.Wait(TimeSpan.FromSeconds(10));
     Check("sign-in: a forged answer is refused and the real one finishes it", stray == "BadRequest" && good == "OK" && signIn.IsSignedIn, stray + "/" + good);
     Check("sign-in: the code is swapped with the PKCE verifier and the exact redirect",
         calls.Count == 1 && calls[0].Contains("grant_type=authorization_code") && calls[0].Contains("code=CODE123") && calls[0].Contains("code_verifier=") && calls[0].Contains("redirect_uri=" + Uri.EscapeDataString($"http://127.0.0.1:{port}/callback")), J(calls));

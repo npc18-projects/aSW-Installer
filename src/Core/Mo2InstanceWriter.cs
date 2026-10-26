@@ -402,27 +402,13 @@ public static partial class Mo2InstanceWriter
         // one version folder ("f4se_0_06_23\"), which must not end up in the game root.
         var staging = gamePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + ".stage-" + Guid.NewGuid().ToString("N")[..8];
         Directory.CreateDirectory(staging);
-        var sevenZip = SevenZip.ExePath;
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = sevenZip,
-            Arguments = $"x \"{archivePath}\" -o\"{staging}\" -y -bso0 -bsp0",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-        };
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            using var proc = System.Diagnostics.Process.Start(psi)!;
-            var so = proc.StandardOutput.ReadToEnd();
-            var se = proc.StandardError.ReadToEnd();
-            proc.WaitForExit();
-            if (proc.ExitCode != 0)
+            var (exitCode, se, so) = SevenZip.Extract(archivePath, staging);
+            if (exitCode != 0)
             {
-                InstallLog.Error("game", $"7z exit {proc.ExitCode} extracting {Path.GetFileName(archivePath)} to game root: {se} {so}");
+                InstallLog.Error("game", $"7z exit {exitCode} extracting {Path.GetFileName(archivePath)} to game root: {se} {so}");
                 throw new InvalidOperationException($"game-root extraction failed: {archivePath}");
             }
             var root = staging;
@@ -458,26 +444,12 @@ public static partial class Mo2InstanceWriter
         var staging = dest + ".part";
         try { if (Directory.Exists(staging)) InstallRunner.DeleteTree(staging); } catch { }
         Directory.CreateDirectory(staging);
-        var sevenZip = SevenZip.ExePath;
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = sevenZip,
-            Arguments = $"x \"{archivePath}\" -o\"{staging}\" -y -bso0 -bsp0",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-        };
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var proc = System.Diagnostics.Process.Start(psi)!;
-        var so = proc.StandardOutput.ReadToEnd();
-        var se = proc.StandardError.ReadToEnd();
-        proc.WaitForExit();
+        var (exitCode, se, so) = SevenZip.Extract(archivePath, staging);
         sw.Stop();
-        if (proc.ExitCode != 0)
+        if (exitCode != 0)
         {
-            InstallLog.Error("mo2", $"7z exit {proc.ExitCode} extracting {Path.GetFileName(archivePath)}: {se} {so}");
+            InstallLog.Error("mo2", $"7z exit {exitCode} extracting {Path.GetFileName(archivePath)}: {se} {so}");
             try { InstallRunner.DeleteTree(staging); } catch { }
             throw new InvalidOperationException($"archive extraction failed: {archivePath}");
         }
@@ -714,24 +686,9 @@ public static partial class Mo2InstanceWriter
             // bug class) — DeleteTree clears attributes first.
             try { if (Directory.Exists(staging)) InstallRunner.DeleteTree(staging); } catch { }
             Directory.CreateDirectory(staging);
-            var sevenZip = SevenZip.ExePath;
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = sevenZip,
-                Arguments = $"x \"{archivePath}\" -o\"{staging}\" -y -bso0 -bsp0",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-            };
-            using (var proc = System.Diagnostics.Process.Start(psi)!)
-            {
-                var se = proc.StandardError.ReadToEnd();
-                proc.WaitForExit();
-                if (proc.ExitCode != 0)
-                    throw new InvalidOperationException($"staging extraction failed: {se.Trim()}");
-            }
+            var (stageExit, stageErr, _) = SevenZip.Extract(archivePath, staging);
+            if (stageExit != 0)
+                throw new InvalidOperationException($"staging extraction failed: {stageErr.Trim()}");
             // FOMOD sources are relative to the mod's data root; a single
             // top-level wrapper folder must be stripped before mapping.
             if (FirstSourceMissing()) StripWrapper(staging, installAs);   // sources like "data\X" are relative to the archive root: only unwrap when they do not resolve as-is
