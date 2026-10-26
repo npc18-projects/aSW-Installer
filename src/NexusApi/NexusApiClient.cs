@@ -6,9 +6,10 @@ using System.Text.Json;
 namespace AStoryWealth.NexusApi;
 
 /// <summary>
-/// Minimal Nexus Mods API client for the aSW installer spike.
+/// Nexus Mods API client for the aSW installer (REST v1 for the user check and download links, GraphQL v2 for collections).
 /// Docs: https://app.swaggerhub.com/apis-docs/NexusMods/nexus-mods_public_api_params_formalized
-/// All requests require an API key header + identifying User-Agent.
+/// Every request names the app and its version. The user's credential (see <see cref="NexusCredential"/>) is added only for
+/// the Nexus API host.
 /// </summary>
 public sealed class NexusApiClient : IDisposable
 {

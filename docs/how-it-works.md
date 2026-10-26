@@ -35,3 +35,11 @@ The Optional tab lists the optional mods and groups of the base list and of inst
 - Removing an installed add-on or optional mod.
 - A remote, signed metadata channel, so ordering, add-on rules and curated options can change without a new build. A Curator section would edit and publish it. Publishing collections from the installer depends on what the Nexus API allows.
 - Nexus sign-in is OAuth in the browser. It uses Nexus's test client until the app is registered and gets its own client id.
+
+## Where things are
+
+- `app/`: the Avalonia window. `MainWindow` is split by page: `.Home`, `.Modlist` (the base list and the add-ons), `.Setup` (setup and the Nexus page, sign-in), `.Sync` (fetching the mod list), `.Install`, `.Optional`, `.Removal`, `.SettingsPage` (report, existing install, updates) and `.DevTools` (the development-only icon and screenshot hooks).
+- `src/Core/`: everything that isn't a window. `InstallRunner` runs an install; `Mo2InstanceWriter` and `Mo2RootAndTools` build the MO2 instance; `VortexCollectionMapper` reads a collection; `PriorityOrder`, `DeployOrder` and `PluginOrder` decide the order; `AddonPlacement`, `AddonRegistry` and `Removal` handle add-ons; `NexusOAuth` is the sign-in; `SevenZip` runs 7-Zip; `InstallState` remembers the install; `Update` is the self-updater.
+- `src/NexusApi/`: the Nexus API client and the credential types it uses.
+- `src/Tests/`: the dependency-free test runner (`dotnet run --project src/Tests`). Set `ASW_7Z` to a 7z.exe to include the tests that unpack archives.
+- `src/OrderTool/`: makes the shipped order files (see formats).
