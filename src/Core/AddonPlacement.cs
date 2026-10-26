@@ -60,8 +60,14 @@ public static class AddonPlacement
     }
 
     /// <summary>The separator name for an add-on: its collection name without surrounding blanks.</summary>
-    public static string Label(AddonManifest addon) =>
-        string.IsNullOrWhiteSpace(addon.Name) ? addon.AddonId : addon.Name.Trim();
+    public static string Label(AddonManifest addon)
+    {
+        var name = string.IsNullOrWhiteSpace(addon.Name) ? addon.AddonId : addon.Name.Trim();
+        // The label is a folder name (mods/<label>_separator). A "/" in a title ("aSW harder / survival") would nest a folder,
+        // and MO2 then lists the outer one as a disabled mod and drops the separator line.
+        var invalid = Path.GetInvalidFileNameChars();
+        return Mo2InstanceWriter.SafeName(string.Join(" - ", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => x.Length > 0)), "separator");
+    }
 
     /// <param name="head">The installed list below "Added mods", lowest priority first (separators included), without this add-on's own earlier placement.</param>
     public static Result Place(IReadOnlyList<string> head, AddonManifest addon, string instanceDir, string label)

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed: an add-on with a "/" in its title (aSW harder / survival) made a nested folder instead of its separator, so MO2 showed a disabled "A StoryWealth aSW harder" mod at the top and dropped the separator. The title is now made safe first.
 - Fixed: dark text on buttons and boxes when Windows is in light mode. The app is now always dark.
 - Fixed: an add-on with two mods that share a file name (Pickman's Passion has two "Main File") stopped at "installAs collision". Each now gets its own folder.
 - The resume log no longer calls a file "missing" when it is only being looked up again in the Vortex folder.

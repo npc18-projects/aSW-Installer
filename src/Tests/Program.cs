@@ -481,6 +481,12 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- an add-on title with a slash makes a flat separator folder
+Check("a '/' in an add-on title doesn't nest the separator folder",
+    AddonPlacement.Label(new AddonManifest { AddonId = "k", Name = "A StoryWealth aSW harder / survival" }) == "A StoryWealth aSW harder - survival"
+    && AddonPlacement.Label(new AddonManifest { AddonId = "k", Name = "A Storywealth - Atmosphere" }) == "A Storywealth - Atmosphere",
+    AddonPlacement.Label(new AddonManifest { AddonId = "k", Name = "A StoryWealth aSW harder / survival" }));
+
 // ---- add-on folder names carry the add-on's name
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
