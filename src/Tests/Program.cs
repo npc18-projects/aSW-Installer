@@ -1111,6 +1111,36 @@ foreach (var sample in FindSamples())
     finally { try { Directory.Delete(root, true); } catch { } }
 }
 
+// ---- the report hides who sent it
+{
+    var who = new ReportBuilder.LocalIdentity(@"C:\Users\jdoe-pc", "jdoe-pc", "DESKTOP-ABC123", "NexusFan");
+    var log = @"downloads C:\Users\jdoe-pc\AppData\Local\AStoryWealth\Downloads, also c:/users/JDOE-PC/x, user nexusfan premium=True on DESKTOP-ABC123. Mod: Nexus Fanatic Pack";
+    var outp = ReportBuilder.Anonymize(log, who);
+    Check("the profile folder becomes %USERPROFILE% in both slash styles", outp.Contains(@"%USERPROFILE%\AppData") && outp.Contains("%USERPROFILE%/x") && !outp.Contains("jdoe", StringComparison.OrdinalIgnoreCase), outp);
+    Check("the Nexus account and PC name are hidden, case ignored", outp.Contains("user <nexus-user> premium") && outp.Contains("on <pc>.") && !outp.Contains("DESKTOP-ABC123"), outp);
+    Check("a longer word that merely contains the name is left alone", outp.Contains("Nexus Fanatic Pack"), outp);
+    Check("short names are not touched (they'd mangle ordinary words)", ReportBuilder.Anonymize("a mod for the user", new("C:\\Users\\a", "a", "pc", "me")) == "a mod for the user");
+
+    var root = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var inst = Path.Combine(root, "inst"); var profile = Path.Combine(inst, "profiles", "A StoryWealth");
+        Directory.CreateDirectory(profile);
+        var me = ReportBuilder.LocalNames(null);
+        File.WriteAllText(Path.Combine(inst, "install-20261022-100000.log"), $"downloads in {me.ProfileDir}\\AStoryWealth for NexusZed\n");
+        File.WriteAllLines(Path.Combine(profile, "modlist.txt"), ["+NexusZed Retexture"]);
+        var zipPath = Path.Combine(root, "r.zip");
+        ReportBuilder.Build(zipPath, new ReportContext("9.9.9", inst, null, null, true, false, false, null, "NexusZed"));
+        using var z = ZipFile.OpenRead(zipPath);
+        string Read(string n) { using var r = new StreamReader(z.GetEntry(n)!.Open()); return r.ReadToEnd(); }
+        var logText = Read("logs/install-20261022-100000.log");
+        Check("in a built report the log hides the profile folder and the account", logText.Contains("%USERPROFILE%\\AStoryWealth") && logText.Contains("<nexus-user>") && !logText.Contains("NexusZed"), logText);
+        Check("the report says names are hidden", Read("report.txt").Contains("are hidden"));
+        Check("the mod list is left as it is", Read("profile/modlist.txt").Contains("NexusZed Retexture"));
+    }
+    finally { try { Directory.Delete(root, true); } catch { } }
+}
+
 // ---- the update settings that ship in the exe
 {
     var shipped = UpdateConfig.Load();

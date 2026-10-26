@@ -25,4 +25,4 @@ Not tested yet: a downgrade of a real next-gen game, the HD textures group, and 
 
 Built by Npc18 with AI assistance (Claude).
 
-[Changelog](CHANGELOG.md) · [Third-party licences](THIRD-PARTY-NOTICES.md)
+[Changelog](CHANGELOG.md) · [Roadmap](docs/roadmap.md) · [Third-party licences](THIRD-PARTY-NOTICES.md)

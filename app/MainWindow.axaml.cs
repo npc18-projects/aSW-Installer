@@ -182,7 +182,7 @@ public partial class MainWindow : Window
         var path = file.Path.LocalPath;
         var ctx = new ReportContext(_version, InstallState.GetInstallDir(), GameDir() is { Length: > 0 } g ? g : null,
             string.IsNullOrWhiteSpace(TxtDownloadsDir.Text) ? null : TxtDownloadsDir.Text.Trim(),
-            RbStockGame.IsChecked, _signedIn ? _authPremium : null, InstallState.GetResume() is not null, _apiKey);
+            RbStockGame.IsChecked, _signedIn ? _authPremium : null, InstallState.GetResume() is not null, _apiKey, _nexusName);
         try
         {
             await Task.Run(() => ReportBuilder.Build(path, ctx));
@@ -1532,10 +1532,13 @@ public partial class MainWindow : Window
 
     // ---------- page 2: nexus ----------
 
+    private string? _nexusName;   // only used to hide it in the report
+
     private async Task RefreshAuthAsync()
     {
         if (_apiKey == null)
         {
+            _nexusName = null;
             TxtAuthDetail.Text = "Not signed in yet.";
             TxtSettingsAuth.Text = TxtAuthDetail.Text;
             TxtAuthNote.Text = "Sign in to your Nexus Mods account to download the mods.";
@@ -1551,6 +1554,7 @@ public partial class MainWindow : Window
         {
             using var api = new AStoryWealth.NexusApi.NexusApiClient(_apiKey);
             var user = await api.ValidateUserAsync();
+            _nexusName = user.Name;
             _authPremium = user.IsPremium;
             TxtAuthDetail.Text = user.IsPremium
                 ? $"Signed in as {user.Name}. Downloads will run automatically at full speed."
