@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed: dark text on buttons and boxes when Windows is in light mode. The app is now always dark.
+- Fixed: an add-on with two mods that share a file name (Pickman's Passion has two "Main File") stopped at "installAs collision". Each now gets its own folder.
+- The resume log no longer calls a file "missing" when it is only being looked up again in the Vortex folder.
 - Nexus account: the API key box is gone. Sign in to Nexus opens the Nexus key page and takes the key in a small dialog; Sign out forgets it. Browser sign-in replaces the dialog once Nexus approves the app.
 - New app icon: the exe, the window and the taskbar use the aSW artwork.
 - Fewer Nexus requests: the add-on listing is one request instead of 16, the team's member ids are looked up once, and the listing is reused for an hour. Requests now carry the real app name, version and repository link.

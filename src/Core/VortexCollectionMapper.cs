@@ -99,6 +99,13 @@ public static class VortexCollectionMapper
             manifest.Mods.Add(entry);
         }
 
+        // Two mods can share a file name ("Main File"); each would land in the same folder. Tell them apart by Nexus mod id,
+        // and by file id when even that matches. Every mod in a clashing group is renamed, so the result doesn't depend on order.
+        foreach (var group in manifest.Mods.GroupBy(e => e.InstallAs, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).ToList())
+            foreach (var e in group) e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.ModId})", "installAs");
+        foreach (var group in manifest.Mods.GroupBy(e => e.InstallAs, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).ToList())
+            foreach (var e in group) e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.FileId})", "installAs");
+
         // plugins[] -> enabled state (names only; addon plugins must match mods above)
         if (root.TryGetProperty("plugins", out var plugins))
             foreach (var p in plugins.EnumerateArray())

@@ -459,6 +459,28 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
     finally { try { Directory.Delete(dir, true); } catch { } }
 }
 
+// ---- two mods with the same file name get different folders (Pickman's Passion had two "Main File")
+{
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+        var json = Path.Combine(dir, "c.json");
+        File.WriteAllText(json, """
+            {"info":{"name":"A Storywealth - Pickman's Passion"},"mods":[
+              {"name":"Mod A","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":10,"fileId":1,"md5":"a","fileSize":1,"logicalFilename":"Main File"}},
+              {"name":"Mod B","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":20,"fileId":2,"md5":"b","fileSize":1,"logicalFilename":"Main File"}},
+              {"name":"Mod C","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":20,"fileId":3,"md5":"c","fileSize":1,"logicalFilename":"Main File"}},
+              {"name":"Other","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":30,"fileId":4,"md5":"d","fileSize":1,"logicalFilename":"Other"}}]}
+            """);
+        var mods = VortexCollectionMapper.Map(json, "x").Mods;
+        Check("mods that share a file name get their own folder", mods.Select(m => m.InstallAs).Distinct(StringComparer.OrdinalIgnoreCase).Count() == mods.Count, J(mods.Select(m => m.InstallAs)));
+        Check("a name nobody shares is left alone", mods[3].InstallAs == "Pickman's Passion - Other", mods[3].InstallAs);
+        Check("the plan accepts the add-on", new ManifestResolver().Resolve([new AddonManifest { AddonId = "x", Mods = mods }]).Issues.All(i => !i.Message.Contains("collision")), "");
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+}
+
 // ---- add-on folder names carry the add-on's name
 {
     var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));

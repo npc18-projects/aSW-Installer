@@ -262,7 +262,8 @@ public sealed class InstallRunner
                 bool checkpointed2;
                 lock (stateLock) checkpointed2 = resume.DoneDownloads.Contains(dlKey);
                 if (checkpointed2)
-                    InstallLog.Warn("download", $"checkpointed file missing, re-procuring: {mod.InstallAs}");
+                    (stored is null ? (Action<string, string>)InstallLog.Info : InstallLog.Warn)("download",
+                        stored is null ? $"checkpointed, looking for it again: {mod.InstallAs}" : $"checkpointed file missing, re-procuring: {mod.InstallAs}");
                 // Disk-bound: only a couple of concurrent scans/md5 passes or
                 // they thrash the drive and the whole scan slows down.
                 await reuseGate.WaitAsync(ct2);
