@@ -1408,6 +1408,39 @@ foreach (var sample in FindSamples())
     Check("sign-in works when the request arrives in pieces and another connection stays silent", pieceSession.IsSignedIn);
 }
 
+// ---- FOMOD install end to end (needs 7-Zip): finished in a .part folder and renamed; a destination can't climb out
+{
+    string? sevenZip = null; try { sevenZip = SevenZip.ExePath; } catch (FileNotFoundException) { }
+    if (sevenZip is null) Console.WriteLine("SKIP  FOMOD end-to-end test (7-Zip not found)");
+    else
+    {
+        var root = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var src = Path.Combine(root, "src"); Directory.CreateDirectory(Path.Combine(src, "fomod")); Directory.CreateDirectory(Path.Combine(src, "Meshes")); Directory.CreateDirectory(Path.Combine(src, "Evil"));
+            File.WriteAllText(Path.Combine(src, "a.txt"), "a");
+            File.WriteAllText(Path.Combine(src, "Meshes", "x.nif"), "n");
+            File.WriteAllText(Path.Combine(src, "Evil", "pwn.txt"), "p");
+            File.WriteAllText(Path.Combine(src, "fomod", "ModuleConfig.xml"),
+                "<config><moduleName>T</moduleName><requiredInstallFiles>"
+                + "<file source=\"a.txt\" destination=\"a.txt\"/>"
+                + "<folder source=\"Meshes\" destination=\"Meshes\"/>"
+                + "<folder source=\"Evil\" destination=\"x\\..\\..\\..\\escaped\\\"/>"
+                + "</requiredInstallFiles></config>");
+            var zip = Path.Combine(root, "mod.zip");
+            ZipFile.CreateFromDirectory(src, zip);
+            var inst = Path.Combine(root, "inst"); Directory.CreateDirectory(Path.Combine(inst, "mods", "T"));
+            File.WriteAllText(Path.Combine(inst, "mods", "T", "stale.txt"), "old");   // an earlier, different copy
+            Mo2InstanceWriter.MaterializeFomod(inst, "T", zip, "{\"options\":[]}");
+            var mod = Path.Combine(inst, "mods", "T");
+            Check("FOMOD: the chosen files are in the mod folder", File.Exists(Path.Combine(mod, "a.txt")) && File.Exists(Path.Combine(mod, "Meshes", "x.nif")));
+            Check("FOMOD: the finished folder replaces the old one and no .part is left", !File.Exists(Path.Combine(mod, "stale.txt")) && !Directory.Exists(mod + ".part"));
+            Check("FOMOD: a destination with '..' wrote nothing outside the mod folder", !Directory.Exists(Path.Combine(inst, "escaped")) && !Directory.Exists(Path.Combine(root, "escaped")) && !File.Exists(Path.Combine(mod, "pwn.txt")) && !Directory.GetFiles(root, "pwn.txt", SearchOption.AllDirectories).Any(f => !f.Contains(Path.Combine("src", "Evil"))));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+}
+
 // ---- the update settings that ship in the exe
 {
     var shipped = UpdateConfig.Load();
