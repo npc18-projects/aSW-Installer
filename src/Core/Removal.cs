@@ -40,7 +40,7 @@ public static class Removal
     public static RemovalResult RemoveAddon(string instanceDir, string addonId, IReadOnlySet<string> baseNames)
     {
         var res = new RemovalResult();
-        var reg = AddonRegistry.Load(instanceDir);
+        var reg = AddonRegistry.LoadStrict(instanceDir);
         var addon = reg.Addons.FirstOrDefault(a => a.Id.Equals(addonId, StringComparison.OrdinalIgnoreCase));
         if (addon is null) { res.Refused = "That add-on isn't recorded in this install."; return res; }
         var (delete, kept) = PlanAddon(instanceDir, addonId, baseNames);
@@ -58,7 +58,7 @@ public static class Removal
     public static RemovalResult RemoveOptional(string instanceDir, string? addonId, string installAs, string md5, IReadOnlySet<string> baseRequired)
     {
         var res = new RemovalResult();
-        var reg = AddonRegistry.Load(instanceDir);
+        var reg = AddonRegistry.LoadStrict(instanceDir);
         foreach (var other in reg.Addons.Where(a => addonId is null || !a.Id.Equals(addonId, StringComparison.OrdinalIgnoreCase)))
             if (other.Mods.Any(m => m.Name.Equals(installAs, StringComparison.OrdinalIgnoreCase)))
             { res.Refused = $"The {other.Name.Trim()} add-on needs this mod."; return res; }

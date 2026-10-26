@@ -34,7 +34,7 @@ public static class SecretStore
                 DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(dec);
         }
-        catch (CryptographicException) { return null; }
+        catch (Exception ex) when (ex is CryptographicException or IOException or UnauthorizedAccessException) { return null; }
     }
 
     public static void Delete(string name)

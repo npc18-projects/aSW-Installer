@@ -25,13 +25,19 @@ public static class AddonPlacement
     {
         var mine = registry.Addons.FirstOrDefault(a => a.Id.Equals(addon.AddonId, StringComparison.OrdinalIgnoreCase));
         if (mine is null) return 0;
-        var owned = new HashSet<string>(mine.Mods.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
+        var owned = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rm in mine.Mods) owned.TryAdd(rm.Name, rm.Md5);
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // a folder belongs to one mod only
         var n = 0;
         foreach (var m in addon.Mods.Where(m => !m.IsAnchor))
         {
             if (Directory.Exists(Path.Combine(instanceDir, "mods", m.InstallAs))) continue;
-            var old = m.LegacyInstallAs.FirstOrDefault(l => owned.Contains(l) && Directory.Exists(Path.Combine(instanceDir, "mods", l)));
+            // When both sides know the file's md5 it must match, so two mods that used to share a name can't both take the old folder.
+            var old = m.LegacyInstallAs.FirstOrDefault(l => owned.TryGetValue(l, out var md5)
+                && (string.IsNullOrEmpty(md5) || string.IsNullOrEmpty(m.Nexus?.Md5) || md5.Equals(m.Nexus!.Md5, StringComparison.OrdinalIgnoreCase))
+                && !claimed.Contains(l) && Directory.Exists(Path.Combine(instanceDir, "mods", l)));
             if (old is null) continue;
+            claimed.Add(old);
             m.InstallAs = old;
             n++;
         }

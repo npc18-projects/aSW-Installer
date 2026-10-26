@@ -22,7 +22,10 @@ public static class FomodResolver
     public static XDocument LoadXml(string path)
     {
         using var sr = new StreamReader(path, detectEncodingFromByteOrderMarks: true);
-        return XDocument.Parse(sr.ReadToEnd());
+        // The file comes from a mod archive: skip any DTD (no entity tricks) and never fetch anything.
+        using var xr = System.Xml.XmlReader.Create(new StringReader(sr.ReadToEnd()),
+            new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Ignore, XmlResolver = null });
+        return XDocument.Load(xr);
     }
 
     /// <summary>Evaluates the ModuleConfig against the collection's choices.

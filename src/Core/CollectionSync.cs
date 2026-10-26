@@ -100,6 +100,9 @@ public sealed class CollectionSync
     {
         void Report(string s) { progress?.Report(s); InstallLog.Info("sync", s); }
 
+        // The slug names a folder. Nexus slugs are short letters and digits; anything else is refused.
+        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, "^[A-Za-z0-9_-]{1,40}$"))
+            throw new InvalidOperationException($"Unexpected collection id '{slug}'");
         var slugDir = Path.Combine(_cacheDir, "collections", slug);
         // The collections/<slug> dir may not exist yet (fresh cache) — tolerate its
         // absence instead of letting EnumerateDirectories throw DirectoryNotFoundException.
@@ -111,14 +114,26 @@ public sealed class CollectionSync
                 .OrderByDescending(x => x.Rev)
                 .ToList()
             : new List<(int Rev, string Dir)>();
-        foreach (var (rev, dir) in existing)
+        AddonJson? NewestCached()
         {
-            var json = Path.Combine(_cacheDir, "collections", slug, dir, "collection.json");
-            if (File.Exists(json)) return new AddonJson(slug, name, rev, json);
+            foreach (var (rev, dir) in existing)
+            {
+                var json = Path.Combine(_cacheDir, "collections", slug, dir, "collection.json");
+                if (File.Exists(json)) return new AddonJson(slug, name, rev, json);
+            }
+            return null;
         }
 
+        // Always ask Nexus which revision is the latest: a saved copy is only right when it is that revision, or when
+        // Nexus can't be reached (then the newest saved copy is better than nothing).
         using var api = new NexusApiClient(apiKey);
-        var revEl = await api.GetCollectionRevisionAsync(slug, Domain, revision: null, ct);
+        JsonElement revEl;
+        try { revEl = await api.GetCollectionRevisionAsync(slug, Domain, revision: null, ct); }
+        catch (Exception ex) when (ex is not NexusSignedOutException && ex is not OperationCanceledException && NewestCached() is not null)
+        {
+            InstallLog.Warn("sync", $"{slug}: couldn't ask Nexus for the latest revision ({ex.Message.Split('\n')[0]}); using the saved copy");
+            return NewestCached()!;
+        }
         var latestRevision = revEl.GetProperty("revisionNumber").GetInt32();
         var linkPath = revEl.GetProperty("downloadLink").GetString()!;
         var revisionId = long.Parse(linkPath.Split('/')[5]);
@@ -154,13 +169,13 @@ public sealed class CollectionSync
 /// <summary>7-Zip helpers (hidden window, same binary as Mo2InstanceWriter).</summary>
 public static class SevenZip
 {
-    private static readonly Lazy<string> _exePath = new(Locate);
+    private static string? _exePath;   // only a found path is kept: a failed search is tried again
 
     /// <summary>
     /// 7-Zip console binary. Search order: ASW_7Z env var, a copy bundled next to
     /// the app (7z.exe / 7zz / 7za), PATH, then the usual per-OS install spots.
     /// </summary>
-    public static string ExePath => _exePath.Value;
+    public static string ExePath => _exePath ??= Locate();
 
     private static string Locate()
     {
@@ -304,7 +319,13 @@ public static class InstallState
         try
         {
             if (!File.Exists(StatePath)) return null;
-            var rec = JsonSerializer.Deserialize<InstallRecord>(File.ReadAllText(StatePath));
+            string text;
+            for (var attempt = 1; ; attempt++)
+            {
+                try { text = File.ReadAllText(StatePath); break; }
+                catch (IOException) when (attempt < 4) { Thread.Sleep(100 * attempt); }
+            }
+            var rec = JsonSerializer.Deserialize<InstallRecord>(text);
             if (rec?.Resume is { } r)
             {
                 var dd = r.DoneDownloads ?? new List<string>();
@@ -314,6 +335,8 @@ public static class InstallState
             }
             return rec;
         }
+        catch (IOException) { return null; }   // locked for now: leave the file where it is
+        catch (UnauthorizedAccessException) { return null; }
         catch
         {
             try { if (File.Exists(StatePath)) File.Move(StatePath, StatePath + ".bak", overwrite: true); } catch { }

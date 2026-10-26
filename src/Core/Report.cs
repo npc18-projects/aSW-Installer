@@ -120,7 +120,10 @@ public static class ReportBuilder
             var ml = Path.Combine(inst, "profiles", "A StoryWealth", "modlist.txt");
             if (File.Exists(ml))
             {
-                var lines = File.ReadAllLines(ml).Where(l => l.Length > 1 && l[0] != '#').ToList();
+                List<string> lines;
+                using (var mfs = new FileStream(ml, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var mr = new StreamReader(mfs))
+                    lines = mr.ReadToEnd().Split((char)10).Select(l => l.TrimEnd((char)13)).Where(l => l.Length > 1 && l[0] != (char)35).ToList();
                 var seps = lines.Count(l => l.EndsWith("_separator", StringComparison.Ordinal));
                 L($"Mod list: {lines.Count - seps} mods ({lines.Count(l => l[0] == '+' && !l.EndsWith("_separator", StringComparison.Ordinal))} enabled), {seps} separators");
             }

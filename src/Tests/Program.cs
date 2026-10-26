@@ -469,9 +469,9 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
         var json = Path.Combine(dir, "c.json");
         File.WriteAllText(json, """
             {"info":{"name":"A Storywealth - Pickman's Passion"},"mods":[
-              {"name":"Mod A","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":10,"fileId":1,"md5":"a","fileSize":1,"logicalFilename":"Main File"}},
-              {"name":"Mod B","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":20,"fileId":2,"md5":"b","fileSize":1,"logicalFilename":"Main File"}},
-              {"name":"Mod C","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":20,"fileId":3,"md5":"c","fileSize":1,"logicalFilename":"Main File"}},
+              {"name":"Main File","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":10,"fileId":1,"md5":"a","fileSize":1,"logicalFilename":"Main File"}},
+              {"name":"Main File","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":20,"fileId":2,"md5":"b","fileSize":1,"logicalFilename":"Main File"}},
+              {"name":"Main File","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":20,"fileId":3,"md5":"c","fileSize":1,"logicalFilename":"Main File"}},
               {"name":"Other","version":"1","optional":false,"domainName":"fallout4","phase":0,"source":{"type":"nexus","modId":30,"fileId":4,"md5":"d","fileSize":1,"logicalFilename":"Other"}}]}
             """);
         var mods = VortexCollectionMapper.Map(json, "x").Mods;
@@ -1258,6 +1258,154 @@ foreach (var sample in FindSamples())
         Check("the report removes the access and refresh tokens", !t.Contains("ACCESSTOKEN123") && !t.Contains("REFRESHTOKEN456") && t.Contains("[key removed]"), t);
     }
     finally { try { Directory.Delete(rroot, true); } catch { } }
+}
+
+// ---- audit fixes
+{
+    // a FOMOD destination must stay inside the mod folder
+    var modRoot = Path.Combine(Path.GetTempPath(), "asw-tests-root", "mods", "A.part");
+    Check("a path inside the mod folder is inside", Mo2InstanceWriter.IsInsideFolder(modRoot, Path.Combine(modRoot, "Meshes", "x.nif")) && Mo2InstanceWriter.IsInsideFolder(modRoot, modRoot));
+    Check("a '..' in the middle can't climb out", !Mo2InstanceWriter.IsInsideFolder(modRoot, Path.GetFullPath(Path.Combine(modRoot, "a", "..", "..", "..", "evil"))) && !Mo2InstanceWriter.IsInsideFolder(modRoot, Path.Combine(modRoot, "..", "B")));
+    Check("a sibling folder with the same start is not inside", !Mo2InstanceWriter.IsInsideFolder(modRoot, modRoot + "2"));
+
+    var dir = Path.Combine(Path.GetTempPath(), "asw-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(dir);
+
+        // FOMOD XML: a DTD is skipped, never expanded
+        var xml = Path.Combine(dir, "ModuleConfig.xml");
+        File.WriteAllText(xml, "<!DOCTYPE config [<!ENTITY boom \"BOOM\">]><config><name>fine</name></config>");
+        Check("a FOMOD file with a DTD still loads", FomodResolver.LoadXml(xml).Root?.Element("name")?.Value == "fine");
+        File.WriteAllText(xml, "<!DOCTYPE config [<!ENTITY boom \"BOOM\">]><config><name>&boom;</name></config>");
+        string? expanded = null; try { expanded = FomodResolver.LoadXml(xml).Root?.Element("name")?.Value; } catch (System.Xml.XmlException) { expanded = "refused"; }
+        Check("an entity in a FOMOD file is never expanded", expanded != "BOOM", expanded);
+
+        // unfinished staging folders from a cancelled run are swept, real mods are not
+        var inst = Path.Combine(dir, "inst");
+        foreach (var d in new[] { "Half.part", "Raw Mod.raw", "Real Mod", "Fixes_separator" }) Directory.CreateDirectory(Path.Combine(inst, "mods", d));
+        var swept = Mo2InstanceWriter.SweepStaging(inst);
+        Check("only .part and .raw folders are swept", swept == 2 && !Directory.Exists(Path.Combine(inst, "mods", "Half.part")) && !Directory.Exists(Path.Combine(inst, "mods", "Raw Mod.raw"))
+            && Directory.Exists(Path.Combine(inst, "mods", "Real Mod")) && Directory.Exists(Path.Combine(inst, "mods", "Fixes_separator")));
+
+        // a mod that is only an AAF / Video folder is content, not a wrapper
+        var aaf = Path.Combine(dir, "aaf-mod"); Directory.CreateDirectory(Path.Combine(aaf, "AAF"));
+        File.WriteAllText(Path.Combine(aaf, "AAF", "theme.xml"), "x");
+        Mo2InstanceWriter.StripWrapper(aaf, "t");
+        Check("a lone AAF folder stays where it is", File.Exists(Path.Combine(aaf, "AAF", "theme.xml")) && !File.Exists(Path.Combine(aaf, "theme.xml")));
+        var wrapped = Path.Combine(dir, "wrapped-mod"); Directory.CreateDirectory(Path.Combine(wrapped, "Some Mod 1.2"));
+        File.WriteAllText(Path.Combine(wrapped, "Some Mod 1.2", "plugin.esp"), "x");
+        Mo2InstanceWriter.StripWrapper(wrapped, "t");
+        Check("a real wrapper folder is still removed", File.Exists(Path.Combine(wrapped, "plugin.esp")));
+
+        // tools with a line break in a field are refused, so they can't add INI keys
+        var game = Path.Combine(dir, "Game"); Directory.CreateDirectory(Path.Combine(game, "Data", "Tools"));
+        File.WriteAllText(Path.Combine(game, "ok.exe"), "x");
+        File.WriteAllText(Path.Combine(inst, "ModOrganizer.ini"), "[General]\ngameName=Fallout 4\n\n[customExecutables]\nsize=0\n");
+        Mo2InstanceWriter.WriteCustomExecutables(inst, game, [
+            new ToolEntry { Name = "Fine", Exe = "ok.exe" },
+            new ToolEntry { Name = "Evil\nsneaky=1", Exe = "ok.exe" },
+            new ToolEntry { Name = "EvilArgs", Exe = "ok.exe", Args = ["--x\n[Settings]"] }]);
+        var ini = File.ReadAllText(Path.Combine(inst, "ModOrganizer.ini"));
+        Check("a tool with a line break is skipped", ini.Contains("title=Fine") && !ini.Contains("sneaky") && !ini.Contains("EvilArgs") && !ini.Contains("[Settings]"), ini);
+
+        // add-on registry: a locked file isn't read as empty, a damaged one is kept as a copy, saves are whole
+        var reg = Path.Combine(dir, "reg"); Directory.CreateDirectory(reg);
+        AddonRegistry.Save(reg, new AddonRegistryFile { Addons = [new InstalledAddon { Id = "x", Name = "X", Revision = "r1" }] });
+        Check("the record saves and loads", AddonRegistry.LoadStrict(reg).Addons.Count == 1 && !File.Exists(Path.Combine(reg, AddonRegistry.FileName + ".tmp")));
+        using (var hold = new FileStream(Path.Combine(reg, AddonRegistry.FileName), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var threw = false; try { AddonRegistry.LoadStrict(reg); } catch (IOException) { threw = true; }
+            Check("a locked record is an error for code that writes, not an empty record", threw);
+            Check("showing code still gets an empty record instead of a crash", AddonRegistry.Load(reg).Addons.Count == 0);
+        }
+        File.WriteAllText(Path.Combine(reg, AddonRegistry.FileName), "{ this is not json");
+        Check("a damaged record is kept as a .bak copy", AddonRegistry.LoadStrict(reg).Addons.Count == 0 && File.ReadAllText(Path.Combine(reg, AddonRegistry.FileName + ".bak")).Contains("not json"));
+
+        // install.json: a lock for a moment doesn't move the file away
+        var stateDir = Path.Combine(dir, "state"); Directory.CreateDirectory(stateDir);
+        InstallState.UseDirectory(stateDir);
+        try
+        {
+            InstallState.SetThreads(new InstallState.ThreadSettings(2, 2));
+            var installJson = Path.Combine(stateDir, "install.json");
+            File.WriteAllText(installJson, "{\"InstallDir\":\"C:\\\\X\",\"CompletedUtc\":\"2026-10-26\"}");
+            using (var hold2 = new FileStream(installJson, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                InstallState.GetResume();
+            Check("a locked install.json stays where it is", File.Exists(installJson) && !File.Exists(installJson + ".bak"));
+            File.WriteAllText(installJson, "not json at all");
+            InstallState.GetResume();
+            Check("a damaged install.json is set aside as .bak", File.Exists(installJson + ".bak"));
+        }
+        finally { InstallState.UseDirectory(null); }
+
+        // the report still reads the mod list while Mod Organizer has it open
+        var rinst = Path.Combine(dir, "rinst"); var rprofile = Path.Combine(rinst, "profiles", "A StoryWealth"); Directory.CreateDirectory(rprofile);
+        var ml = Path.Combine(rprofile, "modlist.txt");
+        File.WriteAllLines(ml, ["# header", "+One", "+Two"]);
+        using (var mo2 = new FileStream(ml, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+        {
+            var sum = ReportBuilder.Summary(new ReportContext("1.0", rinst, null, null, true, false, false));
+            Check("the report reads a mod list that is open in MO2", sum.Contains("Mod list: 2 mods"), sum);
+        }
+
+        // collections: twin mods keep an old folder only when the md5 matches; a plugin the collection doesn't switch off is on
+        var cj = Path.Combine(dir, "c.json");
+        File.WriteAllText(cj, "{\"info\":{\"name\":\"A Storywealth - Twin Test\"},\"mods\":["
+            + "{\"name\":\"Main File\",\"version\":\"1\",\"optional\":false,\"domainName\":\"fallout4\",\"phase\":0,\"source\":{\"type\":\"nexus\",\"modId\":7,\"fileId\":1,\"md5\":\"aaa\",\"fileSize\":1,\"logicalFilename\":\"Main File\"}},"
+            + "{\"name\":\"Main File\",\"version\":\"1\",\"optional\":false,\"domainName\":\"fallout4\",\"phase\":0,\"source\":{\"type\":\"nexus\",\"modId\":7,\"fileId\":2,\"md5\":\"bbb\",\"fileSize\":1,\"logicalFilename\":\"Main File\"}}],"
+            + "\"plugins\":[{\"name\":\"On.esp\"},{\"name\":\"Off.esp\",\"enabled\":false},{\"name\":\"Yes.esp\",\"enabled\":true}]}");
+        var twin = VortexCollectionMapper.Map(cj, "tw");
+        Check("a plugin without 'enabled' is on, 'enabled: false' is off",
+            twin.Plugins.Single(p => p.Plugin == "On.esp").Enabled && !twin.Plugins.Single(p => p.Plugin == "Off.esp").Enabled && twin.Plugins.Single(p => p.Plugin == "Yes.esp").Enabled);
+        var plainName = twin.Mods[0].LegacyInstallAs.FirstOrDefault(l => l.EndsWith(" - Main File"));
+        Check("twin mods remember the plain name they had before the clash", plainName is not null && twin.Mods[1].LegacyInstallAs.Contains(plainName), J(twin.Mods[0].LegacyInstallAs));
+        var tinst = Path.Combine(dir, "tinst"); Directory.CreateDirectory(Path.Combine(tinst, "mods", plainName!));
+        var treg = new AddonRegistryFile { Addons = [new InstalledAddon { Id = "tw", Mods = [new InstalledAddonMod { Name = plainName!, Md5 = "bbb" }] }] };
+        AddonPlacement.KeepExistingFolders(twin, treg, tinst);
+        Check("only the twin with the matching md5 takes the old folder", twin.Mods[1].InstallAs == plainName && twin.Mods[0].InstallAs != plainName, twin.Mods[0].InstallAs + " | " + twin.Mods[1].InstallAs);
+
+        // Creation Club masters are implicit, other names starting with "cc" are not
+        var cc = new Dictionary<string, PluginOrder.Info>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Mine.esp"] = new(false, false, ["ccBGSFO4001-PipBoy(Black).esl", "CCTV.esp"]),
+            ["Other.esp"] = new(false, false, ["ccSBJFO4002_ManwellRifle.esl"]),
+        };
+        var ccBad = PluginOrder.MissingMasters(["Mine.esp", "Other.esp"], new Dictionary<string, bool> { ["Mine.esp"] = true, ["Other.esp"] = true }, n => cc.GetValueOrDefault(n)).Select(x => x.Plugin).ToList();
+        Check("a missing 'CCTV.esp' master is flagged, Creation Club masters are not", ccBad.Contains("Mine.esp") && !ccBad.Contains("Other.esp"), J(ccBad));
+    }
+    finally { try { Directory.Delete(dir, true); } catch { } }
+
+    // sign-in: 401 means signed out, 429 does not; the request line may arrive in pieces
+    var cfgX = new NexusOAuthConfig { ClientId = "test_client", Port = 18089 };
+    HttpResponseMessage Resp(int code) => new((System.Net.HttpStatusCode)code) { Content = new StringContent("{}") };
+    string Stored(DateTime exp) => System.Text.Json.JsonSerializer.Serialize(new { access = "OLD", refresh = "R1", expires = exp });
+    var s429 = new NexusSession(cfgX, new MemStore(Stored(DateTime.UtcNow.AddSeconds(-5))), new FakeHandler(_ => Resp(429)));
+    var is429Transient = false; try { s429.GetAccessTokenAsync(default).Wait(); } catch (AggregateException ex) when (ex.InnerException is HttpRequestException) { is429Transient = true; }
+    Check("'too many requests' on refresh is not a sign-out", is429Transient && s429.IsSignedIn);
+    var s401 = new NexusSession(cfgX, new MemStore(Stored(DateTime.UtcNow.AddSeconds(-5))), new FakeHandler(_ => Resp(401)));
+    var is401Out = false; try { s401.GetAccessTokenAsync(default).Wait(); } catch (AggregateException ex) when (ex.InnerException is NexusSignedOutException) { is401Out = true; }
+    Check("401 on refresh is a sign-out", is401Out && !s401.IsSignedIn);
+
+    int PortFree() { var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); l.Start(); var p = ((System.Net.IPEndPoint)l.LocalEndpoint).Port; l.Stop(); return p; }
+    var pieceport = PortFree();
+    var pieceStore = new MemStore(null);
+    var pieceSession = new NexusSession(new NexusOAuthConfig { ClientId = "test_client", Port = pieceport }, pieceStore,
+        new FakeHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{\"access_token\":\"A\",\"refresh_token\":\"R\",\"expires_in\":3600}") }));
+    pieceSession.SignInAsync(url =>
+    {
+        var state = System.Web.HttpUtility.ParseQueryString(new Uri(url).Query)["state"]!;
+        Task.Run(async () =>
+        {
+            using var idle = new System.Net.Sockets.TcpClient(); await idle.ConnectAsync("127.0.0.1", pieceport);   // says nothing: must not block the real answer
+            using var tcp = new System.Net.Sockets.TcpClient(); await tcp.ConnectAsync("127.0.0.1", pieceport);
+            var ns = tcp.GetStream();
+            var first = Encoding.ASCII.GetBytes("GET /callback?code=PIECES&sta"); await ns.WriteAsync(first); await ns.FlushAsync(); await Task.Delay(300);
+            var rest = Encoding.ASCII.GetBytes("te=" + state + " HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"); await ns.WriteAsync(rest); await ns.FlushAsync();
+            await Task.Delay(500);
+        });
+    }, default, TimeSpan.FromSeconds(30)).Wait();
+    Check("sign-in works when the request arrives in pieces and another connection stays silent", pieceSession.IsSignedIn);
 }
 
 // ---- the update settings that ship in the exe

@@ -330,6 +330,9 @@ public static class UpdateApplier
                     var bk = Path.Combine(backup, rel);
                     try { if (File.Exists(bk)) File.Copy(bk, dst, true); else if (created.Contains(rel)) File.Delete(dst); } catch { }
                 }
+                // The old app closed for this update; bring the (restored) old version back instead of leaving nothing on screen.
+                if (restart)
+                    try { Process.Start(new ProcessStartInfo(Path.Combine(appDir, exeName)) { UseShellExecute = true, WorkingDirectory = appDir }); } catch { }
                 return false;
             }
             log($"updated {copied.Count} file(s)");

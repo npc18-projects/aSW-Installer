@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Fixed: updating an add-on installed the old revision again. A saved copy was used without asking Nexus which revision is the latest.
+- Fixed: a mod's FOMOD installer could be made to write outside its own folder. Destinations are now checked.
+- Fixed: a download that went quiet hung forever. It now stops after 60 seconds without data and retries.
+- Fixed: a FOMOD mod is built in a `.part` folder and renamed when complete, so a crash can't leave a half-copied mod that looks finished. Leftover `.part` and `.raw` folders are cleaned up at the next install.
+- Fixed: a mod made of only an `AAF`, `Video`, `Fonts`, `Misc`, `Seq`, `Grass` or `LightPlacer` folder lost that folder, as if it were a wrapper.
+- Fixed: a plugin the collection doesn't mark as off is now on. Before, a missing `enabled` meant off.
+- Fixed: when a new revision adds a second mod with the same name, the one already installed keeps its folder.
+- Fixed: a missing master named like "CCTV.esp" was treated as a Creation Club file and never flagged.
+- Fixed: the add-on record is saved safely, and a locked or damaged one is no longer read as empty. A locked `install.json` is no longer moved aside.
+- Fixed: removing an add-on before the mod list has loaded is refused (shared mods could be mistaken for the add-on's). A failed removal shows a message instead of closing the app, and any unexpected error in a button no longer closes the app.
+- Fixed: if your Nexus sign-in ends during an install, you get "sign in again, then Resume". Only a refused sign-in (400 or 401) signs you out, not a busy Nexus.
+- Fixed: a half-loaded or empty add-on list was kept for an hour. The saved mod list now loads when Nexus can't be reached.
+- Fixed: a failed self-update brings the old version back instead of leaving nothing open. The automatic restart waits for a removal or sign-in to finish.
+- Fixed: a wrong or missing 7-Zip no longer sticks until restart; "Use recommended INIs" keeps every older backup; the report can read a mod list that MO2 has open; the sign-in page copes with a request that arrives in pieces or a silent connection.
+- Hardening: FOMOD files are read without their DTD, tool names with line breaks are refused, collection ids are checked before they become folder names, download links keep their signed parameters out of the logs, and the log no longer holds your Nexus name.
 - The code is now licensed under GPL-3.0 (`LICENSE`). The collection content, the logo and the app icon are not covered; see the README.
 - Nexus sign-in is now OAuth in your browser (Nexus's required method), replacing the pasted API key. Sign in to Nexus opens Nexus, you allow the app, and you're back. The sign-in renews itself, is stored encrypted on your PC, and Sign out cancels it on Nexus too. A key saved by an older build is deleted. For now it uses Nexus's test client until the app is registered.
 - The Nexus sign-in is only sent to Nexus's API address, never to a download address.

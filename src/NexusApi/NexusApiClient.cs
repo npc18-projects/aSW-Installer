@@ -309,8 +309,15 @@ public sealed class NexusApiClient : IDisposable
             var total = resp.Content.Headers.ContentLength ?? -1;
             var buffer = new byte[1 << 16];
             long read = 0; int n;
-            while ((n = await src.ReadAsync(buffer, ct)) > 0)
+            // A connection that goes quiet would hang this download for ever: give up after 60 s without a byte, as a
+            // network error the caller retries (not as a cancel).
+            using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            while (true)
             {
+                stall.CancelAfter(TimeSpan.FromSeconds(60));
+                try { n = await src.ReadAsync(buffer, stall.Token); }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new IOException("The download stopped receiving data."); }
+                if (n <= 0) break;
                 await dst.WriteAsync(buffer.AsMemory(0, n), ct);
                 read += n;
                 if (total > 0) progress?.Report(read * 100.0 / total);
@@ -340,7 +347,8 @@ public sealed class NexusApiClient : IDisposable
     {
         if (resp.IsSuccessStatusCode) return;
         var body = await resp.Content.ReadAsStringAsync();
-        throw new HttpRequestException($"{what} failed: {(int)resp.StatusCode} {resp.ReasonPhrase} req={resp.RequestMessage?.Method} {resp.RequestMessage?.RequestUri}\n{body}");
+        // Without the query string: download links carry signed parameters that don't belong in logs.
+        throw new HttpRequestException($"{what} failed: {(int)resp.StatusCode} {resp.ReasonPhrase} req={resp.RequestMessage?.Method} {resp.RequestMessage?.RequestUri?.GetLeftPart(UriPartial.Path)}\n{body}");
     }
 
     public void Dispose() => _http.Dispose();

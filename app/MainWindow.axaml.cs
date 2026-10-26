@@ -132,6 +132,7 @@ public partial class MainWindow : Window
     /// <summary>Why a removal can't happen right now, or null. Mod Organizer 2 rewrites the profile when it closes.</summary>
     private string? RemovalBlocker() =>
         _installing ? "Wait for the current install to finish."
+        : _manifest is null ? "The mod list hasn't loaded yet. Sign in to Nexus (or reconnect) first, so shared mods can be told apart."
         : Process.GetProcesses().Any(p => p.ProcessName.StartsWith("ModOrganizer", StringComparison.OrdinalIgnoreCase))
             ? "Close Mod Organizer 2 first. It rewrites your profile when it closes and would undo the removal."
         : null;
@@ -152,7 +153,17 @@ public partial class MainWindow : Window
             return;
         }
         BtnAddDetRemove.IsEnabled = false;
-        var res = await Task.Run(() => Removal.RemoveAddon(dir, c.Slug, names));
+        RemovalResult res;
+        _removing = true;
+        try { res = await Task.Run(() => Removal.RemoveAddon(dir, c.Slug, names)); _removing = false; }
+        catch (Exception ex)
+        {
+            _removing = false;
+            InstallLog.Error("ui", $"removing {c.Slug} failed: {ex.Message}");
+            BtnAddDetRemove.IsEnabled = true;
+            TxtAddDetStatus.Text = $"Couldn't finish removing it: {ex.Message} Close anything using those files and try again.";
+            return;
+        }
         BtnAddDetRemove.IsEnabled = true;
         RefreshAddons();
         ShowAddonDetail(new AddonCard(c.Slug, c.Name, c.Author, c.Version, false, c.HeaderImageUrl, null, c.Stats));
@@ -166,7 +177,17 @@ public partial class MainWindow : Window
         if (InstallState.GetInstallDir() is not { } dir) return;
         if (!Arm("opt:" + it.SourceId + it.Md5, btn, "Sure?", "Remove")) { _optNote = $"Click Remove again to delete {it.Name}."; UpdateOptSummary(); return; }
         var required = BaseModNames(requiredOnly: true);
-        var res = await Task.Run(() => Removal.RemoveOptional(dir, it.SourceId == OptionalCatalog.BaseId ? null : it.SourceId, it.InstallAs, it.Md5, required));
+        RemovalResult res;
+        _removing = true;
+        try { res = await Task.Run(() => Removal.RemoveOptional(dir, it.SourceId == OptionalCatalog.BaseId ? null : it.SourceId, it.InstallAs, it.Md5, required)); _removing = false; }
+        catch (Exception ex)
+        {
+            _removing = false;
+            InstallLog.Error("ui", $"removing {it.Name} failed: {ex.Message}");
+            _optNote = $"Couldn't remove {it.Name}: {ex.Message}";
+            UpdateOptSummary();
+            return;
+        }
         _optNote = res.Refused ?? $"Removed {it.Name} ({SizeText(res.BytesFreed)}).";
         RefreshOptionalTab();
     }
@@ -308,7 +329,7 @@ public partial class MainWindow : Window
         _updateTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _updateTimer.Tick += (_, _) =>
         {
-            if (_installing)   // never restart in the middle of an install
+            if (_installing || _removing || _signInCts is not null)   // never restart in the middle of an install, a removal or a sign-in
             {
                 _updateCountdown = 20;
                 TxtUpdateBar.Text = $"Version {_updateInfo.Version} is ready. It installs once your current install is done.";
@@ -828,8 +849,18 @@ public partial class MainWindow : Window
         TxtAddonsStatus.IsVisible = true;
         try
         {
+            var cred = _cred;
             var prog = new Progress<string>(s => TxtAddonsStatus.Text = s);
-            _liveAddons = await AddonGrabber.ListAsync(_cred, prog);
+            var list = await AddonGrabber.ListAsync(cred, prog);
+            if (!ReferenceEquals(cred, _cred)) { _addonGrabbed = false; return; }   // signed out (or in as someone else) meanwhile
+            if (list.Count == 0)
+            {
+                TxtAddonsStatus.Text = "Couldn't load the add-on list. Check your internet connection, then open this page again.";
+                _addonGrabbed = false;
+                RefreshAddons();
+                return;
+            }
+            _liveAddons = list;
             _liveSummary = _liveAddons.ToDictionary(c => c.Slug, c => c.Summary);
             TxtAddonsStatus.IsVisible = false;
         }
@@ -1538,6 +1569,13 @@ public partial class MainWindow : Window
 
     private string? _nexusName;   // only used to hide it in the report
 
+    /// <summary>Shown when something unexpected went wrong in a button handler: the app carries on instead of closing.</summary>
+    public void ShowUnexpectedError(Exception ex)
+    {
+        InstallLog.Error("ui", $"unexpected error: {ex}");
+        SetStatus("Something went wrong. The details are in the log.");
+    }
+
     private async Task RefreshAuthAsync()
     {
         if (_cred == null)
@@ -1554,10 +1592,12 @@ public partial class MainWindow : Window
         }
         BtnRefreshAuth.IsEnabled = false;
         TxtAuthDetail.Text = "Checking your Nexus account…";
+        var credNow = _cred;
         try
         {
-            using var api = new AStoryWealth.NexusApi.NexusApiClient(_cred);
+            using var api = new AStoryWealth.NexusApi.NexusApiClient(credNow);
             var user = await api.ValidateUserAsync();
+            if (!ReferenceEquals(credNow, _cred)) { BtnRefreshAuth.IsEnabled = true; return; }   // signed out or in again while we asked
             _nexusName = user.Name;
             _authPremium = user.IsPremium;
             TxtAuthDetail.Text = user.IsPremium
@@ -1578,6 +1618,7 @@ public partial class MainWindow : Window
                 : "Couldn't reach Nexus, or it didn't accept the sign-in. Check your internet connection and press Check again, or sign in again.";
             if (ex is NexusSignedOutException) { _cred = Environment.GetEnvironmentVariable("ASW_NEXUS_KEY") is { Length: > 0 } devKey ? new ApiKeyCredential(devKey) : null; }
             InstallLog.Error("ui", $"auth check failed: {ex.Message}");
+            if (ex is not NexusSignedOutException && _manifest is null) _ = LoadSavedCollectionAsync();   // offline: the saved mod list still works
             _signedIn = false;
             BtnToInstall.IsEnabled = false;
             SetStatus("Not signed in");
@@ -1618,6 +1659,16 @@ public partial class MainWindow : Window
         _syncing = true;
         try { await SyncCollectionCoreAsync(); }
         finally { _syncing = false; }
+    }
+
+    /// <summary>Loads the mod list kept from the last successful sync, for when Nexus can't be reached.</summary>
+    private async Task LoadSavedCollectionAsync()
+    {
+        var saved = new CollectionSync(SyncCacheDir).LoadState();
+        if (saved is null || !File.Exists(saved.CollectionJsonPath)) return;
+        await LoadCollectionAsync(saved.CollectionJsonPath);
+        TxtCollectionSummary.Text = $"Couldn't check for a newer version. Using the saved copy (r{saved.Revision}).";
+        RefreshInstallCheck();
     }
 
     private async Task SyncCollectionCoreAsync()
@@ -1696,6 +1747,7 @@ public partial class MainWindow : Window
             _addonGrabbed = false;
         }
         catch (OperationCanceledException) { message = "Sign-in cancelled."; }
+        catch (TimeoutException tex) { message = tex.Message; }
         catch (Exception ex)
         {
             InstallLog.Warn("auth", $"sign-in failed: {ex.Message}");
@@ -1813,8 +1865,12 @@ public partial class MainWindow : Window
         return File.Exists(cached) ? cached : null;
     }
 
+    private int _optRun;
+    private bool _removing;   // a removal is running: no automatic restart
+
     private async void RefreshOptionalTab()
     {
+        var run = ++_optRun;
         PanelOptTab.Children.Clear();
         _optRows.Clear();
         BtnOptInstall.IsEnabled = false;
@@ -1837,6 +1893,7 @@ public partial class MainWindow : Window
             TxtOptEmpty.Text = "Couldn't read the optional content list. The details are in the log.";
             return;
         }
+        if (run != _optRun) return;   // a newer refresh has taken over
         TxtOptEmpty.Text = items.Count == 0 ? "There is no optional content to choose from yet." : "";
         var grey = new SolidColorBrush(Color.Parse("#7A828E"));
         foreach (var src in items.GroupBy(i => i.SourceId))
@@ -2035,6 +2092,14 @@ public partial class MainWindow : Window
             TxtPhase.Text = "Stopped. Your downloads so far are kept. Press Resume to continue.";
             PbOverall.IsIndeterminate = false;
             OfferContinue(false);
+        }
+        catch (NexusSignedOutException)
+        {
+            TxtPhase.Text = "Your Nexus sign-in has ended. Sign in again, then press Resume. Your downloads so far are kept.";
+            TxtItem.Text = "";
+            PbOverall.IsIndeterminate = false;
+            OfferContinue(false);
+            _ = RefreshAuthAsync();
         }
         catch (InstallRunner.DownloadIncompleteException die)
         {

@@ -210,5 +210,6 @@ public static class PluginOrder
 
     private static bool IsImplicit(string master) =>
         Vanilla.Contains(master, StringComparer.OrdinalIgnoreCase)
-        || master.StartsWith("cc", StringComparison.OrdinalIgnoreCase);
+        // Creation Club files: ccBGSFO4001-..., ccFSVFO4003-..., ccSBJFO4002_... Not every name that starts with "cc".
+        || System.Text.RegularExpressions.Regex.IsMatch(master, @"^cc[A-Za-z]{3}FO4\d{3}", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 }

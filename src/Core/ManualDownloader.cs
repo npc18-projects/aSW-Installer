@@ -84,8 +84,9 @@ public static class ManualDownloader
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             if (!string.Equals(Path.GetFullPath(found), Path.GetFullPath(dest), StringComparison.OrdinalIgnoreCase))
             {
-                if (File.Exists(dest)) File.Delete(found);
-                else File.Move(found, dest);
+                // "found" was just checked against the collection's md5, so it wins over whatever is already at dest
+                // (a stale or damaged earlier copy). Never delete the user's good file.
+                File.Move(found, dest, overwrite: true);
             }
             InstallLog.Info("download", $"received: {Path.GetFileName(dest)}");
             return dest;

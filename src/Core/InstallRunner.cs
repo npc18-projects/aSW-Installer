@@ -61,7 +61,7 @@ public sealed class InstallRunner
         InstallLog.Info("auth", "validating Nexus account...");
         using var api = new NexusApiProxy(apiKey, progress, ct);
         var user = await api.ValidateUserAsync();
-        InstallLog.Info("auth", $"user {user.Name}, premium={user.IsPremium}");
+        InstallLog.Info("auth", $"signed in, premium={user.IsPremium}");
 
         // Resume checkpoint: written after every completed step, cleared on success.
         var optGroups = OptionalGroups.Load(addonId);
@@ -392,6 +392,7 @@ public sealed class InstallRunner
             // One failed mod must not kill the run: record it, keep going, and
             // stop at the end of the download step so the user can retry.
             catch (OperationCanceledException) { throw; }
+            catch (NexusSignedOutException) { throw; }   // every other download would fail the same way: stop and say so
             catch (Exception ex)
             {
                 InstallLog.Error("download", $"{mod.InstallAs}: {ex.Message}");

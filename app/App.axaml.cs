@@ -15,7 +15,14 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            var window = new MainWindow();
+            desktop.MainWindow = window;
+            // A mistake inside a button handler must not close the app half way through something (a removal, an install).
+            Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+            {
+                try { window.ShowUnexpectedError(e.Exception); } catch { }
+                e.Handled = true;
+            };
         }
 
         base.OnFrameworkInitializationCompleted();

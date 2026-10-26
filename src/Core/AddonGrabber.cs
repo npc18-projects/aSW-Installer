@@ -69,7 +69,10 @@ public static class AddonGrabber
             ? await api.ListCollectionsByUsersAsync(OwnerNames.Where(ids.ContainsKey).Select(o => ids[o]), ct: ct)
             : new List<NexusApiClient.UserCollection>();
         Report($"{all.Count} collections from {ids.Count} team accounts.");
-        SaveCache(new ApiCache(ids, DateTime.UtcNow, all));
+        // Keep the member ids whatever happens. Keep the listing only when it is whole: every account found and something
+        // came back (a half list saved for an hour would hide add-ons until the next run).
+        var whole = all.Count > 0 && OwnerNames.All(ids.ContainsKey);
+        SaveCache(whole ? new ApiCache(ids, DateTime.UtcNow, all) : new ApiCache(ids, default, null));
         return all.Where(c => c.Slug != CollectionSync.BaseSlug).ToList();
     }
 

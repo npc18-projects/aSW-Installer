@@ -179,9 +179,23 @@ public sealed class NexusSession : NexusCredential
             var stream = client.GetStream();
             var buf = new byte[8192];
             var n = 0;
-            try { n = await stream.ReadAsync(buf, ct); } catch (IOException) { continue; }
+            // A connection that says nothing must not hold up the real answer: give each one a few seconds.
+            using var readLimit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            readLimit.CancelAfter(TimeSpan.FromSeconds(5));
+            try
+            {
+                // the request line can arrive in pieces: read until the first line is complete
+                while (n < buf.Length && Array.IndexOf(buf, (byte)10, 0, n) < 0)
+                {
+                    var got = await stream.ReadAsync(buf.AsMemory(n), readLimit.Token);
+                    if (got == 0) break;
+                    n += got;
+                }
+            }
+            catch (IOException) { continue; }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { continue; }
             var head = Encoding.ASCII.GetString(buf, 0, n);
-            var line = head.Split("\r\n")[0];
+            var line = head.Split("\r\n")[0].Split('\n')[0];
             var result = ParseCallback(line, state);
             if (result.Ignore) { await Reply(stream, 404, "Not found", ct); continue; }
             if (result.Code is null)
@@ -240,8 +254,8 @@ public sealed class NexusSession : NexusCredential
         var body = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
         {
-            // 4xx on a refresh means the user took access away (or the grant ran out); anything else (5xx, network) is temporary.
-            if (previousRefresh is not null && (int)resp.StatusCode is >= 400 and < 500) throw new NexusSignedOutException("Nexus no longer accepts this sign-in.");
+            // 400/401 on a refresh means the user took access away (or the grant ran out); anything else (5xx, 408, 429, network) is temporary.
+            if (previousRefresh is not null && (int)resp.StatusCode is 400 or 401) throw new NexusSignedOutException("Nexus no longer accepts this sign-in.");
             throw new HttpRequestException($"Nexus sign-in service answered {(int)resp.StatusCode}");
         }
         return ParseTokens(body, previousRefresh, DateTime.UtcNow);

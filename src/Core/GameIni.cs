@@ -95,7 +95,13 @@ public static class GameDisplay
         {
             if (Mo2InstanceWriter.ShippedIni(shippedName) is not { } text) continue;
             var path = Path.Combine(profile, profileName);
-            if (File.Exists(path) && !File.Exists(path + BackupSuffix)) File.Copy(path, path + BackupSuffix);
+            if (File.Exists(path))
+            {
+                // The first backup keeps the oldest file; later ones get a time stamp, so the user's latest edits aren't lost.
+                var backup = path + BackupSuffix;
+                if (File.Exists(backup)) backup = $"{backup}-{DateTime.Now:yyyyMMdd-HHmmss}";
+                File.Copy(path, backup, overwrite: true);
+            }
             File.WriteAllText(path, text, new UTF8Encoding(false));
             replaced.Add(profileName);
         }

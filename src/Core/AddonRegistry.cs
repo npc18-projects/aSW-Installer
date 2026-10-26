@@ -44,24 +44,49 @@ public static class AddonRegistry
     public const string FileName = ".asw-addons.json";
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
+    /// <summary>For showing things: any trouble reading the file gives an empty record. Code that writes the record back uses <see cref="LoadStrict"/>.</summary>
     public static AddonRegistryFile Load(string instanceDir)
     {
-        try
-        {
-            var p = Path.Combine(instanceDir, FileName);
-            return File.Exists(p) ? JsonSerializer.Deserialize<AddonRegistryFile>(File.ReadAllText(p), Json) ?? new() : new();
-        }
+        try { return LoadStrict(instanceDir); }
         catch { return new(); }
     }
 
-    public static void Save(string instanceDir, AddonRegistryFile file) =>
-        File.WriteAllText(Path.Combine(instanceDir, FileName), JsonSerializer.Serialize(file, Json), new System.Text.UTF8Encoding(false));
+    /// <summary>
+    /// Reads the record. A file that can't be opened (antivirus, MO2) is retried and then reported as an error, so a caller that
+    /// is about to write never starts from an empty record by mistake. A file that isn't valid JSON is kept as a .bak copy.
+    /// </summary>
+    public static AddonRegistryFile LoadStrict(string instanceDir)
+    {
+        var p = Path.Combine(instanceDir, FileName);
+        if (!File.Exists(p)) return new();
+        string text;
+        for (var attempt = 1; ; attempt++)
+        {
+            try { text = File.ReadAllText(p); break; }
+            catch (IOException) when (attempt < 4) { Thread.Sleep(150 * attempt); }
+        }
+        try { return JsonSerializer.Deserialize<AddonRegistryFile>(text, Json) ?? new(); }
+        catch (JsonException)
+        {
+            try { File.Copy(p, p + ".bak", overwrite: true); } catch { }
+            return new();
+        }
+    }
+
+    /// <summary>Written to a temporary file first and then moved over the record, so a crash leaves the old one whole.</summary>
+    public static void Save(string instanceDir, AddonRegistryFile file)
+    {
+        var p = Path.Combine(instanceDir, FileName);
+        var tmp = p + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(file, Json), new System.Text.UTF8Encoding(false));
+        File.Move(tmp, p, overwrite: true);
+    }
 
     /// <summary>Records (or replaces) one add-on, keeping the order add-ons were first installed in. Optional picks already
     /// recorded for it are kept unless the new record carries its own.</summary>
     public static void Upsert(string instanceDir, InstalledAddon addon)
     {
-        var file = Load(instanceDir);
+        var file = LoadStrict(instanceDir);
         var i = file.Addons.FindIndex(a => a.Id.Equals(addon.Id, StringComparison.OrdinalIgnoreCase));
         if (i >= 0)
         {
@@ -79,7 +104,7 @@ public static class AddonRegistry
     /// <summary>Remembers the optional picks (union with what was recorded) and, for the base list, the groups installed.</summary>
     public static void RecordOptional(string instanceDir, string? addonId, IEnumerable<string> md5s, IEnumerable<string>? baseGroups = null)
     {
-        var file = Load(instanceDir);
+        var file = LoadStrict(instanceDir);
         var set = OptionalFor(file, addonId).Concat(md5s).Where(h => h.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (addonId is null)
         {

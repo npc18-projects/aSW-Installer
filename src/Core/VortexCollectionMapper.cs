@@ -101,8 +101,13 @@ public static class VortexCollectionMapper
 
         // Two mods can share a file name ("Main File"); each would land in the same folder. Tell them apart by Nexus mod id,
         // and by file id when even that matches. Every mod in a clashing group is renamed, so the result doesn't depend on order.
+        // The plain name stays a legacy name: a mod already installed under it (before a revision added its twin) keeps its folder.
         foreach (var group in manifest.Mods.GroupBy(e => e.InstallAs, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).ToList())
-            foreach (var e in group) e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.ModId})", "installAs");
+            foreach (var e in group)
+            {
+                e.LegacyInstallAs.Insert(0, e.InstallAs);
+                e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.ModId})", "installAs");
+            }
         foreach (var group in manifest.Mods.GroupBy(e => e.InstallAs, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).ToList())
             foreach (var e in group) e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.FileId})", "installAs");
 
@@ -112,7 +117,8 @@ public static class VortexCollectionMapper
                 manifest.Plugins.Add(new PluginEntry
                 {
                     Plugin = p.GetProperty("name").GetString() ?? "",
-                    Enabled = p.TryGetProperty("enabled", out var en) && en.GetBoolean()
+                    // a plugin the collection doesn't mark as off is on: nothing should end up disabled by accident
+                    Enabled = !p.TryGetProperty("enabled", out var en) || en.ValueKind != JsonValueKind.False
                 });
 
         // tools[] -> custom executables registered in MO2 (WriteCustomExecutables)
