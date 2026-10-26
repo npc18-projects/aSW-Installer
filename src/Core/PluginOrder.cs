@@ -137,10 +137,10 @@ public static class PluginOrder
         for (var j = 0; j < baseline.Count; j++)
         {
             if (infos[j] is null) continue;
-            if (IsMasterLike(infos[j]!, baseline[j]))
+            if (IsMasterLike(infos[j]!))
             {
                 for (var i = 0; i < j; i++)
-                    if (infos[i] is { } ii && !IsMasterLike(ii, baseline[i])) Edge(j, i);
+                    if (infos[i] is { } ii && !IsMasterLike(ii)) Edge(j, i);
             }
 
         }
@@ -178,7 +178,7 @@ public static class PluginOrder
 
     /// <summary>Master = ESM flag in the header. The sample collection's LOOT order puts
     /// unflagged .esl files among the ESPs, so the extension alone does not make a master.</summary>
-    private static bool IsMasterLike(Info i, string name) =>
+    private static bool IsMasterLike(Info i) =>
         i.IsMaster;
 
     /// <summary>

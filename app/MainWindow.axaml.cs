@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using AStoryWealth.Core;
@@ -878,7 +877,7 @@ public partial class MainWindow : Window
         ShowPage(int.TryParse((Nav.SelectedItem as ListBoxItem)?.Tag as string, out var t) ? t : 0);
     }
 
-    private void EnableNav(int upTo)
+    private void EnableNav()
     {
         foreach (var item in Nav.Items.OfType<ListBoxItem>()) item.IsEnabled = true;
     }
@@ -932,7 +931,7 @@ public partial class MainWindow : Window
             PnlPickCollection.IsVisible = false;
             BtnToInstall.IsEnabled = _signedIn;
             BtnDetailInstall.IsEnabled = true;
-            EnableNav(1);
+            EnableNav();
             SetStatus("");
         }
         catch (Exception ex)
@@ -1962,7 +1961,7 @@ public partial class MainWindow : Window
             return;
         }
         var ticked = _optRows.Where(r => r.Box.IsChecked == true && r.Item.State == OptionState.Available).Select(r => r.Item).ToList();
-        var jobs = OptionalCatalog.Jobs(ticked, _collectionPath);
+        var jobs = OptionalCatalog.Jobs(ticked);
         if (jobs.Count == 0) return;
         foreach (var j in jobs) _jobQueue.Enqueue(j);
         TxtInstallDir.Text = InstallState.GetInstallDir() ?? InstallState.GetLastDir() ?? TxtInstallDir.Text;
@@ -2081,7 +2080,7 @@ public partial class MainWindow : Window
                     + $"{sum.AddOns} add-on{(sum.AddOns == 1 ? "" : "s")} installed\nThis run took {tookText}\nInstalled in {dir}\nLog: {Path.Combine(dir, "install.log")}";
             }
             catch { TxtDoneSummary.Text = $"Installed in {dir}"; }
-            EnableNav(3);
+            EnableNav();
             UpdateHomeTab();
             _ = CheckBaseUpdateAsync();
             _runOk = true;

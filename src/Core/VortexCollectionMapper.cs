@@ -106,10 +106,10 @@ public static class VortexCollectionMapper
             foreach (var e in group)
             {
                 e.LegacyInstallAs.Insert(0, e.InstallAs);
-                e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.ModId})", "installAs");
+                e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus!.ModId})", "installAs");
             }
         foreach (var group in manifest.Mods.GroupBy(e => e.InstallAs, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).ToList())
-            foreach (var e in group) e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus.FileId})", "installAs");
+            foreach (var e in group) e.InstallAs = Mo2InstanceWriter.SafeName($"{e.InstallAs} ({e.Nexus!.FileId})", "installAs");
 
         // plugins[] -> enabled state (names only; addon plugins must match mods above)
         if (root.TryGetProperty("plugins", out var plugins))

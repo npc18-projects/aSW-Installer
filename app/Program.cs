@@ -1,5 +1,4 @@
 using Avalonia;
-using System;
 using AStoryWealth.Core;
 
 namespace AStoryWealth.Installer;

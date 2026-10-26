@@ -114,7 +114,7 @@ public static class OptionalCatalog
     }
 
     /// <summary>The runs needed to install the ticked rows: the base list first (its groups and optional mods), then each add-on.</summary>
-    public static List<OptionalJob> Jobs(IEnumerable<OptionalItem> ticked, string baseJson)
+    public static List<OptionalJob> Jobs(IEnumerable<OptionalItem> ticked)
     {
         var jobs = new List<OptionalJob>();
         foreach (var g in ticked.Where(i => i.State == OptionState.Available).GroupBy(i => i.SourceId).OrderBy(g => g.Key == BaseId ? 0 : 1))

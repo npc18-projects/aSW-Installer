@@ -63,22 +63,6 @@ public sealed class NexusApiClient : IDisposable
 
     // ---------- Collections ----------
 
-    /// <summary>Collection metadata + current revision list for a game/slug.</summary>
-    public async Task<JsonElement> GetCollectionAsync(string gameDomain, string collectionSlug, CancellationToken ct = default)
-    {
-        using var resp = await _http.GetAsync($"v1/games/{gameDomain}/collections/{collectionSlug}.json", ct);
-        await EnsureAsync(resp, $"GET collection {collectionSlug}");
-        return await resp.Content.ReadFromJsonAsync<JsonElement>(_json, ct);
-    }
-
-    /// <summary>A specific revision of a collection, including its mod list.</summary>
-    public async Task<JsonElement> GetCollectionRevisionAsync(string gameDomain, string collectionSlug, int revision, CancellationToken ct = default)
-    {
-        using var resp = await _http.GetAsync($"v1/games/{gameDomain}/collections/{collectionSlug}/revisions/{revision}.json", ct);
-        await EnsureAsync(resp, $"GET revision {revision} of {collectionSlug}");
-        return await resp.Content.ReadFromJsonAsync<JsonElement>(_json, ct);
-    }
-
     // ---------- Collections (GraphQL v2) ----------
 
     /// <summary>
@@ -255,13 +239,6 @@ public sealed class NexusApiClient : IDisposable
     }
 
     // ---------- Files / downloads ----------
-
-    public async Task<JsonElement> ListModFilesAsync(string gameDomain, int modId, CancellationToken ct = default)
-    {
-        using var resp = await _http.GetAsync($"v1/games/{gameDomain}/mods/{modId}/files.json", ct);
-        await EnsureAsync(resp, $"GET files of mod {modId}");
-        return await resp.Content.ReadFromJsonAsync<JsonElement>(_json, ct);
-    }
 
     /// <summary>
     /// Premium-only: temporary CDN download link for a mod file.

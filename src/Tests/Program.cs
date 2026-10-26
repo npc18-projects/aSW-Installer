@@ -425,10 +425,10 @@ AddonManifest Addon(List<ModEntry> mods, List<ModRule>? rules = null) => new() {
         AddonRegistry.Save(dir, new AddonRegistryFile { Addons = [new InstalledAddon { Id = "wrbrop", Name = "YAE", Revision = "r16" }, new InstalledAddon { Id = "yilurh", Name = "Thuggyverse", Revision = "r9" }] });
         Check("…and becomes available when that add-on is installed", OptionalCatalog.Build(dir, baseJson, a => a.Id == "wrbrop" ? yaeJson : null).First(i => i.Name == "Project Valkyrie").State == OptionState.Available);
         // runs: base first, then add-ons; group rows become groups, mods become md5s
-        var jobs = OptionalCatalog.Jobs([Find("Some AMD Patch"), Find("Base Extra")], baseJson);
+        var jobs = OptionalCatalog.Jobs([Find("Some AMD Patch"), Find("Base Extra")]);
         Check("jobs: base list first, then the add-on, each with its md5s",
             jobs.Count == 2 && jobs[0].SourceId == "base" && jobs[0].Md5s.SequenceEqual(["b2"]) && jobs[1].SourceId == "wrbrop" && jobs[1].Md5s.SequenceEqual(["y3"]), J(jobs.Select(j => j.SourceId)));
-        Check("an installed or greyed-out row never makes a job", OptionalCatalog.Jobs([Find("Done Already"), pv], baseJson).Count == 0);
+        Check("an installed or greyed-out row never makes a job", OptionalCatalog.Jobs([Find("Done Already"), pv]).Count == 0);
         // picks are remembered per source and survive a registry rewrite
         AddonRegistry.RecordOptional(dir, "wrbrop", ["y3"]);
         AddonRegistry.RecordOptional(dir, null, ["b2"], ["ss2"]);

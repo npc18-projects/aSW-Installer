@@ -390,47 +390,6 @@ public static partial class Mo2InstanceWriter
             || ext.Equals(".esl", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Extract a game-root archive (F4SE) into the game directory. The silverlock
-    /// zip carries f4se_loader.exe, f4se/ and src/ at root; src/ is removed after.
-    /// Returns (elapsedSec, bytesWritten).
-    /// </summary>
-    public static (double sec, long bytes) MaterializeGameRoot(string gamePath, string archivePath)
-    {
-        Directory.CreateDirectory(gamePath);
-        // Extract to a staging folder first: F4SE-style archives wrap everything in
-        // one version folder ("f4se_0_06_23\"), which must not end up in the game root.
-        var staging = gamePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + ".stage-" + Guid.NewGuid().ToString("N")[..8];
-        Directory.CreateDirectory(staging);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        try
-        {
-            var (exitCode, se, so) = SevenZip.Extract(archivePath, staging);
-            if (exitCode != 0)
-            {
-                InstallLog.Error("game", $"7z exit {exitCode} extracting {Path.GetFileName(archivePath)} to game root: {se} {so}");
-                throw new InvalidOperationException($"game-root extraction failed: {archivePath}");
-            }
-            var root = staging;
-            var only = Directory.GetFileSystemEntries(staging);
-            if (only.Length == 1 && Directory.Exists(only[0]))
-            {
-                InstallLog.Info("game", $"{Path.GetFileName(archivePath)}: stripped wrapper folder '{Path.GetFileName(only[0])}'");
-                root = only[0];
-            }
-            var src = Path.Combine(root, "src");
-            if (Directory.Exists(src)) Directory.Delete(src, recursive: true);
-            CopyDirectory(root, gamePath);
-        }
-        finally
-        {
-            try { InstallRunner.DeleteTree(staging); } catch { }
-        }
-        sw.Stop();
-        var bytes = CountBytes(gamePath);
-        return (Math.Max(sw.Elapsed.TotalSeconds, 0.001), bytes);
-    }
-
     /// <summary>Extract a downloaded archive into mods/&lt;installAs&gt; via 7z. Hidden window. Returns (elapsedSec, bytesWritten).
     /// rootLayout: destination is mods/&lt;installAs&gt;/Root/ (Root Builder convention for Vortex "dinput" mods).</summary>
     public static (double sec, long bytes) Materialize(string instanceDir, string installAs, string archivePath, bool rootLayout = false)

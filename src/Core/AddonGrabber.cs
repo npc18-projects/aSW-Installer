@@ -4,9 +4,8 @@ using AStoryWealth.NexusApi;
 namespace AStoryWealth.Core;
 
 /// <summary>
-/// Auto-discovers aSW add-ons: lists the team account's published Fallout 4
-/// collections, syncs each one's collection.json, maps it to an add-on manifest
-/// and writes it into the Addons folder. The base collection slug is skipped.
+/// Auto-discovers aSW add-ons: lists the team accounts' published Fallout 4 collections (the base collection is left out).
+/// A collection's own list of mods is only fetched when someone installs it.
 /// </summary>
 public static class AddonGrabber
 {
@@ -16,14 +15,6 @@ public static class AddonGrabber
         "Exoclyps", "Rantanplan76", "AshThaMoth", "aradonsl",
         "lexinight", "ThatGhostBox", "dovakhin1998twitch", "Npc18"
     ];
-
-    /// <summary>
-    /// Added = never-before-seen manifests written this run.
-    /// Removed = stale manifests deleted (only when the full sweep succeeded; a
-    /// failed owner listing or collection fetch forces a conservative "keep all").
-    /// Slugs = slugs successfully refreshed this run.
-    /// </summary>
-    public sealed record GrabResult(int Added, int Removed, List<string> Slugs);
 
     private sealed record ApiCache(Dictionary<string, string>? MemberIds = null, DateTime ListedAtUtc = default, List<NexusApiClient.UserCollection>? Listing = null);
 
@@ -76,70 +67,4 @@ public static class AddonGrabber
         return all.Where(c => c.Slug != CollectionSync.BaseSlug).ToList();
     }
 
-    public static async Task<GrabResult> GrabAsync(NexusCredential apiKey, IProgress<string>? progress = null, CancellationToken ct = default)
-    {
-        void Report(string s) { progress?.Report(s); InstallLog.Info("addons", s); }
-
-        var collections = await ListAsync(apiKey, progress, ct, refresh: true);
-        var failedOwners = new List<string>();
-        if (collections.Count == 0) failedOwners.Add("all"); // nothing came back: don't treat that as "every add-on was removed"
-
-        var cacheDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        cacheDir = Path.Combine(cacheDir, "AStoryWealth", "Collections");
-        Directory.CreateDirectory(cacheDir);
-        var sync = new CollectionSync(cacheDir);
-
-        var before = new HashSet<string>(Directory.GetFiles(AddonStore.AddonsDir).Select(Path.GetFileName)!);
-        var slugs = new List<string>();
-        var failedCollections = new List<string>();
-        int added = 0, removed = 0;
-
-        foreach (var c in collections)
-        {
-            if (c.Slug == CollectionSync.BaseSlug) continue; // base, not an add-on
-            // A single collection fetch failing must not abort the whole grab;
-            // its already-on-disk manifest is preserved by the pruning guard below.
-            CollectionSync.AddonJson? addonJson = null;
-            try
-            {
-                addonJson = await sync.EnsureAddonJsonAsync(apiKey, c.Slug, c.Name, progress, ct);
-            }
-            catch (Exception ex)
-            {
-                InstallLog.Info("addons", $"{c.Slug}: {ex.Message}");
-                failedCollections.Add(c.Slug);
-                continue;
-            }
-
-            var manifest = VortexCollectionMapper.Map(addonJson.CollectionJsonPath, addonJson.Slug);
-            manifest.Name = c.Name;
-            manifest.Author = c.Author;
-            manifest.Version = $"r{addonJson.Revision}";
-            var outPath = Path.Combine(AddonStore.AddonsDir, $"{c.Slug}.addonmanifest.json");
-            File.WriteAllText(outPath, JsonSerializer.Serialize(manifest));
-            Report($"{c.Name} r{addonJson.Revision} → {Path.GetFileName(outPath)}");
-            slugs.Add(c.Slug);
-            if (!before.Contains(Path.GetFileName(outPath))) added++;
-        }
-
-        // Prune manifests whose collection was removed from the owner account.
-        // Only safe when we fully enumerated every owner AND fetched every
-        // surviving collection — if any listing or fetch failed we cannot tell a
-        // genuine removal from a transient error, so we keep everything on disk.
-        if (failedOwners.Count == 0 && failedCollections.Count == 0)
-        {
-            var keep = slugs.Select(s => $"{s}.addonmanifest.json").ToHashSet();
-            foreach (var f in Directory.GetFiles(AddonStore.AddonsDir))
-            {
-                var fn = Path.GetFileName(f);
-                if (fn.EndsWith(".addonmanifest.json") && !keep.Contains(fn))
-                {
-                    File.Delete(f);
-                    removed++;
-                }
-            }
-        }
-
-        return new GrabResult(added, removed, slugs);
-    }
 }
