@@ -28,5 +28,8 @@ Nothing is uploaded. The report zip holds the logs, the lists and a summary. The
 ## Always the dark theme
 The page colours are fixed, so the controls are too. Following Windows' light mode gave black text on dark buttons.
 
+## GPL-3.0, with the artwork and collection left out
+The code is GPL-3.0 so it stays open: a changed copy that is shared has to share its source. The collection, the add-ons and their mods belong to their authors, and the logo and app icon use artwork that isn't ours to license, so none of those are covered. 7-Zip is a separate program that the installer starts, not code built into it.
+
 ## Release rhythm
 Patch releases wait until there are about 10 fixes. Features raise the middle number. Order: local alpha, then beta (a GitHub pre-release), then the release.

@@ -25,4 +25,14 @@ Not tested yet: a downgrade of a real next-gen game, the HD textures group, and 
 
 Built by Npc18 with AI assistance (Claude).
 
+## Licence
+
+The installer's code is copyright Npc18 and released under the [GNU General Public License v3.0](LICENSE). Everything stays open: if you share a changed version, share its source under the same licence.
+
+That covers the code only. It does not cover:
+- the A StoryWealth collection, its add-ons, and the mods they install. They belong to their authors, and the installer only downloads them through your Nexus account;
+- the logo and the app icon (`docs/logo-1080.png`, `app/Assets/`). That artwork isn't mine to license.
+
+Other software the installer uses, and its licences, are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 [Changelog](CHANGELOG.md) · [Roadmap](docs/roadmap.md) · [Third-party licences](THIRD-PARTY-NOTICES.md)
