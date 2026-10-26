@@ -2,6 +2,24 @@ namespace AStoryWealth.Installer;
 
 public partial class MainWindow
 {
+    // ---------- threads and hard drives ----------
+
+    /// <summary>Says which of the folders in use sit on a hard drive. Work on a hard drive runs one thread at a time, whatever the numbers above are.</summary>
+    private void UpdateThreadNote()
+    {
+        var install = InstallState.GetInstallDir() ?? (string.IsNullOrWhiteSpace(TxtInstallDir.Text) ? null : TxtInstallDir.Text.Trim());
+        var folders = new List<(string Label, string? Path)>
+        {
+            ("install folder", install),
+            ("downloads folder", string.IsNullOrWhiteSpace(TxtDownloadsDir.Text) ? (install is null ? null : System.IO.Path.Combine(install, "downloads")) : TxtDownloadsDir.Text.Trim()),
+            ("reused archives", string.IsNullOrWhiteSpace(TxtReuseDir.Text) ? null : TxtReuseDir.Text.Trim()),
+        };
+        var slow = folders.Where(f => DriveKind.IsRotational(f.Path) == true).Select(f => $"{f.Label} ({DriveKind.RootOf(f.Path)})").ToList();
+        TxtThreadNote.Text = slow.Count == 0
+            ? "No hard drives found in the folders you use, so the numbers above apply as set."
+            : $"Hard drive found: {string.Join(", ", slow)}. Work on a hard drive runs one thread at a time, whatever the numbers above say, because several at once slow it down a lot.";
+    }
+
     // ---------- support report ----------
 
     private async void OnSaveReport(object? sender, RoutedEventArgs e)

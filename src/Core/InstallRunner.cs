@@ -178,6 +178,13 @@ public sealed class InstallRunner
         if (manual) InstallLog.Info("download", $"free account: mods are downloaded in your browser one at a time; watching {watchDir}");
         var dlThreads = manual ? 1 : downloadThreads > 0 ? downloadThreads : DownloadThreads;
         var exThreads = extractThreads > 0 ? extractThreads : ExtractThreads;
+        // A hard drive slows down badly when several things use it at once: keep work on it to one thread.
+        var limited = ThreadLimits.Apply(dlThreads, exThreads,
+            downloadsOnHdd: DriveKind.IsRotational(downloadsDir ?? Path.Combine(instanceDir, "downloads")) == true,
+            installOnHdd: DriveKind.IsRotational(instanceDir) == true,
+            reuseOnHdd: reuseDir is not null && DriveKind.IsRotational(reuseDir) == true);
+        (dlThreads, exThreads) = (limited.Download, limited.Extract);
+        foreach (var note in limited.Notes) InstallLog.Info("config", $"threads limited: {note}");
         InstallLog.Info("config", $"threads: {dlThreads} download / {exThreads} extract");
 
         // ---- Phase 1: download and verify EVERY archive first (no extraction).

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Hard drives are used one thread at a time. If the downloads folder, the install folder or the folder of reused archives is on a hard drive, downloads and unpacking that touch it run one at a time, whatever the thread numbers say. SSDs, network drives and drives Windows can't identify are not limited. Settings says which folders were found on a hard drive.
 - Fixed: updating an add-on installed the old revision again. A saved copy was used without asking Nexus which revision is the latest.
 - Fixed: a mod's FOMOD installer could be made to write outside its own folder. Destinations are now checked.
 - Fixed: a download that went quiet hung forever. It now stops after 60 seconds without data and retries.

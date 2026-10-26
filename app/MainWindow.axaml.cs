@@ -223,5 +223,6 @@ public partial class MainWindow : Window
         if (page == 9) RefreshOptionalTab();
         if (page == 5) RefreshDetailHeader();
         if (page == 10) RefreshHome();
+        if (page == 7) UpdateThreadNote();
     }
 }

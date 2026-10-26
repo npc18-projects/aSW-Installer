@@ -31,5 +31,8 @@ The page colours are fixed, so the controls are too. Following Windows' light mo
 ## GPL-3.0, with the artwork and collection left out
 The code is GPL-3.0 so it stays open: a changed copy that is shared has to share its source. The collection, the add-ons and their mods belong to their authors, and the logo and app icon use artwork that isn't ours to license, so none of those are covered. 7-Zip is a separate program that the installer starts, not code built into it.
 
+## Hard drives get one thread
+Several downloads or unpacks at once make a hard drive's head jump between files and slow everything down. The installer asks Windows whether each folder's drive has a seek penalty (the same flag Windows uses to tell hard drives from SSDs, found through the physical disk when the volume itself doesn't answer, and through the target folder for `subst` drives). A hard drive in the downloads, install or reused-archives folder limits that work to one thread. An SSD, a network share, or a drive Windows can't identify keeps the thread numbers as set.
+
 ## Release rhythm
 Patch releases wait until there are about 10 fixes. Features raise the middle number. Order: local alpha, then beta (a GitHub pre-release), then the release.

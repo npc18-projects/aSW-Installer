@@ -1442,6 +1442,24 @@ foreach (var sample in FindSamples())
     }
 }
 
+// ---- hard drives run one thread at a time
+{
+    var ssd = ThreadLimits.Apply(6, 4, downloadsOnHdd: false, installOnHdd: false, reuseOnHdd: false);
+    Check("SSDs keep the thread counts as set", ssd is { Download: 6, Extract: 4 } && ssd.Notes.Count == 0);
+    var dl = ThreadLimits.Apply(6, 4, downloadsOnHdd: true, installOnHdd: false, reuseOnHdd: false);
+    Check("downloads on a hard drive: one download and one unpack at a time", dl is { Download: 1, Extract: 1 } && dl.Notes.Count == 2, J(dl.Notes));
+    var inst = ThreadLimits.Apply(6, 4, downloadsOnHdd: false, installOnHdd: true, reuseOnHdd: false);
+    Check("install folder on a hard drive: unpacking is one at a time, downloads are not held back", inst is { Download: 6, Extract: 1 }, J(inst.Notes));
+    var reuse = ThreadLimits.Apply(6, 4, downloadsOnHdd: false, installOnHdd: false, reuseOnHdd: true);
+    Check("reused archives on a hard drive: unpacking is one at a time", reuse is { Download: 6, Extract: 1 });
+    Check("a setting of 1 stays 1 and says nothing", ThreadLimits.Apply(1, 1, true, true, true).Notes.Count == 0);
+
+    Check("drives that can't be identified are not limited", DriveKind.IsRotational(null) is null && DriveKind.IsRotational("") is null && DriveKind.IsRotational(@"\\server\share\mods") is null);
+    Check("a drive letter that isn't there is unknown, not an error", DriveKind.IsRotational(@"Q:\nothing\here") is null || DriveKind.IsRotational(@"Q:\nothing\here") is bool);
+    var windowsDrive = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System));
+    Console.WriteLine($"INFO  system drive {windowsDrive}: {(DriveKind.IsRotational(windowsDrive) is { } r ? (r ? "hard drive" : "SSD") : "unknown")}");
+}
+
 // ---- the update settings that ship in the exe
 {
     var shipped = UpdateConfig.Load();
